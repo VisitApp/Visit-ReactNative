@@ -17,23 +17,25 @@ const HelloWorldApp = () => {
   return (
     <SafeAreaView style={{flex: 1}}>
       <Button title="Click me" onPress={() => alert('This is an alert')} />
-
       <Button
         title="Click to invoke the native module here!"
         color="#841584"
         onPress={onSubmit}
       />
-
       <Button
         title="Click to pick image"
         color="#841584"
         onPress={onImagePick}
       />
-
       <Button
         title="Click to Ask for Google Fit Permission"
         color="#841584"
         onPress={requestActivityRecognitionPermission}
+      />
+      <Button
+        title="Click to request Data"
+        color="#841584"
+        onPress={requestActivityData}
       />
       <MyWebComponent />
     </SafeAreaView>
@@ -64,11 +66,14 @@ const onImagePick = async () => {
 const DEFAULT_CLIENT_ID =
   '476467749625-f9hnkuihk4dcin8n0so8ffjgsvn07lb5.apps.googleusercontent.com';
 
+const BASEURL = 'https://star-health.getvisitapp.xyz/';
+
 const askForGoogleFitPermission = async () => {
   try {
     const isPermissionGranted =
       await NativeModules.GoogleFitPermissionModule.intiateGoogleFitPermission(
         DEFAULT_CLIENT_ID,
+        BASEURL,
       );
     console.log(`Google Fit Permissionl: ${isPermissionGranted}`);
   } catch (e) {
@@ -81,10 +86,8 @@ const requestActivityRecognitionPermission = async () => {
     const granted = await PermissionsAndroid.request(
       PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION,
       {
-        title: 'Cool Photo App Camera Permission',
-        message:
-          'Cool Photo App needs access to your camera ' +
-          'so you can take awesome pictures.',
+        title: 'Need Activity Recognition Permission',
+        message: 'Star Health App needs access to your camera',
         buttonNeutral: 'Ask Me Later',
         buttonNegative: 'Cancel',
         buttonPositive: 'OK',
@@ -99,6 +102,17 @@ const requestActivityRecognitionPermission = async () => {
   } catch (err) {
     console.warn(err);
   }
+};
+
+const requestActivityData = () => {
+  NativeModules.GoogleFitPermissionModule.requestActivityDataFromGoogleFit(
+    'steps',
+    'day',
+    1654509069463.0,
+    data => {
+      console.log(`data: ` + data);
+    },
+  );
 };
 
 // const onPress = () => {
