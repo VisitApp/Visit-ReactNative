@@ -12,36 +12,6 @@ import {
 
 import WebView from 'react-native-webview';
 
-const HelloWorldApp = () => {
-  console.log('hello world 13456');
-  return (
-    <SafeAreaView style={{flex: 1}}>
-      <Button title="Click me" onPress={() => alert('This is an alert')} />
-      <Button
-        title="Click to invoke the native module here!"
-        color="#841584"
-        onPress={onSubmit}
-      />
-      <Button
-        title="Click to pick image"
-        color="#841584"
-        onPress={onImagePick}
-      />
-      <Button
-        title="Click to Ask for Google Fit Permission"
-        color="#841584"
-        onPress={requestActivityRecognitionPermission}
-      />
-      <Button
-        title="Click to request Data"
-        color="#841584"
-        onPress={requestActivityData}
-      />
-      <MyWebComponent />
-    </SafeAreaView>
-  );
-};
-
 const onSubmit = async () => {
   try {
     const eventId = await NativeModules.CalendarModule.createCalendarEvent(
@@ -116,34 +86,6 @@ const requestActivityData = () => {
   );
 };
 
-// const onPress = () => {
-//   NativeModules.CalendarModule.createCalendarEvent(
-//     'testName',
-//     'testLocation',
-//     error => {
-//       console.error(`Error found! ${error}`);
-//     },
-//     eventId => {
-//       console.log(`event id ${eventId} returned`);
-//     },
-//   );
-// };
-
-const html = `
-      <html>
-      <head></head>
-      <body>
-      <button onclick="msgprint()">Connect to Google Fit</button>
-        <script>
-        
-          function msgprint() { 
-            window.ReactNativeWebView.postMessage("CONNECT_TO_GOOGLE_FIT")
-          }  
-        </script>
-      </body>
-      </html>
-    `;
-
 const runBeforeFirst = `
       window.isNativeApp = true;
       window.platform = "ANDROID";
@@ -151,9 +93,9 @@ const runBeforeFirst = `
       true; // note: this is required, or you'll sometimes get silent failures
   `;
 
-export default HelloWorldApp;
+const HelloWorldApp = () => {
+  console.log('hello world 13456');
 
-class MyWebComponent extends Component {
   handleMessage = event => {
     console.log(event);
 
@@ -165,8 +107,31 @@ class MyWebComponent extends Component {
         break;
     }
   };
-  render() {
-    return (
+
+  return (
+    <SafeAreaView style={{flex: 1}}>
+      <Button title="Click me" onPress={() => alert('This is an alert')} />
+      <Button
+        title="Click to invoke the native module here!"
+        color="#841584"
+        onPress={onSubmit}
+      />
+      <Button
+        title="Click to pick image"
+        color="#841584"
+        onPress={onImagePick}
+      />
+      <Button
+        title="Click to Ask for Google Fit Permission"
+        color="#841584"
+        onPress={requestActivityRecognitionPermission}
+      />
+      <Button
+        title="Click to request Data"
+        color="#841584"
+        onPress={requestActivityData}
+      />
+
       <WebView
         ref={ref => {
           this.webView = ref;
@@ -181,6 +146,21 @@ class MyWebComponent extends Component {
         injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
         javaScriptEnabled={true}
       />
-    );
-  }
-}
+    </SafeAreaView>
+  );
+};
+
+// const onPress = () => {
+//   NativeModules.CalendarModule.createCalendarEvent(
+//     'testName',
+//     'testLocation',
+//     error => {
+//       console.error(`Error found! ${error}`);
+//     },
+//     eventId => {
+//       console.log(`event id ${eventId} returned`);
+//     },
+//   );
+// };
+
+export default HelloWorldApp;
