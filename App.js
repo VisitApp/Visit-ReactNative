@@ -82,6 +82,7 @@ const askForGoogleFitPermission = async () => {
 };
 
 const requestActivityRecognitionPermission = async () => {
+  console.log('inside requestActivityRecognitionPermission()');
   try {
     const granted = await PermissionsAndroid.request(
       PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION,
@@ -128,9 +129,25 @@ const requestActivityData = () => {
 //   );
 // };
 
+const html = `
+      <html>
+      <head></head>
+      <body>
+      <button onclick="msgprint()">Connect to Google Fit</button>
+        <script>
+        
+          function msgprint() { 
+            window.ReactNativeWebView.postMessage("CONNECT_TO_GOOGLE_FIT")
+          }  
+        </script>
+      </body>
+      </html>
+    `;
+
 const runBeforeFirst = `
       window.isNativeApp = true;
       window.platform = "ANDROID";
+      window.setSdkPlatform('ANDROID');
       true; // note: this is required, or you'll sometimes get silent failures
   `;
 
@@ -138,11 +155,22 @@ export default HelloWorldApp;
 
 class MyWebComponent extends Component {
   handleMessage = event => {
-    console.log('event:' + event.nativeEvent.data);
+    console.log(event);
+
+    switch (event.nativeEvent.data) {
+      case 'CONNECT_TO_GOOGLE_FIT':
+        requestActivityRecognitionPermission();
+        break;
+      default:
+        break;
+    }
   };
   render() {
     return (
       <WebView
+        ref={ref => {
+          this.webView = ref;
+        }}
         source={{
           uri: 'https://star-health.getvisitapp.xyz/login',
           headers: {
