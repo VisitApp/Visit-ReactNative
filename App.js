@@ -58,7 +58,7 @@ const HelloWorldApp = () => {
         },
       );
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        console.log('You can use the camera');
+        console.log('You can google fit now');
         askForGoogleFitPermission();
       } else {
         console.log('Fitness permission denied');
@@ -96,19 +96,25 @@ const HelloWorldApp = () => {
     );
 
     NativeModules.GoogleFitPermissionModule.requestDailyFitnessData(data => {
-      console.log(`data: ` + data);
+      console.log(`getDailyFitnessData() data: ` + data);
       webviewRef.current.injectJavaScript(data);
     });
   };
 
   const requestActivityData = (type, frequency, timeStamp) => {
     console.log('requestActivityData() called');
+
+    NativeModules.GoogleFitPermissionModule.initiateSDK(
+      DEFAULT_CLIENT_ID,
+      BASEURL,
+    );
+
     NativeModules.GoogleFitPermissionModule.requestActivityDataFromGoogleFit(
       type,
       frequency,
       timeStamp,
       data => {
-        console.log(`data: ` + data);
+        console.log(`requestActivityData() data: ` + data);
         webviewRef.current.injectJavaScript('window.' + data);
       },
     );
@@ -175,7 +181,7 @@ const HelloWorldApp = () => {
         title="Click to Ask for Google Fit Permission"
         color="#841584"
         onPress={() => {
-          requestActivityRecognitionPermission;
+          requestActivityRecognitionPermission();
         }}
       />
       <Button
