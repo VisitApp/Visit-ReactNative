@@ -25,12 +25,6 @@ public class GoogleFitPermissionModule extends ReactContextBaseJavaModule implem
 
     String TAG = "mytag";
 
-    private static final int REQUEST_OAUTH_REQUEST_CODE = 0x1001;
-    private static final int GM_SIGN_IN = 1900;
-
-    private GoogleSignInClient mGoogleSignInClient;
-    private GoogleSignInAccount googleSignInAccount;
-    FitnessOptions fitnessOptions;
 
     private ReactContext reactContext;
 
@@ -50,15 +44,23 @@ public class GoogleFitPermissionModule extends ReactContextBaseJavaModule implem
 
 
     @ReactMethod
-    public void intiateGoogleFitPermission(String defaultWebClientId, String baseUrl, final Promise promise) {
-        this.promise = promise;
+    public void initiateSDK(String defaultWebClientId, String baseUrl) {
         Log.d(TAG, "default client id:" + defaultWebClientId + " baseUrl: " + baseUrl);
-
         googleFitUtil = new GoogleFitUtil(reactContext.getCurrentActivity(), this, defaultWebClientId, baseUrl);
         googleFitUtil.init();
+    }
+
+    @ReactMethod
+    public void askForFitnessPermission(final Promise promise) {
+        this.promise = promise;
         googleFitUtil.askForGoogleFitPermission();
 
+    }
 
+    @ReactMethod
+    public void requestDailyFitnessData(Callback successCallback) {
+        this.successCallback = successCallback;
+        googleFitUtil.fetchDataFromFit();
     }
 
     @ReactMethod
@@ -99,18 +101,15 @@ public class GoogleFitPermissionModule extends ReactContextBaseJavaModule implem
         googleFitUtil.fetchDataFromFit();
 
         //TODO replace this with web callback and move it to syncDataWithServer()
-        String baseUrl = " https://api.samuraijack.xyz/v3";
-        String authToken = "JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQ1MjM3LCJwbGF0Zm9ybSI6IlNUQVItSEVBTFRIIiwidXNlclR5cGUiOiJ1c2VyIiwiaWF0IjoxNjU0NTk0ODE3LCJleHAiOjE2ODYxMzA4MTd9.SPtQ5_Tfo228C32K2HpItWezzZwvHGJ4Kv1v4kodYoA";
-        long googleFitLastSync = 1650220200000L;
-        long gfHourlyLastSync = 1650220200688L;
 
+//        syncDataWithServer("https://api.samuraijack.xyz/v3", "JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQ1MjM3LCJwbGF0Zm9ybSI6IlNUQVItSEVBTFRIIiwidXNlclR5cGUiOiJ1c2VyIiwiaWF0IjoxNjU0NTk0ODE3LCJleHAiOjE2ODYxMzA4MTd9.SPtQ5_Tfo228C32K2HpItWezzZwvHGJ4Kv1v4kodYoA",
+//                1650220200000L, 1650220200688L);
+    }
 
-        googleFitUtil.sendDataToServer(
-                baseUrl + "/",
-                authToken,
-                googleFitLastSync,
-                gfHourlyLastSync
-        );
+    @Override
+    public void loadGraphData(String s) {
+        Log.d("mytag", "loadGraphDataUrl: " + s);
+        successCallback.invoke(s);
     }
 
     @Override
@@ -123,15 +122,6 @@ public class GoogleFitPermissionModule extends ReactContextBaseJavaModule implem
         promise.reject("CANCELLED", "Google Permission was Denied");
     }
 
-    @Override
-    public void loadWebUrl(String url) {
-        Log.d("mytag", "daily Fitness Data url:" + url);
-//        if (url != null) {
-//            mWebView.loadUrl(url)
-//        }
-
-//        successCallback.invoke(url);
-    }
 
     @Override
     public void requestActivityData(String type, String frequency, long timestamp) {
@@ -139,15 +129,21 @@ public class GoogleFitPermissionModule extends ReactContextBaseJavaModule implem
     }
 
     @Override
-    public void loadGraphDataUrl(String s) {
-        Log.d("mytag", "loadGraphDataUrl: " + s);
-
-        successCallback.invoke(s);
+    public void loadDailyFitnessData(long steps, long sleep) {
+        String finalString = "window.updateFitnessPermissions(true," + steps + "," + sleep + ")";
+        Log.d("mytag", "loadDailyFitnessData() called: finalString :" + finalString);
+        successCallback.invoke(finalString);
     }
 
-    @Override
-    public void syncDataWithServer(String s, String s1, long l, long l1) {
 
+    @Override
+    public void syncDataWithServer(String baseUrl, String authToken, long googleFitLastSync, long gfHourlyLastSync) {
+        googleFitUtil.sendDataToServer(
+                baseUrl + "/",
+                authToken,
+                googleFitLastSync,
+                gfHourlyLastSync
+        );
     }
 
     @Override
