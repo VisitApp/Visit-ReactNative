@@ -1,4 +1,4 @@
-import React, {useRef, Component, useEffect} from 'react';
+import React, {useRef, useEffect, useState, useCallback} from 'react';
 
 import {
   Text,
@@ -8,36 +8,13 @@ import {
   Button,
   NativeModules,
   PermissionsAndroid,
-  LogBox,
+  BackHandler,
 } from 'react-native';
 
 import WebView from 'react-native-webview';
 
 const HelloWorldApp = () => {
   const webviewRef = useRef(null);
-
-  console.log('hello world 13456');
-
-  const onSubmit = async () => {
-    try {
-      const eventId = await NativeModules.CalendarModule.createCalendarEvent(
-        'Party',
-        'My House',
-      );
-      console.log(`Created a new event with id ${eventId}`);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const onImagePick = async () => {
-    try {
-      const imageUri = await NativeModules.ImagePickerModule.pickImage();
-      console.log(`Image Uri: ${imageUri}`);
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   const DEFAULT_CLIENT_ID =
     '476467749625-f9hnkuihk4dcin8n0so8ffjgsvn07lb5.apps.googleusercontent.com';
@@ -58,7 +35,7 @@ const HelloWorldApp = () => {
         },
       );
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        console.log('You can google fit now');
+        console.log('ACTIVITY_RECOGNITION granted');
         askForGoogleFitPermission();
       } else {
         console.log('Fitness permission denied');
@@ -68,13 +45,31 @@ const HelloWorldApp = () => {
     }
   };
 
-  //todo: call this when the webpage is loaded completely automatically.
+  const requestLocationPermission = async () => {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        {
+          title: 'Need Location Permission',
+          message: 'Need access to location permission',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'OK',
+        },
+      );
+      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+        console.log('Location permission granted');
+      } else {
+        console.log('Fitness permission denied');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const askForGoogleFitPermission = async () => {
     try {
-      NativeModules.GoogleFitPermissionModule.initiateSDK(
-        DEFAULT_CLIENT_ID,
-        BASEURL,
-      );
+      NativeModules.GoogleFitPermissionModule.initiateSDK(DEFAULT_CLIENT_ID);
 
       const isPermissionGranted =
         await NativeModules.GoogleFitPermissionModule.askForFitnessPermission();
@@ -90,10 +85,7 @@ const HelloWorldApp = () => {
   const getDailyFitnessData = () => {
     console.log('getDailyFitnessData() called');
 
-    NativeModules.GoogleFitPermissionModule.initiateSDK(
-      DEFAULT_CLIENT_ID,
-      BASEURL,
-    );
+    NativeModules.GoogleFitPermissionModule.initiateSDK(DEFAULT_CLIENT_ID);
 
     NativeModules.GoogleFitPermissionModule.requestDailyFitnessData(data => {
       console.log(`getDailyFitnessData() data: ` + data);
@@ -104,10 +96,7 @@ const HelloWorldApp = () => {
   const requestActivityData = (type, frequency, timeStamp) => {
     console.log('requestActivityData() called');
 
-    NativeModules.GoogleFitPermissionModule.initiateSDK(
-      DEFAULT_CLIENT_ID,
-      BASEURL,
-    );
+    NativeModules.GoogleFitPermissionModule.initiateSDK(DEFAULT_CLIENT_ID);
 
     NativeModules.GoogleFitPermissionModule.requestActivityDataFromGoogleFit(
       type,
@@ -120,10 +109,22 @@ const HelloWorldApp = () => {
     );
   };
 
-  // //this is used when the url is loaded for the first time and we send the url data to our backend server.
-  // const updateApiBaseUrl = () => {
-  //   NativeModules.GoogleFitPermissionModule.updateApiBaseUrl();
-  // };
+  const updateApiBaseUrl = (
+    apiBaseUrl,
+    authtoken,
+    googleFitLastSync,
+    gfHourlyLastSync,
+  ) => {
+    console.log('updateApiBaseUrl() called.');
+    NativeModules.GoogleFitPermissionModule.initiateSDK(DEFAULT_CLIENT_ID);
+
+    NativeModules.GoogleFitPermissionModule.updateApiBaseUrl(
+      apiBaseUrl,
+      authtoken,
+      googleFitLastSync,
+      gfHourlyLastSync,
+    );
+  };
 
   const runBeforeFirst = `
         window.isNativeApp = true;
@@ -132,74 +133,109 @@ const HelloWorldApp = () => {
         true; // note: this is required, or you'll sometimes get silent failures
     `;
 
-  const html = `
-        <html>
-        <head></head>
-        <body>
-        <button onclick="msgprint()">Connect to Google Fit</button>
-          <script>
-          
-            function msgprint() { 
-              window.ReactNativeWebView.postMessage("CONNECT_TO_GOOGLE_FIT")
-            }  
-          </script>
-        </body>
-        </html>
-      `;
-
   const handleMessage = event => {
     console.log(event);
 
+    if (event.nativeEvent.data != null) {
+      try {
+        const parsedObject = JSON.parse(event.nativeEvent.data);
+        if (parsedObject.method != null) {
+          switch (parsedObject.method) {
+            case 'CONNECT_TO_GOOGLE_FIT':
+              requestActivityRecognitionPermission();
+              break;
+            case 'UPDATE_PLATFORM':
+              webviewRef.current?.injectJavaScript(
+                'window.setSdkPlatform("ANDROID")',
+              );
+              break;
+            case 'UPDATE_API_BASE_URL':
+              {
+                let apiBaseUrl = parsedObject.apiBaseUrl;
+                let authtoken = parsedObject.authtoken;
+
+                let googleFitLastSync = parsedObject.googleFitLastSync;
+                let gfHourlyLastSync = parsedObject.gfHourlyLastSync;
+
+                console.log(
+                  'apiBaseUrl: ' +
+                    apiBaseUrl +
+                    ' authtoken: ' +
+                    authtoken +
+                    ' googleFitLastSync: ' +
+                    googleFitLastSync +
+                    ' gfHourlyLastSync: ' +
+                    gfHourlyLastSync,
+                );
+
+                updateApiBaseUrl(
+                  apiBaseUrl,
+                  authtoken,
+                  googleFitLastSync,
+                  gfHourlyLastSync,
+                );
+              }
+              break;
+            case 'GET_DATA_TO_GENERATE_GRAPH':
+              {
+                let type = parsedObject.type;
+                let frequency = parsedObject.frequency;
+                let timeStamp = parsedObject.timestamp;
+
+                console.log(
+                  'type: ' +
+                    type +
+                    ' frequency:' +
+                    frequency +
+                    ' timeStamp: ' +
+                    timeStamp,
+                );
+
+                requestActivityData(type, frequency, timeStamp);
+              }
+              break;
+            case 'GET_LOCATION_PERMISSIONS':
+              {
+                requestLocationPermission();
+              }
+              break;
+            case 'CLOSE_VIEW':
+              {
+              }
+              break;
+
+            default:
+              break;
+          }
+        }
+      } catch (exception) {
+        console.log('Exception occured:' + exception.message);
+      }
+    }
+
     switch (event.nativeEvent.data) {
-      case 'CONNECT_TO_GOOGLE_FIT':
-        requestActivityRecognitionPermission();
-        break;
-      case 'UPDATE_PLATFORM':
-        webviewRef.current?.injectJavaScript(
-          'window.setSdkPlatform("ANDROID")',
-        );
-        break;
-      default:
-        break;
     }
   };
 
+  const [canGoBack, setCanGoBack] = useState(false);
+
+  const handleBack = useCallback(() => {
+    if (canGoBack && webviewRef.current) {
+      webviewRef.current.goBack();
+      return true;
+    }
+    return false;
+  }, [canGoBack]);
+
+  useEffect(() => {
+    BackHandler.addEventListener('hardwareBackPress', handleBack);
+    return () => {
+      BackHandler.removeEventListener('hardwareBackPress', handleBack);
+    };
+  }, [handleBack]);
+
   return (
     <SafeAreaView style={{flex: 1}}>
-      <Button title="Click me" onPress={() => alert('This is an alert')} />
-      <Button
-        title="Click to invoke the native module here!"
-        color="#841584"
-        onPress={onSubmit}
-      />
-      <Button
-        title="Click to pick image"
-        color="#841584"
-        onPress={onImagePick}
-      />
-      <Button
-        title="Click to Ask for Google Fit Permission"
-        color="#841584"
-        onPress={() => {
-          requestActivityRecognitionPermission();
-        }}
-      />
-      <Button
-        title="Click to request Data of particular date"
-        color="#841584"
-        onPress={() => {
-          requestActivityData('steps', 'day', 1654509069463.0);
-        }}
-      />
-
-      <Button
-        title="Click to get Daily fitness data"
-        color="#841584"
-        onPress={() => {
-          getDailyFitnessData();
-        }}
-      />
-
       <WebView
         ref={webviewRef}
         source={{
@@ -211,22 +247,10 @@ const HelloWorldApp = () => {
         onMessage={handleMessage}
         injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
         javaScriptEnabled={true}
+        onLoadProgress={event => setCanGoBack(event.nativeEvent.canGoBack)}
       />
     </SafeAreaView>
   );
 };
-
-// const onPress = () => {
-//   NativeModules.CalendarModule.createCalendarEvent(
-//     'testName',
-//     'testLocation',
-//     error => {
-//       console.error(`Error found! ${error}`);
-//     },
-//     eventId => {
-//       console.log(`event id ${eventId} returned`);
-//     },
-//   );
-// };
 
 export default HelloWorldApp;

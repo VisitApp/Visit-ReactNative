@@ -17,9 +17,6 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.getvisitapp.google_fit.data.GoogleFitStatusListener;
 import com.getvisitapp.google_fit.data.GoogleFitUtil;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
-import com.google.android.gms.fitness.FitnessOptions;
 
 public class GoogleFitPermissionModule extends ReactContextBaseJavaModule implements GoogleFitStatusListener {
 
@@ -44,9 +41,9 @@ public class GoogleFitPermissionModule extends ReactContextBaseJavaModule implem
 
 
     @ReactMethod
-    public void initiateSDK(String defaultWebClientId, String baseUrl) {
-        Log.d(TAG, "default client id:" + defaultWebClientId + " baseUrl: " + baseUrl);
-        googleFitUtil = new GoogleFitUtil(reactContext.getCurrentActivity(), this, defaultWebClientId, baseUrl);
+    public void initiateSDK(String defaultWebClientId) {
+        Log.d(TAG, "default client id:" + defaultWebClientId);
+        googleFitUtil = new GoogleFitUtil(reactContext.getCurrentActivity(), this, defaultWebClientId);
         googleFitUtil.init();
     }
 
@@ -67,6 +64,11 @@ public class GoogleFitPermissionModule extends ReactContextBaseJavaModule implem
     public void requestActivityDataFromGoogleFit(String type, String frequency, double timestamp, Callback successCallback) {
         this.successCallback = successCallback;
         requestActivityData(type, frequency, Math.round(timestamp));
+    }
+
+    @ReactMethod
+    public void updateApiBaseUrl(String apiBaseUrl, String authtoken, double googleFitLastSync, double gfHourlyLastSync) {
+        syncDataWithServer(apiBaseUrl, authtoken, Math.round(googleFitLastSync), Math.round(gfHourlyLastSync));
     }
 
 
@@ -99,11 +101,6 @@ public class GoogleFitPermissionModule extends ReactContextBaseJavaModule implem
     public void onFitnessPermissionGranted() {
         promise.resolve("GRANTED");
         googleFitUtil.fetchDataFromFit();
-
-        //TODO replace this with web callback and move it to syncDataWithServer()
-
-//        syncDataWithServer("https://api.samuraijack.xyz/v3", "JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQ1MjM3LCJwbGF0Zm9ybSI6IlNUQVItSEVBTFRIIiwidXNlclR5cGUiOiJ1c2VyIiwiaWF0IjoxNjU0NTk0ODE3LCJleHAiOjE2ODYxMzA4MTd9.SPtQ5_Tfo228C32K2HpItWezzZwvHGJ4Kv1v4kodYoA",
-//                1650220200000L, 1650220200688L);
     }
 
     @Override
@@ -125,6 +122,7 @@ public class GoogleFitPermissionModule extends ReactContextBaseJavaModule implem
 
     @Override
     public void requestActivityData(String type, String frequency, long timestamp) {
+
         googleFitUtil.getActivityData(type, frequency, timestamp);
     }
 
@@ -138,6 +136,9 @@ public class GoogleFitPermissionModule extends ReactContextBaseJavaModule implem
 
     @Override
     public void syncDataWithServer(String baseUrl, String authToken, long googleFitLastSync, long gfHourlyLastSync) {
+        Log.d("mytag", "GoogleFitPermissionModule syncDataWithServer(): baseUrl: " + baseUrl + " authToken: " + authToken +
+                " googleFitLastSync: " + googleFitLastSync + "  gfHourlyLastSync:" + gfHourlyLastSync);
+
         googleFitUtil.sendDataToServer(
                 baseUrl + "/",
                 authToken,
