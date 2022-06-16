@@ -85,8 +85,6 @@ const HelloWorldApp = () => {
   const getDailyFitnessData = () => {
     console.log('getDailyFitnessData() called');
 
-    NativeModules.GoogleFitPermissionModule.initiateSDK(DEFAULT_CLIENT_ID);
-
     NativeModules.GoogleFitPermissionModule.requestDailyFitnessData(data => {
       console.log(`getDailyFitnessData() data: ` + data);
       webviewRef.current.injectJavaScript(data);
@@ -95,8 +93,6 @@ const HelloWorldApp = () => {
 
   const requestActivityData = (type, frequency, timeStamp) => {
     console.log('requestActivityData() called');
-
-    NativeModules.GoogleFitPermissionModule.initiateSDK(DEFAULT_CLIENT_ID);
 
     NativeModules.GoogleFitPermissionModule.requestActivityDataFromGoogleFit(
       type,
