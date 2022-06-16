@@ -67,10 +67,10 @@ const HelloWorldApp = () => {
 
   const askForGoogleFitPermission = async () => {
     try {
-      NativeModules.GoogleFitPermissionModule.initiateSDK(DEFAULT_CLIENT_ID);
+      NativeModules.VisitFitnessModule.initiateSDK(DEFAULT_CLIENT_ID);
 
       const isPermissionGranted =
-        await NativeModules.GoogleFitPermissionModule.askForFitnessPermission();
+        await NativeModules.VisitFitnessModule.askForFitnessPermission();
       if (isPermissionGranted == 'GRANTED') {
         getDailyFitnessData();
       }
@@ -83,7 +83,7 @@ const HelloWorldApp = () => {
   const getDailyFitnessData = () => {
     console.log('getDailyFitnessData() called');
 
-    NativeModules.GoogleFitPermissionModule.requestDailyFitnessData(data => {
+    NativeModules.VisitFitnessModule.requestDailyFitnessData(data => {
       console.log(`getDailyFitnessData() data: ` + data);
       webviewRef.current.injectJavaScript(data);
     });
@@ -92,7 +92,7 @@ const HelloWorldApp = () => {
   const requestActivityData = (type, frequency, timeStamp) => {
     console.log('requestActivityData() called');
 
-    NativeModules.GoogleFitPermissionModule.requestActivityDataFromGoogleFit(
+    NativeModules.VisitFitnessModule.requestActivityDataFromGoogleFit(
       type,
       frequency,
       timeStamp,
@@ -110,9 +110,9 @@ const HelloWorldApp = () => {
     gfHourlyLastSync,
   ) => {
     console.log('updateApiBaseUrl() called.');
-    NativeModules.GoogleFitPermissionModule.initiateSDK(DEFAULT_CLIENT_ID);
+    NativeModules.VisitFitnessModule.initiateSDK(DEFAULT_CLIENT_ID);
 
-    NativeModules.GoogleFitPermissionModule.updateApiBaseUrl(
+    NativeModules.VisitFitnessModule.updateApiBaseUrl(
       apiBaseUrl,
       authtoken,
       googleFitLastSync,

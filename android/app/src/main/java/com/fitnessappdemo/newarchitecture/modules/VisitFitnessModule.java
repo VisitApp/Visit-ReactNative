@@ -18,7 +18,7 @@ import com.facebook.react.bridge.ReactMethod;
 import com.getvisitapp.google_fit.data.GoogleFitStatusListener;
 import com.getvisitapp.google_fit.data.GoogleFitUtil;
 
-public class GoogleFitPermissionModule extends ReactContextBaseJavaModule implements GoogleFitStatusListener {
+public class VisitFitnessModule extends ReactContextBaseJavaModule implements GoogleFitStatusListener {
 
     String TAG = "mytag";
 
@@ -31,7 +31,7 @@ public class GoogleFitPermissionModule extends ReactContextBaseJavaModule implem
     private Promise promise;
     private Callback successCallback;
 
-    public GoogleFitPermissionModule(@Nullable ReactApplicationContext reactContext) {
+    public VisitFitnessModule(@Nullable ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
         // Add the listener for `onActivityResult`
@@ -89,7 +89,7 @@ public class GoogleFitPermissionModule extends ReactContextBaseJavaModule implem
     @NonNull
     @Override
     public String getName() {
-        return "GoogleFitPermissionModule";
+        return "VisitFitnessModule";
     }
 
     @Override
