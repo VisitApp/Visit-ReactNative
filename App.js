@@ -208,9 +208,6 @@ const HelloWorldApp = () => {
         console.log('Exception occured:' + exception.message);
       }
     }
-
-    switch (event.nativeEvent.data) {
-    }
   };
 
   const [canGoBack, setCanGoBack] = useState(false);
