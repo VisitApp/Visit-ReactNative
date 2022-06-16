@@ -6,9 +6,7 @@ import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.uimanager.ViewManager;
-import com.fitnessappdemo.newarchitecture.modules.CalendarModule;
 import com.fitnessappdemo.newarchitecture.modules.GoogleFitPermissionModule;
-import com.fitnessappdemo.newarchitecture.modules.ImagePickerModule;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,8 +20,6 @@ public class MyAppPackage implements ReactPackage {
     public List<NativeModule> createNativeModules(@NonNull ReactApplicationContext reactContext) {
         List<NativeModule> modules = new ArrayList<>();
 
-        modules.add(new CalendarModule(reactContext));
-        modules.add(new ImagePickerModule(reactContext));
         modules.add(new GoogleFitPermissionModule(reactContext));
 
         return modules;
