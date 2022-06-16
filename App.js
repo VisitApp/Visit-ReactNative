@@ -19,8 +19,6 @@ const HelloWorldApp = () => {
   const DEFAULT_CLIENT_ID =
     '476467749625-f9hnkuihk4dcin8n0so8ffjgsvn07lb5.apps.googleusercontent.com';
 
-  const BASEURL = 'https://star-health.getvisitapp.xyz/';
-
   const requestActivityRecognitionPermission = async () => {
     console.log('inside requestActivityRecognitionPermission()');
     try {
