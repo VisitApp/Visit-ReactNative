@@ -1,4 +1,4 @@
-import {NativeModules, PermissionsAndroid} from 'react-native';
+import {LogBox, NativeModules, PermissionsAndroid} from 'react-native';
 
 const DEFAULT_CLIENT_ID =
   '476467749625-f9hnkuihk4dcin8n0so8ffjgsvn07lb5.apps.googleusercontent.com';
@@ -111,6 +111,7 @@ export const handleMessage = (event, webviewRef) => {
   if (event.nativeEvent.data != null) {
     try {
       const parsedObject = JSON.parse(event.nativeEvent.data);
+
       if (parsedObject.method != null) {
         switch (parsedObject.method) {
           case 'CONNECT_TO_GOOGLE_FIT':
@@ -175,7 +176,13 @@ export const handleMessage = (event, webviewRef) => {
             {
             }
             break;
+          case 'OPEN_PDF':
+            let hraUrl = parsedObject.url;
 
+            NativeModules.VisitFitnessModule.openHraLink(hraUrl);
+            console.log('HRA URL:' + hraUrl);
+
+            break;
           default:
             break;
         }

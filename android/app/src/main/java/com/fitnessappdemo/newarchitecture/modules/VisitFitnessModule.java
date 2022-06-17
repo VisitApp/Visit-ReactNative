@@ -2,6 +2,7 @@ package com.fitnessappdemo.newarchitecture.modules;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -69,6 +70,17 @@ public class VisitFitnessModule extends ReactContextBaseJavaModule implements Go
     @ReactMethod
     public void updateApiBaseUrl(String apiBaseUrl, String authtoken, double googleFitLastSync, double gfHourlyLastSync) {
         syncDataWithServer(apiBaseUrl, authtoken, Math.round(googleFitLastSync), Math.round(gfHourlyLastSync));
+    }
+
+    @ReactMethod
+    public void openHraLink(String link) {
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW);
+            i.setData(Uri.parse(link));
+            reactContext.getCurrentActivity().startActivity(i);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 
