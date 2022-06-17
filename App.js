@@ -10,24 +10,33 @@ import {
 } from './VisitPluginAndroid';
 import WebView from 'react-native-webview';
 
-const HelloWorldApp = () => {
-  const webviewRef = useRef(null);
+function getRunBeforeFirst(platform) {
+  let runBeforeFirst = null;
 
   if (Platform.OS == 'android') {
-    console.log('Platform is ANDROID');
-  } else if (Platform.OS == 'ios') {
-    console.log('Platform is IOS');
-  }
-
-  const DEFAULT_CLIENT_ID =
-    '476467749625-f9hnkuihk4dcin8n0so8ffjgsvn07lb5.apps.googleusercontent.com';
-
-  const runBeforeFirst = `
+    runBeforeFirst = `
         window.isNativeApp = true;
         window.platform = "ANDROID";
         window.setSdkPlatform('ANDROID');
         true; // note: this is required, or you'll sometimes get silent failures
     `;
+  } else if (Platform.OS == 'ios') {
+    runBeforeFirst = `
+        window.isNativeApp = true;
+        window.platform = "IOS";
+        window.setSdkPlatform('IOS');
+        true; // note: this is required, or you'll sometimes get silent failures
+    `;
+  }
+  console.log('runBeforeFirst: ' + runBeforeFirst);
+
+  return runBeforeFirst;
+}
+
+const HelloWorldApp = () => {
+  const webviewRef = useRef(null);
+
+  const runBeforeStart = getRunBeforeFirst(Platform.OS);
 
   const [canGoBack, setCanGoBack] = useState(false);
 
@@ -57,7 +66,7 @@ const HelloWorldApp = () => {
           },
         }}
         onMessage={event => handleMessage(event, webviewRef)}
-        injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
+        injectedJavaScriptBeforeContentLoaded={runBeforeStart}
         javaScriptEnabled={true}
         onLoadProgress={event => setCanGoBack(event.nativeEvent.canGoBack)}
       />
