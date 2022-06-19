@@ -10,8 +10,6 @@ import {
 } from './VisitPluginAndroid';
 import WebView from 'react-native-webview';
 
-const DEFAULT_CLIENT_ID =
-  '476467749625-f9hnkuihk4dcin8n0so8ffjgsvn07lb5.apps.googleusercontent.com';
 
 function getRunBeforeFirst(platform) {
   let runBeforeFirst = null;
@@ -36,7 +34,7 @@ function getRunBeforeFirst(platform) {
   return runBeforeFirst;
 }
 
-const HelloWorldApp = default_client_id => {
+const HelloWorldApp = () => {
   const webviewRef = useRef(null);
 
   const runBeforeStart = getRunBeforeFirst(Platform.OS);
@@ -68,7 +66,7 @@ const HelloWorldApp = default_client_id => {
             platform: 'ANDROID',
           },
         }}
-        onMessage={event => handleMessage(event, webviewRef, DEFAULT_CLIENT_ID)}
+        onMessage={event => handleMessage(event, webviewRef)}
         injectedJavaScriptBeforeContentLoaded={runBeforeStart}
         javaScriptEnabled={true}
         onLoadProgress={event => setCanGoBack(event.nativeEvent.canGoBack)}

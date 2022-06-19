@@ -16,6 +16,7 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import com.fitnessappdemo.BuildConfig;
 import com.getvisitapp.google_fit.data.GoogleFitStatusListener;
 import com.getvisitapp.google_fit.data.GoogleFitUtil;
 
@@ -42,9 +43,9 @@ public class VisitFitnessModule extends ReactContextBaseJavaModule implements Go
 
 
     @ReactMethod
-    public void initiateSDK(String defaultWebClientId) {
-        Log.d(TAG, "default client id:" + defaultWebClientId);
-        googleFitUtil = new GoogleFitUtil(reactContext.getCurrentActivity(), this, defaultWebClientId);
+    public void initiateSDK() {
+        googleFitUtil = new GoogleFitUtil(reactContext.getCurrentActivity(), this,BuildConfig.FIREBASE_DEFAULT_CLIENT_ID);
+        Log.d(TAG, "default client id:" + BuildConfig.FIREBASE_DEFAULT_CLIENT_ID);
         googleFitUtil.init();
     }
 

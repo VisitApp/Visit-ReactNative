@@ -1,11 +1,9 @@
 import {LogBox, NativeModules, PermissionsAndroid} from 'react-native';
 
-// const DEFAULT_CLIENT_ID =
-//   '476467749625-f9hnkuihk4dcin8n0so8ffjgsvn07lb5.apps.googleusercontent.com';
+
 
 export const requestActivityRecognitionPermission = async (
-  webviewRef,
-  default_client_id,
+  webviewRef
 ) => {
   console.log('inside requestActivityRecognitionPermission()');
   try {
@@ -22,7 +20,7 @@ export const requestActivityRecognitionPermission = async (
     if (granted === PermissionsAndroid.RESULTS.GRANTED) {
       console.log('ACTIVITY_RECOGNITION granted');
 
-      askForGoogleFitPermission(webviewRef, default_client_id);
+      askForGoogleFitPermission(webviewRef);
     } else {
       console.log('Fitness permission denied');
     }
@@ -31,9 +29,9 @@ export const requestActivityRecognitionPermission = async (
   }
 };
 
-const askForGoogleFitPermission = async (webviewRef, default_client_id) => {
+const askForGoogleFitPermission = async (webviewRef) => {
   try {
-    NativeModules.VisitFitnessModule.initiateSDK(default_client_id);
+    NativeModules.VisitFitnessModule.initiateSDK();
 
     const isPermissionGranted =
       await NativeModules.VisitFitnessModule.askForFitnessPermission();
@@ -95,11 +93,10 @@ export const updateApiBaseUrl = (
   apiBaseUrl,
   authtoken,
   googleFitLastSync,
-  gfHourlyLastSync,
-  default_client_id,
+  gfHourlyLastSync
 ) => {
   console.log('updateApiBaseUrl() called.');
-  NativeModules.VisitFitnessModule.initiateSDK(default_client_id);
+  NativeModules.VisitFitnessModule.initiateSDK();
 
   NativeModules.VisitFitnessModule.updateApiBaseUrl(
     apiBaseUrl,
@@ -109,14 +106,12 @@ export const updateApiBaseUrl = (
   );
 };
 
-export const handleMessage = (event, webviewRef, default_client_id) => {
+export const handleMessage = (event, webviewRef) => {
   console.log(
     'event:' +
       event +
       ' webviewRef: ' +
-      webviewRef +
-      ' default_client_id:' +
-      default_client_id,
+      webviewRef
   );
 
   if (event.nativeEvent.data != null) {
@@ -126,7 +121,7 @@ export const handleMessage = (event, webviewRef, default_client_id) => {
       if (parsedObject.method != null) {
         switch (parsedObject.method) {
           case 'CONNECT_TO_GOOGLE_FIT':
-            requestActivityRecognitionPermission(webviewRef, default_client_id);
+            requestActivityRecognitionPermission(webviewRef);
             break;
           case 'UPDATE_PLATFORM':
             webviewRef.current?.injectJavaScript(
@@ -156,8 +151,7 @@ export const handleMessage = (event, webviewRef, default_client_id) => {
                 apiBaseUrl,
                 authtoken,
                 googleFitLastSync,
-                gfHourlyLastSync,
-                default_client_id,
+                gfHourlyLastSync
               );
             }
             break;
