@@ -34,7 +34,11 @@ function getRunBeforeFirst(platform) {
   return runBeforeFirst;
 }
 
-const VisitHealthView = ({ source }) => {
+const VisitHealthView = ({ baseUrl, token, id,  phone }) => {
+  const [source, setSource] = useState('');
+  useEffect(() => {
+    setSource(`${baseUrl}?token=${token}&id=${id}&phone=${phone}`)
+  }, [id, token, baseUrl, phone])
   const webviewRef = useRef(null);
 
   const runBeforeStart = getRunBeforeFirst(Platform.OS);
@@ -58,7 +62,7 @@ const VisitHealthView = ({ source }) => {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <WebView
+      {source ? <WebView
         ref={webviewRef}
         source={{
           uri: source,
@@ -70,7 +74,7 @@ const VisitHealthView = ({ source }) => {
         injectedJavaScriptBeforeContentLoaded={runBeforeStart}
         javaScriptEnabled={true}
         onLoadProgress={(event) => setCanGoBack(event.nativeEvent.canGoBack)}
-      />
+      /> : null}
     </SafeAreaView>
   );
 };
@@ -78,5 +82,5 @@ const VisitHealthView = ({ source }) => {
 export default VisitHealthView;
 
 VisitHealthView.defaultProps = {
-  source: '',
+  id: '', token: '', baseUrl: '', phone: ''
 };

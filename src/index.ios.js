@@ -46,51 +46,56 @@ const unescapeHTML = (str) =>
     }
   });
 
-const VisitHealthView = ({ source }) => {
+const VisitHealthView = ({ baseUrl, token, id, phone }) => {
+  const [source, setSource] = useState('');
+  useEffect(() => {
+    setSource(`${baseUrl}?token=${token}&id=${id}&phone=${phone}`)
+  }, [id, token, baseUrl, phone])
+
   const VisitHealthRn = useMemo(
     () =>
       NativeModules.VisitHealthRn
         ? NativeModules.VisitHealthRn
         : new Proxy(
-            {},
-            {
-              get() {
-                throw new Error(LINKING_ERROR);
-              },
-            }
-          ),
+          {},
+          {
+            get() {
+              throw new Error(LINKING_ERROR);
+            },
+          }
+        ),
     []
   );
 
   const webviewRef = useRef(null);
-  const [baseUrl, setBaseUrl] = useState('');
+  const [apiBaseUrl, setApiBaseUrl] = useState('');
   const [authToken, setAuthToken] = useState('');
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const callSyncApi = useCallback(
     (data) =>
       axios
-        .post(`${baseUrl}/users/data-sync`, data, {
+        .post(`${apiBaseUrl}/users/data-sync`, data, {
           headers: {
             Authorization: authToken,
           },
         })
         .then((res) => console.log('callSyncData response,', res))
         .catch((err) => console.log('callSyncData err,', { err })),
-    [baseUrl, authToken]
+    [apiBaseUrl, authToken]
   );
 
   const callEmbellishApi = useCallback(
     (data) =>
       axios
-        .post(`${baseUrl}/users/embellish-sync`, data, {
+        .post(`${apiBaseUrl}/users/embellish-sync`, data, {
           headers: {
             Authorization: authToken,
           },
         })
         .then((res) => console.log('callEmbellishApi response,', res))
         .catch((err) => console.log('callEmbellishApi err,', { err })),
-    [baseUrl, authToken]
+    [apiBaseUrl, authToken]
   );
 
   useEffect(() => {
@@ -161,7 +166,7 @@ const VisitHealthView = ({ source }) => {
       case 'UPDATE_API_BASE_URL':
         if (!hasLoadedOnce) {
           console.log('apiBaseUrl is,', apiBaseUrl);
-          setBaseUrl(apiBaseUrl);
+          setApiBaseUrl(apiBaseUrl);
           setAuthToken(authtoken);
           VisitHealthRn?.updateApiUrl({ googleFitLastSync, gfHourlyLastSync });
           setHasLoadedOnce(true);
@@ -181,13 +186,13 @@ const VisitHealthView = ({ source }) => {
 
   return (
     <SafeAreaView style={styles.webViewContainer}>
-      <WebView
+      {source ? <WebView
         ref={webviewRef}
         source={{ uri: source }}
         style={styles.webView}
         javascriptEnabled
         onMessage={handleMessage}
-      />
+      /> : null}
     </SafeAreaView>
   );
 };
@@ -205,5 +210,5 @@ const styles = StyleSheet.create({
 export default VisitHealthView;
 
 VisitHealthView.defaultProps = {
-  source: '',
+  id: '', token: '', baseUrl: '', phone: ''
 };
