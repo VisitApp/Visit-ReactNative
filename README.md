@@ -17,7 +17,12 @@ import VisitHealthView from 'Visit-ReactNative';
 
 
 export default function App() {
-  return <VisitHealthView source="___SOURCE_URL_FOR_PWA___" />;
+  return <VisitHealthView
+    baseUrl='base_url_for_pwa'
+    token='authencation_token'
+    id='user_id'
+    phone='user_phone'
+  />
 }
 
 ```
