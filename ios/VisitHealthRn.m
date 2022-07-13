@@ -16,6 +16,14 @@ RCT_REMAP_METHOD(multiply,
   resolve(result);
 }
 
+- (instancetype)init
+{
+    self = [super init];
+    self->calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSCalendarIdentifierISO8601];
+    self->calendar.timeZone = [NSTimeZone timeZoneWithName:@"IST"];
+    NSLog(@"Do some stuff here");
+    return self;
+}
 
 + (HKHealthStore *)sharedManager {
     __strong static HKHealthStore *store = nil;
@@ -134,28 +142,28 @@ RCT_REMAP_METHOD(multiply,
     NSDate *endDatePeriod;
     if([frequency isEqualToString:@"day"]){
         NSTimeInterval interval;
-        [calendar rangeOfUnit:NSCalendarUnitDay
+        [self->calendar rangeOfUnit:NSCalendarUnitDay
                            startDate:&startDate
                             interval:&interval
                              forDate:endDate];
         endDatePeriod = [startDate dateByAddingTimeInterval:interval-1];
     }else if ([frequency isEqualToString:@"week"]){
         NSTimeInterval interval;
-        [calendar rangeOfUnit:NSCalendarUnitWeekOfYear
+        [self->calendar rangeOfUnit:NSCalendarUnitWeekOfYear
                            startDate:&startDate
                             interval:&interval
                              forDate:endDate];
         endDatePeriod = [startDate dateByAddingTimeInterval:interval-1];
     }else if ([frequency isEqualToString:@"month"]){
         NSTimeInterval interval;
-        [calendar rangeOfUnit:NSCalendarUnitMonth
+        [self->calendar rangeOfUnit:NSCalendarUnitMonth
                            startDate:&startDate
                             interval:&interval
                              forDate:endDate];
         endDatePeriod = [startDate dateByAddingTimeInterval:interval-1];
     }else if([frequency isEqualToString:@"custom"]){
         endDatePeriod = endDate;
-        startDate = [calendar dateByAddingUnit:NSCalendarUnitDay
+        startDate = [self->calendar dateByAddingUnit:NSCalendarUnitDay
                                                  value:1-days
                                                 toDate:endDatePeriod
                                                options:0];
@@ -235,37 +243,39 @@ RCT_REMAP_METHOD(multiply,
     NSDate *endDatePeriod;
     if([frequency isEqualToString:@"day"]){
         endDatePeriod = endDate;
-        startDate = [calendar dateByAddingUnit:NSCalendarUnitDay
+        startDate = [self->calendar dateByAddingUnit:NSCalendarUnitDay
                                                  value:0
                                                 toDate:endDatePeriod
                                                options:0];
     }else if ([frequency isEqualToString:@"week"]){
         NSTimeInterval interval;
-        [calendar rangeOfUnit:NSCalendarUnitWeekOfYear
+        [self->calendar rangeOfUnit:NSCalendarUnitWeekOfYear
                            startDate:&startDate
                             interval:&interval
                              forDate:endDate];
         endDatePeriod = [startDate dateByAddingTimeInterval:interval-1];
     }else if ([frequency isEqualToString:@"month"]){
         NSTimeInterval interval;
-        [calendar rangeOfUnit:NSCalendarUnitMonth
+        [self->calendar rangeOfUnit:NSCalendarUnitMonth
                            startDate:&startDate
                             interval:&interval
                              forDate:endDate];
         endDatePeriod = [startDate dateByAddingTimeInterval:interval-1];
     }else if([frequency isEqualToString:@"custom"]){
         endDatePeriod = endDate;
-        startDate = [calendar dateByAddingUnit:NSCalendarUnitDay
+        startDate = [self->calendar dateByAddingUnit:NSCalendarUnitDay
                                                  value:1-days
                                                 toDate:endDatePeriod
                                                options:0];
         NSLog(@"startDate and endDate in custom fetchSteps is, %@, %@",startDate,endDatePeriod);
     }
     NSLog(@"startDate and endDate in fetchSteps is, %@, %@",startDate,endDatePeriod);
-    NSDateComponents *anchorComponents = [calendar components:NSCalendarUnitDay | NSCalendarUnitMonth | NSCalendarUnitYear
+    NSDateComponents *anchorComponents = [self->calendar components:NSCalendarUnitDay | NSCalendarUnitMonth | NSCalendarUnitYear
                                                      fromDate:[NSDate date]];
     anchorComponents.hour = 0;
-    NSDate *anchorDate = [calendar dateFromComponents:anchorComponents];
+    NSLog(@"anchorComponents in fetchSteps are, %@",anchorComponents);
+    NSDate *anchorDate = [self->calendar dateFromComponents:anchorComponents];
+    NSLog(@"anchorDate in fetchSteps are, %@",anchorDate);
     HKQuantityType *quantityType = [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
     // Create the query
     HKStatisticsCollectionQuery *query = [[HKStatisticsCollectionQuery alloc] initWithQuantityType:quantityType
@@ -354,37 +364,37 @@ RCT_REMAP_METHOD(multiply,
     HKUnit *distanceUnit = [HKUnit meterUnit];
     if([frequency isEqualToString:@"day"]){
         endDatePeriod = endDate;
-        startDate = [calendar dateByAddingUnit:NSCalendarUnitDay
+        startDate = [self->calendar dateByAddingUnit:NSCalendarUnitDay
                                                  value:0
                                                 toDate:endDatePeriod
                                                options:0];
     }else if ([frequency isEqualToString:@"week"]){
         NSTimeInterval interval;
-        [calendar rangeOfUnit:NSCalendarUnitWeekOfYear
+        [self->calendar rangeOfUnit:NSCalendarUnitWeekOfYear
                            startDate:&startDate
                             interval:&interval
                              forDate:endDate];
         endDatePeriod = [startDate dateByAddingTimeInterval:interval-1];
     }else if ([frequency isEqualToString:@"month"]){
         NSTimeInterval interval;
-        [calendar rangeOfUnit:NSCalendarUnitMonth
+        [self->calendar rangeOfUnit:NSCalendarUnitMonth
                            startDate:&startDate
                             interval:&interval
                              forDate:endDate];
         endDatePeriod = [startDate dateByAddingTimeInterval:interval-1];
     }else if([frequency isEqualToString:@"custom"]){
         endDatePeriod = endDate;
-        startDate = [calendar dateByAddingUnit:NSCalendarUnitDay
+        startDate = [self->calendar dateByAddingUnit:NSCalendarUnitDay
                                                  value:1-days
                                                 toDate:endDatePeriod
                                                options:0];
         NSLog(@"startDate and endDate in custom fetchDistanceWalkingRunning is, %@, %@",startDate,endDatePeriod);
     }
     NSLog(@"startDate and endDate in fetchDistanceWalkingRunning is, %@, %@",startDate,endDatePeriod);
-    NSDateComponents *anchorComponents = [calendar components:NSCalendarUnitDay | NSCalendarUnitMonth | NSCalendarUnitYear
+    NSDateComponents *anchorComponents = [self->calendar components:NSCalendarUnitDay | NSCalendarUnitMonth | NSCalendarUnitYear
                                                      fromDate:[NSDate date]];
     anchorComponents.hour = 0;
-    NSDate *anchorDate = [calendar dateFromComponents:anchorComponents];
+    NSDate *anchorDate = [self->calendar dateFromComponents:anchorComponents];
     HKQuantityType *quantityType = [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierDistanceWalkingRunning];
     // Create the query
     HKStatisticsCollectionQuery *query = [[HKStatisticsCollectionQuery alloc] initWithQuantityType:quantityType
@@ -611,7 +621,7 @@ RCT_REMAP_METHOD(multiply,
     if([frequency isEqualToString:@"day"]){
         NSTimeInterval interval;
       NSLog(@"startDate and endDate in fetchSleepPattern before is, %@ %@",startDate,endDatePeriod);
-        [calendar rangeOfUnit:NSCalendarUnitDay
+        [self->calendar rangeOfUnit:NSCalendarUnitDay
                            startDate:&startDate
                             interval:&interval
                              forDate:endDate];
@@ -620,14 +630,14 @@ RCT_REMAP_METHOD(multiply,
           NSLog(@"startDate and endDate in fetchSleepPattern is, %@ %@",startDate,endDatePeriod);
     }else if ([frequency isEqualToString:@"week"]){
         NSTimeInterval interval;
-        [calendar rangeOfUnit:NSCalendarUnitWeekOfYear
+        [self->calendar rangeOfUnit:NSCalendarUnitWeekOfYear
                            startDate:&startDate
                             interval:&interval
                              forDate:endDate];
         endDatePeriod = [startDate dateByAddingTimeInterval:interval-1];
     }else if([frequency isEqualToString:@"custom"]){
         endDatePeriod = endDate;
-        startDate = [calendar dateByAddingUnit:NSCalendarUnitDay
+        startDate = [self->calendar dateByAddingUnit:NSCalendarUnitDay
                                                  value:-days
                                                 toDate:endDatePeriod
                                                options:0];
@@ -659,10 +669,10 @@ RCT_REMAP_METHOD(multiply,
     NSLog(@"day is, %@",day);
     int counter =(int) currentCount;
     while(counter<7){
-        nextDayTime = [calendar dateByAddingUnit:NSCalendarUnitDay value:value toDate:nextDayTime options:NSCalendarMatchStrictly];
+        nextDayTime = [self->calendar dateByAddingUnit:NSCalendarUnitDay value:value toDate:nextDayTime options:NSCalendarMatchStrictly];
         nextDayTimeStamp = [NSNumber numberWithDouble: [@(floor([nextDayTime timeIntervalSince1970] * 1000)) longLongValue]];
-        dateComponents = [calendar components: NSCalendarUnitWeekday fromDate: nextDayTime];
-        day =calendar.shortWeekdaySymbols[dateComponents.weekday-1];
+        dateComponents = [self->calendar components: NSCalendarUnitWeekday fromDate: nextDayTime];
+        day = self->calendar.shortWeekdaySymbols[dateComponents.weekday-1];
         NSDictionary *element = @{
                 @"sleepTime" : @0,
                 @"wakeupTime" : @0,
@@ -1085,8 +1095,6 @@ RCT_REMAP_METHOD(multiply,
 RCT_EXPORT_METHOD(connectToAppleHealth:(RCTResponseSenderBlock)callback)
 {
 //    [self isHealthKitAvailable:callback];
-  calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSCalendarIdentifierISO8601];
-  calendar.timeZone = [NSTimeZone timeZoneWithName:@"IST"];
           [self canAccessHealthKit:^(BOOL value){
                   if(value){
                     [self onHealthKitPermissionGranted:^(NSDictionary * data) {
