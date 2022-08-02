@@ -46,11 +46,11 @@ const unescapeHTML = (str) =>
     }
   });
 
-const VisitHealthView = ({ baseUrl, token, id, phone }) => {
+const VisitHealthView = ({ baseUrl, token, id, phone, moduleName }) => {
   const [source, setSource] = useState('');
   useEffect(() => {
-    setSource(`${baseUrl}?token=${token}&id=${id}&phone=${phone}`)
-  }, [id, token, baseUrl, phone])
+    setSource(`${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`)
+  }, [id, token, baseUrl, phone,moduleName])
 
   const VisitHealthRn = useMemo(
     () =>
@@ -210,5 +210,5 @@ const styles = StyleSheet.create({
 export default VisitHealthView;
 
 VisitHealthView.defaultProps = {
-  id: '', token: '', baseUrl: '', phone: ''
+  id: '', token: '', baseUrl: '', phone: '',moduleName: '',
 };

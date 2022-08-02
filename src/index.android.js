@@ -34,11 +34,11 @@ function getRunBeforeFirst(platform) {
   return runBeforeFirst;
 }
 
-const VisitHealthView = ({ baseUrl, token, id,  phone }) => {
+const VisitHealthView = ({ baseUrl, token, id,  phone, moduleName  }) => {
   const [source, setSource] = useState('');
   useEffect(() => {
-    setSource(`${baseUrl}?token=${token}&id=${id}&phone=${phone}`)
-  }, [id, token, baseUrl, phone])
+    setSource(`${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`)
+  }, [id, token, baseUrl, phone, moduleName])
   const webviewRef = useRef(null);
 
   const runBeforeStart = getRunBeforeFirst(Platform.OS);
@@ -82,5 +82,5 @@ const VisitHealthView = ({ baseUrl, token, id,  phone }) => {
 export default VisitHealthView;
 
 VisitHealthView.defaultProps = {
-  id: '', token: '', baseUrl: '', phone: ''
+  id: '', token: '', baseUrl: '', phone: '',moduleName: '',
 };
