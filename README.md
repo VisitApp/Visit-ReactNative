@@ -2,30 +2,9 @@
 
 a custom webview component that injects data into visit pwa through native modules and events
 
-## Installation
+## Documentation
 
-```sh
-yarn add https://github.com/VisitApp/Visit-ReactNative && npx pod-install
-```
-
-## Usage
-
-```js
-import VisitHealthView from 'Visit-ReactNative';
-
-// ...
-
-
-export default function App() {
-  return <VisitHealthView
-    baseUrl='base_url_for_pwa'
-    token='authencation_token'
-    id='user_id'
-    phone='user_phone'
-  />
-}
-
-```
+https://drive.google.com/file/d/1nxaJeE0EHZ4mu9aL2ZjcngeasGRSaOw3/view?usp=sharing
 
 ## Contributing
 
