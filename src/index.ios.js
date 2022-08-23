@@ -184,6 +184,8 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName }) => {
     }
   };
 
+  console.log("source: ",source);
+
   return (
     <SafeAreaView style={styles.webViewContainer}>
       {source ? <WebView
