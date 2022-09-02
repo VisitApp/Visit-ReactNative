@@ -17,7 +17,7 @@ import {
 import { WebView } from 'react-native-webview';
 
 const LINKING_ERROR =
-  `The package 'Visit-ReactNative' doesn't seem to be linked. Make sure: \n\n` +
+  "The package 'Visit-ReactNative' doesn't seem to be linked. Make sure: \n\n" +
   Platform.select({ ios: "- You have run 'pod install'\n", default: '' }) +
   '- You rebuilt the app after installing the package\n' +
   '- You are not using Expo managed workflow\n';
@@ -49,21 +49,23 @@ const unescapeHTML = (str) =>
 const VisitHealthView = ({ baseUrl, token, id, phone, moduleName }) => {
   const [source, setSource] = useState('');
   useEffect(() => {
-    setSource(`${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`)
-  }, [id, token, baseUrl, phone,moduleName])
+    setSource(
+      `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`
+    );
+  }, [id, token, baseUrl, phone, moduleName]);
 
   const VisitHealthRn = useMemo(
     () =>
       NativeModules.VisitHealthRn
         ? NativeModules.VisitHealthRn
         : new Proxy(
-          {},
-          {
-            get() {
-              throw new Error(LINKING_ERROR);
-            },
-          }
-        ),
+            {},
+            {
+              get() {
+                throw new Error(LINKING_ERROR);
+              },
+            }
+          ),
     []
   );
 
@@ -184,17 +186,19 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName }) => {
     }
   };
 
-  console.log("source: ",source);
+  console.log('source: ', source);
 
   return (
     <SafeAreaView style={styles.webViewContainer}>
-      {source ? <WebView
-        ref={webviewRef}
-        source={{ uri: source }}
-        style={styles.webView}
-        javascriptEnabled
-        onMessage={handleMessage}
-      /> : null}
+      {source ? (
+        <WebView
+          ref={webviewRef}
+          source={{ uri: source }}
+          style={styles.webView}
+          javascriptEnabled
+          onMessage={handleMessage}
+        />
+      ) : null}
     </SafeAreaView>
   );
 };
@@ -209,8 +213,40 @@ const styles = StyleSheet.create({
   },
 });
 
+VisitHealthView.defaultProps = {
+  id: '',
+  token: '',
+  baseUrl: '',
+  phone: '',
+  moduleName: '',
+};
+
 export default VisitHealthView;
 
-VisitHealthView.defaultProps = {
-  id: '', token: '', baseUrl: '', phone: '',moduleName: '',
+export const fetchHourlyFitnessData = (timestamp) => {
+  return new Promise((resolve, reject) => {
+    NativeModules?.VisitHealthRn?.fetchHourlyData(timestamp)
+      .then((res) => {
+        if (Array.isArray(res) && res.length) {
+          resolve(res[0]);
+        } else {
+          reject('Error fetching hourly data');
+        }
+      })
+      .catch((err) => reject(err));
+  });
+};
+
+export const fetchDailyFitnessData = (timestamp) => {
+  return new Promise((resolve, reject) => {
+    NativeModules?.VisitHealthRn?.fetchDailyData(timestamp)
+      .then((res) => {
+        if (Array.isArray(res) && res.length) {
+          resolve(res[0]);
+        } else {
+          reject('Error fetching daily data');
+        }
+      })
+      .catch((err) => reject(err));
+  });
 };

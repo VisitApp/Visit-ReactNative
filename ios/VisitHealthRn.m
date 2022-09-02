@@ -25,6 +25,10 @@ RCT_REMAP_METHOD(multiply,
     return self;
 }
 
++ (BOOL)requiresMainQueueSetup{
+    return YES;
+}
+
 + (HKHealthStore *)sharedManager {
     __strong static HKHealthStore *store = nil;
     static dispatch_once_t onceToken;
@@ -191,8 +195,13 @@ RCT_REMAP_METHOD(multiply,
     NSDateComponents *interval = [[NSDateComponents alloc] init];
     interval.hour = 1;
     NSDate *startDate = [[NSCalendar calendarWithIdentifier:NSCalendarIdentifierISO8601] startOfDayForDate:endDate];
+    NSDateComponents *dayInteval = [[NSDateComponents alloc] init];
+    dayInteval.day = 1;
+    dayInteval.second = -1;
+    NSDate* endOfDay =  [calendar dateByAddingComponents:dayInteval toDate:startDate options:0];
+    NSLog(@"endOfDay is, %@",endOfDay);
     NSDate *anchorDate = [calendar startOfDayForDate:startDate];
-    NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:startDate endDate:endDate options:HKQueryOptionStrictStartDate];
+    NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:startDate endDate:endOfDay options:HKQueryOptionStrictStartDate];
     NSPredicate *userEnteredValuePredicate = [HKQuery predicateForObjectsWithMetadataKey:HKMetadataKeyWasUserEntered operatorType: NSNotEqualToPredicateOperatorType value: @YES];
     
     NSCompoundPredicate *compoundPredicate = [NSCompoundPredicate andPredicateWithSubpredicates:@[predicate, userEnteredValuePredicate]];
@@ -209,8 +218,8 @@ RCT_REMAP_METHOD(multiply,
         NSMutableArray *data = [NSMutableArray arrayWithCapacity:24];
         NSMutableArray *stepsData = [NSMutableArray arrayWithCapacity:24];
         NSMutableArray *calorieData = [NSMutableArray arrayWithCapacity:24];
-      NSLog(@"the startDate is %@ while endDate is %@",startDate,endDate);
-        [result enumerateStatisticsFromDate:startDate toDate:endDate withBlock:^(HKStatistics * _Nonnull result, BOOL * _Nonnull stop) {
+        NSLog(@"the startDate is %@ while endOfDay is %@",startDate,endOfDay);
+        [result enumerateStatisticsFromDate:startDate toDate:endOfDay withBlock:^(HKStatistics * _Nonnull result, BOOL * _Nonnull stop) {
             HKQuantity *quantity = result.sumQuantity;
             
             if (quantity) {
@@ -323,9 +332,14 @@ RCT_REMAP_METHOD(multiply,
         HKUnit *distanceUnit = [HKUnit meterUnit];
         NSDateComponents *interval = [[NSDateComponents alloc] init];
         interval.hour = 1;
-        
+    
+    NSDateComponents *dayInteval = [[NSDateComponents alloc] init];
+    dayInteval.day = 1;
+    dayInteval.second = -1;
+    NSDate* endOfDay =  [calendar dateByAddingComponents:dayInteval toDate:startDate options:0];
+    
         NSDate *anchorDate = [calendar startOfDayForDate:startDate];
-        NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:startDate endDate:endDate options:HKQueryOptionStrictStartDate];
+        NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:startDate endDate:endOfDay options:HKQueryOptionStrictStartDate];
         NSPredicate *userEnteredValuePredicate = [HKQuery predicateForObjectsWithMetadataKey:HKMetadataKeyWasUserEntered operatorType: NSNotEqualToPredicateOperatorType value: @YES];
         
         NSCompoundPredicate *compoundPredicate = [NSCompoundPredicate andPredicateWithSubpredicates:@[predicate, userEnteredValuePredicate]];
@@ -340,7 +354,7 @@ RCT_REMAP_METHOD(multiply,
             }
             
             NSMutableArray *data = [NSMutableArray arrayWithCapacity:1];
-            [result enumerateStatisticsFromDate:startDate toDate:endDate withBlock:^(HKStatistics * _Nonnull result, BOOL * _Nonnull stop) {
+            [result enumerateStatisticsFromDate:startDate toDate:endOfDay withBlock:^(HKStatistics * _Nonnull result, BOOL * _Nonnull stop) {
                 HKQuantity *quantity = result.sumQuantity;
                 if (quantity) {
                     int value =(int) [quantity doubleValueForUnit:distanceUnit];
@@ -1017,7 +1031,7 @@ RCT_REMAP_METHOD(multiply,
 //    NSLog(@"callSyncData steps=%@, calories=%@, distance=%@, activity=%@, sleep=%@",steps, calorie, distanceData, activityData, sleep);
 
     dispatch_group_notify(syncDataGroup,dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),^{
-    if([steps count]>0 && [distanceData count]>0 && [activityData count]>0 && [sleep count]>0)
+if([steps count]>0 && [distanceData count]>0 && [activityData count]>0 && [sleep count]>0)
        {
            NSMutableArray* dailySyncData =[NSMutableArray new];
         int count = 0;
@@ -1055,7 +1069,7 @@ RCT_REMAP_METHOD(multiply,
         };
          callback(@[httpBody]);
            
-       }
+      }
     });
 }
 
@@ -1161,6 +1175,66 @@ RCT_EXPORT_METHOD(updateApiUrl:(NSDictionary *)input)
             }
         }];
 //    }
+}
+
+
+RCT_EXPORT_METHOD(fetchHourlyData:(NSInteger)gfHourlyLastSync resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject){
+    NSLog(@"gfHourlyLastSync in fetchHourlyData is %ld",(long)gfHourlyLastSync);
+    NSDate* hourlyDataSyncTime = [NSDate dateWithTimeIntervalSince1970:gfHourlyLastSync/1000];
+    [self canAccessHealthKit:^(BOOL value){
+        if(value){
+            dispatch_group_t loadDetailsGroup=dispatch_group_create();
+            __block NSArray* steps;
+            __block NSArray* calories;
+            __block NSArray* distance;
+            for(int i = 0; i<2;i++){
+                dispatch_group_enter(loadDetailsGroup);
+                if(i==0){
+                    [self fetchHourlySteps:hourlyDataSyncTime callback:^(NSArray * data) {
+                        steps = [data objectAtIndex:0];
+                        calories = [data objectAtIndex:1];
+                        dispatch_group_leave(loadDetailsGroup);
+                    }];
+                }else if(i==1){
+                    [self fetchHourlyDistanceWalkingRunning:hourlyDataSyncTime callback:^(NSArray * dist) {
+                        distance = dist;
+                        dispatch_group_leave(loadDetailsGroup);
+                    }];
+                }
+            }
+            dispatch_group_notify(loadDetailsGroup,dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),^{
+                if([steps count]>0 && [calories count] > 0 && [distance count]>0){
+                  [self preprocessEmbellishRequest:steps calories:calories distance:distance date:hourlyDataSyncTime callback:^(NSArray * data) {
+                    NSLog(@"fetchHourlyData data, %@",data);
+                      resolve(data);
+                  }];
+                }
+            });
+        }else{
+            NSError* error;
+            reject(@"error", @"Error fetching hourly data", error);
+        }
+    }];
+}
+
+RCT_EXPORT_METHOD(fetchDailyData:(NSInteger)googleFitLastSync resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject){
+    NSLog(@"gfHourlyLastSync in fetchHourlyData is %ld",(long)googleFitLastSync);
+    NSDate* dailyDataSyncTime = [NSDate dateWithTimeIntervalSince1970:googleFitLastSync/1000];
+    [self canAccessHealthKit:^(BOOL value){
+        if(value){
+            [self getDateRanges:dailyDataSyncTime callback:^(NSMutableArray * dates) {
+                  if([dates count]>0){
+                    [self callSyncData:[dates count] dates:dates callback:^(NSArray * data) {
+                        NSLog(@"fetchDailyData data is, %@",data);
+                        resolve(data);
+                    }];
+                  }
+              }];
+        }else{
+            NSError* error;
+            reject(@"error", @"Error fetching daily data", error);
+        }
+    }];
 }
 
 @end
