@@ -198,3 +198,35 @@ export const handleMessage = (event, webviewRef) => {
     }
   }
 };
+
+
+export const fetchDailyFitnessData = (startTimeStamp)=>{
+
+  return new Promise((resolve,reject)=>{
+    console.log("fetchDailyFitnessData called: "+startTimeStamp);
+
+    NativeModules.VisitFitnessModule.initiateSDK(DEFAULT_CLIENT_ID);
+
+    NativeModules.VisitFitnessModule.fetchDailyFitnessData(startTimeStamp).then((result)=> {
+      resolve(result);
+    })
+    .catch((err)=> reject(err));
+  });
+
+ 
+}
+
+export const fetchHourlyFitnessData = startTimeStamp=>{
+
+  return new Promise((resolve,reject)=>{
+
+    console.log("fetchHourlyFitnessData called: "+startTimeStamp);
+
+    NativeModules.VisitFitnessModule.initiateSDK(DEFAULT_CLIENT_ID);
+
+    NativeModules.VisitFitnessModule.fetchHourlyFitnessData(startTimeStamp).then((result)=> {
+    resolve(result);
+    }).catch((err)=>reject(err));
+    
+});
+}
