@@ -2,14 +2,11 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 
 import { SafeAreaView, BackHandler, Platform } from 'react-native';
 import {
-  requestActivityRecognitionPermission,
-  requestActivityData,
-  requestLocationPermission,
-  updateApiBaseUrl,
   handleMessage,
+  fetchHourlyFitnessData,
+  fetchDailyFitnessData,
 } from './VisitPluginAndroid';
 import WebView from 'react-native-webview';
-
 
 function getRunBeforeFirst(platform) {
   let runBeforeFirst = null;
@@ -34,11 +31,13 @@ function getRunBeforeFirst(platform) {
   return runBeforeFirst;
 }
 
-const VisitHealthView = ({ baseUrl, token, id,  phone, moduleName  }) => {
+const VisitHealthView = ({ baseUrl, token, id, phone, moduleName }) => {
   const [source, setSource] = useState('');
   useEffect(() => {
-    setSource(`${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`)
-  }, [id, token, baseUrl, phone, moduleName])
+    setSource(
+      `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`
+    );
+  }, [id, token, baseUrl, phone, moduleName]);
   const webviewRef = useRef(null);
 
   const runBeforeStart = getRunBeforeFirst(Platform.OS);
@@ -60,29 +59,36 @@ const VisitHealthView = ({ baseUrl, token, id,  phone, moduleName  }) => {
     };
   }, [handleBack]);
 
-  console.log("source: ",source);
+  console.log('source: ', source);
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      {source ? <WebView
-        ref={webviewRef}
-        source={{
-          uri: source,
-          headers: {
-            platform: 'ANDROID',
-          },
-        }}
-        onMessage={(event) => handleMessage(event, webviewRef)}
-        injectedJavaScriptBeforeContentLoaded={runBeforeStart}
-        javaScriptEnabled={true}
-        onLoadProgress={(event) => setCanGoBack(event.nativeEvent.canGoBack)}
-      /> : null}
+      {source ? (
+        <WebView
+          ref={webviewRef}
+          source={{
+            uri: source,
+            headers: {
+              platform: 'ANDROID',
+            },
+          }}
+          onMessage={(event) => handleMessage(event, webviewRef)}
+          injectedJavaScriptBeforeContentLoaded={runBeforeStart}
+          javaScriptEnabled={true}
+          onLoadProgress={(event) => setCanGoBack(event.nativeEvent.canGoBack)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 };
 
 export default VisitHealthView;
+export { fetchHourlyFitnessData, fetchDailyFitnessData };
 
 VisitHealthView.defaultProps = {
-  id: '', token: '', baseUrl: '', phone: '',moduleName: '',
+  id: '',
+  token: '',
+  baseUrl: '',
+  phone: '',
+  moduleName: '',
 };
