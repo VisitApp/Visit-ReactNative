@@ -106,7 +106,7 @@ export const updateApiBaseUrl = (
   );
 };
 
-export const handleMessage = (event, webviewRef) => {
+export const handleMessage = (event, webviewRef, onBack) => {
   console.log(
     'event:' +
       event +
@@ -179,8 +179,7 @@ export const handleMessage = (event, webviewRef) => {
             }
             break;
           case 'CLOSE_VIEW':
-            {
-            }
+            onBack();
             break;
           case 'OPEN_PDF':
             let hraUrl = parsedObject.url;
@@ -188,6 +187,8 @@ export const handleMessage = (event, webviewRef) => {
             NativeModules.VisitFitnessModule.openHraLink(hraUrl);
             console.log('HRA URL:' + hraUrl);
 
+            break;
+          case 'UPDATE_CALORIE':
             break;
           default:
             break;

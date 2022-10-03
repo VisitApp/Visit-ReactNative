@@ -46,13 +46,12 @@ const unescapeHTML = (str) =>
     }
   });
 
-const VisitHealthView = ({ baseUrl, token, id, phone, moduleName }) => {
+const VisitHealthView = ({ encrypted, clientId, baseURL, moduleName, onBack }) => {
   const [source, setSource] = useState('');
+
   useEffect(() => {
-    setSource(
-      `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`
-    );
-  }, [id, token, baseUrl, phone, moduleName]);
+    setSource(`${baseURL}?userParams=${encrypted}&clientId=${clientId}`);
+  }, [encrypted, clientId, baseURL, moduleName]);
 
   const VisitHealthRn = useMemo(
     () =>
@@ -179,8 +178,10 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName }) => {
         Linking.openURL(url);
         break;
       case 'CLOSE_VIEW':
+        onBack();
         break;
-
+      case 'UPDATE_CALORIE':
+        break;
       default:
         break;
     }
@@ -214,11 +215,11 @@ const styles = StyleSheet.create({
 });
 
 VisitHealthView.defaultProps = {
-  id: '',
-  token: '',
-  baseUrl: '',
-  phone: '',
-  moduleName: '',
+  encrypted: '',
+  clientId: '',
+  baseURL: 'http://localhost:9000/sso',
+  moduleName: 'steps',
+  onBack: () => {},
 };
 
 export default VisitHealthView;
@@ -240,6 +241,20 @@ export const fetchHourlyFitnessData = (timestamp) => {
 export const fetchDailyFitnessData = (timestamp) => {
   return new Promise((resolve, reject) => {
     NativeModules?.VisitHealthRn?.fetchDailyData(timestamp)
+      .then((res) => {
+        if (Array.isArray(res) && res.length) {
+          resolve(res[0]);
+        } else {
+          reject('Error fetching daily data');
+        }
+      })
+      .catch((err) => reject(err));
+  });
+};
+
+export const getDailyFitnessData = () => {
+  return new Promise((resolve, reject) => {
+    NativeModules?.VisitHealthRn?.fetchDailyData()
       .then((res) => {
         if (Array.isArray(res) && res.length) {
           resolve(res[0]);
