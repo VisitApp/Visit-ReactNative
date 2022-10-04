@@ -1,4 +1,4 @@
-import {LogBox, NativeModules, PermissionsAndroid} from 'react-native';
+import {NativeModules, PermissionsAndroid} from 'react-native';
 
 
 
@@ -106,7 +106,18 @@ export const updateApiBaseUrl = (
   );
 };
 
-export const handleMessage = (event, webviewRef) => {
+
+const setCalorieFromWeb=(calorieCount)=>{
+
+  console.log('setCalorieFromWeb() called.');
+
+  NativeModules.VisitFitnessModule.initiateSDK();
+
+  NativeModules.VisitFitnessModule.setCalorieFromWeb(calorieCount);
+
+}
+
+export const handleMessage = (event, webviewRef,onBack) => {
   console.log(
     'event:' +
       event +
@@ -180,14 +191,23 @@ export const handleMessage = (event, webviewRef) => {
             break;
           case 'CLOSE_VIEW':
             {
+              onBack();
+              break;
+            }
+            break;
+          case 'UPDATE_CALORIE':
+            {
+                console.log("calories from webview: "+parsedObject.calories)
+                setCalorieFromWeb(parsedObject.calories);
             }
             break;
           case 'OPEN_PDF':
-            let hraUrl = parsedObject.url;
+            {
+              let hraUrl = parsedObject.url;
 
-            NativeModules.VisitFitnessModule.openHraLink(hraUrl);
-            console.log('HRA URL:' + hraUrl);
-
+              NativeModules.VisitFitnessModule.openHraLink(hraUrl);
+              console.log('HRA URL:' + hraUrl);
+            }
             break;
           default:
             break;
@@ -230,3 +250,88 @@ export const fetchHourlyFitnessData = startTimeStamp=>{
     
 });
 }
+
+
+  //independent method to check if the google fit is connected or not.
+ export const checkActivityPermission=()=>{
+    return new Promise((resolve,reject)=>{
+      NativeModules.VisitFitnessModule.initiateSDK();
+      NativeModules.VisitFitnessModule.checkGoogleFitPermission()
+      .then((result)=>{
+          resolve(result)
+      })
+      .catch((err)=>
+           reject(err)
+      );
+    });
+  }
+
+
+//Request android native ACTIVITY_RECOGNITIONO_PERMISSION ---> Get Google Fit Permission ---> Get Google Fit Data
+//It will check the all the permission and will return data in this format ("{numberOfSteps: 136, sleepTime: 540, calories : 283.0}") or will 
+//return error.
+
+export const requestActivityPermission =()=>{
+  return new Promise(async (resolve,reject)=>{
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION,
+        {
+          title: 'Need Activity Recognition Permission',
+          message: 'This needs access to your Fitness Permission',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'OK',
+        },
+      );
+      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+        console.log('ACTIVITY_RECOGNITION granted');
+         const permissionGranted= await askForGoogleFitPermission();
+         if(permissionGranted){
+            const fitnessData= await getDailyFitnessData();
+            resolve(fitnessData);
+         }
+      } else {
+        reject("ACTIVITY_RECOGNITION denied"); 
+      }
+    }catch(err){
+      reject(err);
+    }
+  });
+};
+
+const askForGoogleFitPermission =  () => {
+
+  return new Promise(async (resolve,reject)=>{
+    try {
+
+      NativeModules.VisitFitnessModule.initiateSDK();
+
+      const isPermissionGranted =
+        await NativeModules.VisitFitnessModule.askForFitnessPermission();
+      if (isPermissionGranted == 'GRANTED') {
+        resolve(true);
+      } else {
+        reject(false);
+      }
+    } catch (e) {
+      reject(e);
+    }
+  });
+ 
+};
+
+
+  
+const getDailyFitnessData = () => {
+  return new Promise(async (resolve,reject)=>{
+    console.log('getDailyFitnessData() called');
+    try{
+      NativeModules.VisitFitnessModule.initiateSDK();
+      const data= await NativeModules.VisitFitnessModule.requestDailyFitnessData();
+      resolve(data);
+    }catch(e){
+      reject(e);
+    }
+});
+};
