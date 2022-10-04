@@ -16,5 +16,7 @@
 - (void)connectToAppleHealth:(RCTResponseSenderBlock)callback;
 - (void)fetchHourlyData:(NSInteger)gfHourlyLastSync resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject;
 - (void)fetchDailyData:(NSInteger)googleFitLastSync resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject;
-
+- (void)checkActivityPermission:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject;
+- (void)fetchDataFromUserDefaults:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject;
+- (void)saveDataIntoUserDefaults:(NSDictionary *)input;
 @end

@@ -46,13 +46,17 @@ const unescapeHTML = (str) =>
     }
   });
 
-const VisitHealthView = ({ baseUrl, token, id, phone, moduleName }) => {
+const VisitHealthView = ({
+  encrypted,
+  clientId,
+  baseURL,
+  moduleName,
+  onBack,
+}) => {
   const [source, setSource] = useState('');
   useEffect(() => {
-    setSource(
-      `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`
-    );
-  }, [id, token, baseUrl, phone, moduleName]);
+    setSource(`${baseURL}?userParams=${encrypted}&clientId=${clientId}`);
+  }, [encrypted, clientId, baseURL, moduleName]);
 
   const VisitHealthRn = useMemo(
     () =>
@@ -130,6 +134,7 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName }) => {
       googleFitLastSync,
       gfHourlyLastSync,
       url,
+      calories,
     } = data;
     console.log('handleMessage data is', data);
     console.log(unescapeHTML(event.nativeEvent.data));
@@ -179,6 +184,11 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName }) => {
         Linking.openURL(url);
         break;
       case 'CLOSE_VIEW':
+        onBack();
+        break;
+      case 'UPDATE_CALORIE':
+        // onBack();
+        VisitHealthRn?.saveDataIntoUserDefaults({ calories });
         break;
 
       default:
@@ -216,9 +226,10 @@ const styles = StyleSheet.create({
 VisitHealthView.defaultProps = {
   id: '',
   token: '',
-  baseUrl: '',
+  baseURL: '',
   phone: '',
   moduleName: '',
+  onBack: () => {},
 };
 
 export default VisitHealthView;
@@ -248,5 +259,43 @@ export const fetchDailyFitnessData = (timestamp) => {
         }
       })
       .catch((err) => reject(err));
+  });
+};
+
+export const checkActivityPermission = () => {
+  return new Promise((resolve, reject) => {
+    NativeModules?.VisitHealthRn?.checkActivityPermission()
+      .then((res) => {
+        resolve(true);
+      })
+      .catch((err) => {
+        reject(false);
+      });
+  });
+};
+
+export const requestActivityPermission = () => {
+  return new Promise((resolve, reject) => {
+    NativeModules?.VisitHealthRn?.connectToAppleHealth(async (res) => {
+      if (res?.sleepTime || res?.numberOfSteps) {
+        const data =
+          await NativeModules?.VisitHealthRn?.fetchDataFromUserDefaults();
+        if (data?.calories) {
+          resolve({
+            numberOfSteps: res?.numberOfSteps,
+            sleepTime: res?.sleepTime,
+            calories: data.calories,
+          });
+        } else {
+          resolve({
+            numberOfSteps: res?.numberOfSteps,
+            sleepTime: res?.sleepTime,
+            calories: 0,
+          });
+        }
+      } else {
+        reject('Permission Denied');
+      }
+    });
   });
 };
