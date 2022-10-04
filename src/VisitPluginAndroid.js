@@ -4,6 +4,8 @@ import {NativeModules, PermissionsAndroid} from 'react-native';
 export const requestActivityData = (type, frequency, timeStamp, webviewRef) => {
   console.log('requestActivityData() called');
 
+  NativeModules.VisitFitnessModule.initiateSDK();
+  
   NativeModules.VisitFitnessModule.requestActivityDataFromGoogleFit(
     type,
     frequency,
