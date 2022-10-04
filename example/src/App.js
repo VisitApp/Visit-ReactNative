@@ -3,7 +3,7 @@ import { SafeAreaView, StyleSheet, Text, TouchableOpacity } from 'react-native';
 
 import VisitHealthView, {
   checkActivityPermission,
-  requestActivityPermission
+  requestActivityPermissionAndGetData,
 } from 'Visit-ReactNative';
 
 const styles = StyleSheet.create({
@@ -63,12 +63,16 @@ export default function App() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => {
-              requestActivityPermission()
+              requestActivityPermissionAndGetData()
                 .then((res) =>
-                  console.log('requestActivityPermission res', { res })
+                  console.log('requestActivityPermissionAndGetData res', {
+                    res,
+                  })
                 )
                 .catch((err) =>
-                  console.log('requestActivityPermission err,', { err })
+                  console.log('requestActivityPermissionAndGetData err,', {
+                    err,
+                  })
                 );
             }}
             style={styles.button3}

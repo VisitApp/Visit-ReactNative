@@ -6,7 +6,7 @@ import {
   fetchHourlyFitnessData,
   fetchDailyFitnessData,
   checkActivityPermission,
-  requestActivityPermission,
+  requestActivityPermissionAndGetData,
 } from './VisitPluginAndroid';
 import WebView from 'react-native-webview';
 
@@ -33,12 +33,7 @@ function getRunBeforeFirst(platform) {
   return runBeforeFirst;
 }
 
-const VisitHealthView = ({  
-  encrypted,
-  clientId,
-  baseURL,
-  onBack,
-}) => {
+const VisitHealthView = ({ encrypted, clientId, baseURL, onBack }) => {
   const [source, setSource] = useState('');
 
   useEffect(() => {
@@ -79,7 +74,7 @@ const VisitHealthView = ({
               platform: 'ANDROID',
             },
           }}
-          onMessage={(event) => handleMessage(event, webviewRef,onBack)}
+          onMessage={(event) => handleMessage(event, webviewRef, onBack)}
           injectedJavaScriptBeforeContentLoaded={runBeforeStart}
           javaScriptEnabled={true}
           onLoadProgress={(event) => setCanGoBack(event.nativeEvent.canGoBack)}
@@ -90,11 +85,16 @@ const VisitHealthView = ({
 };
 
 export default VisitHealthView;
-export { fetchHourlyFitnessData, fetchDailyFitnessData,checkActivityPermission,requestActivityPermission };
+export {
+  fetchHourlyFitnessData,
+  fetchDailyFitnessData,
+  checkActivityPermission,
+  requestActivityPermissionAndGetData,
+};
 
 VisitHealthView.defaultProps = {
   encrypted: '',
   clientId: '',
-  baseURL:'',
+  baseURL: '',
   onBack: () => {},
 };

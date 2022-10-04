@@ -271,7 +271,7 @@ export const fetchHourlyFitnessData = startTimeStamp=>{
 //It will check the all the permission and will return data in this format ("{numberOfSteps: 136, sleepTime: 540, calories : 283.0}") or will 
 //return error.
 
-export const requestActivityPermission =()=>{
+export const requestActivityPermissionAndGetData =()=>{
   return new Promise(async (resolve,reject)=>{
     try {
       const granted = await PermissionsAndroid.request(

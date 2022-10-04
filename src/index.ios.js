@@ -274,7 +274,7 @@ export const checkActivityPermission = () => {
   });
 };
 
-export const requestActivityPermission = () => {
+export const requestActivityPermissionAndGetData = () => {
   return new Promise((resolve, reject) => {
     NativeModules?.VisitHealthRn?.connectToAppleHealth(async (res) => {
       if (res?.sleepTime || res?.numberOfSteps) {
