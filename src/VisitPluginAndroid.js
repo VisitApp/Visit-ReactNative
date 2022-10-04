@@ -1,58 +1,6 @@
 import {NativeModules, PermissionsAndroid} from 'react-native';
 
 
-
-export const requestActivityRecognitionPermission = async (
-  webviewRef
-) => {
-  console.log('inside requestActivityRecognitionPermission()');
-  try {
-    const granted = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION,
-      {
-        title: 'Need Activity Recognition Permission',
-        message: 'This needs access to your Fitness Permission',
-        buttonNeutral: 'Ask Me Later',
-        buttonNegative: 'Cancel',
-        buttonPositive: 'OK',
-      },
-    );
-    if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-      console.log('ACTIVITY_RECOGNITION granted');
-
-      askForGoogleFitPermission(webviewRef);
-    } else {
-      console.log('Fitness permission denied');
-    }
-  } catch (err) {
-    console.warn(err);
-  }
-};
-
-const askForGoogleFitPermission = async (webviewRef) => {
-  try {
-    NativeModules.VisitFitnessModule.initiateSDK();
-
-    const isPermissionGranted =
-      await NativeModules.VisitFitnessModule.askForFitnessPermission();
-    if (isPermissionGranted == 'GRANTED') {
-      getDailyFitnessData(webviewRef);
-    }
-    console.log(`Google Fit Permissionl: ${isPermissionGranted}`);
-  } catch (e) {
-    console.error(e);
-  }
-};
-
-const getDailyFitnessData = webviewRef => {
-  console.log('getDailyFitnessData() called');
-
-  NativeModules.VisitFitnessModule.requestDailyFitnessData(data => {
-    console.log(`getDailyFitnessData() data: ` + data);
-    webviewRef.current.injectJavaScript(data);
-  });
-};
-
 export const requestActivityData = (type, frequency, timeStamp, webviewRef) => {
   console.log('requestActivityData() called');
 
@@ -132,7 +80,6 @@ export const handleMessage = (event, webviewRef,onBack) => {
       if (parsedObject.method != null) {
         switch (parsedObject.method) {
           case 'CONNECT_TO_GOOGLE_FIT':
-            requestActivityRecognitionPermission(webviewRef);
             break;
           case 'UPDATE_PLATFORM':
             webviewRef.current?.injectJavaScript(
