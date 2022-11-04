@@ -148,6 +148,7 @@
   "dependencies": {
     "react-native-webview": "^11.22.2",
     "axios": "^0.27.2",
-    "moment": "^2.29.3"
+    "moment": "^2.29.3",
+    "react-native-location-enabler": "^4.1.1"
   }
 }
