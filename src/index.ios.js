@@ -46,12 +46,23 @@ const unescapeHTML = (str) =>
     }
   });
 
-const VisitHealthView = ({ baseUrl, token, id, phone, moduleName }) => {
+const VisitHealthView = ({
+  baseUrl,
+  token,
+  id,
+  phone,
+  moduleName,
+  magicLink,
+}) => {
   const [source, setSource] = useState('');
   useEffect(() => {
-    setSource(
-      `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`
-    );
+    if ((magicLink?.trim()?.length || 0) > 0) {
+      setSource(magicLink);
+    } else {
+      setSource(
+        `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`
+      );
+    }
   }, [id, token, baseUrl, phone, moduleName]);
 
   const VisitHealthRn = useMemo(
@@ -179,6 +190,11 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName }) => {
         Linking.openURL(url);
         break;
       case 'CLOSE_VIEW':
+        break;
+      case 'GET_LOCATION_PERMISSIONS':
+        webviewRef.current?.injectJavaScript(
+          'window.checkTheGpsPermission(true)'
+        );
         break;
 
       default:
