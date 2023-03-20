@@ -5,6 +5,7 @@ import {
   NativeModules,
   PermissionsAndroid,
   BackHandler,
+  Linking,
 } from 'react-native';
 
 import WebView from 'react-native-webview';
@@ -241,6 +242,13 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink }) =>
                 requestLocationPermission();
               }
               break;
+            case 'OPEN_PDF':{
+                let pdfUrl=parsedObject.url;
+                console.log("pdfUrl "+pdfUrl);
+
+                Linking.openURL(pdfUrl);
+               }
+               break;
             case 'CLOSE_VIEW':
               {
               }
