@@ -202,9 +202,9 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink }) =>
 
                 console.log(
                   'apiBaseUrl: ' +
-                    apiBaseUrl +
+                    "NOT SHOWN" +
                     ' authtoken: ' +
-                    authtoken +
+                    "NOT SHOWN" +
                     ' googleFitLastSync: ' +
                     googleFitLastSync +
                     ' gfHourlyLastSync: ' +
