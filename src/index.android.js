@@ -145,7 +145,7 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
       frequency,
       timeStamp,
       data => {
-        console.log(`requestActivityData() data: ` + data);
+        // console.log(`requestActivityData() data: ` + data);
         webviewRef.current.injectJavaScript('window.' + data);
       },
     );
@@ -244,7 +244,7 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
               break;
             case 'OPEN_PDF':{
                 let pdfUrl=parsedObject.url;
-                console.log("pdfUrl "+pdfUrl);
+                // console.log("pdfUrl "+pdfUrl);
 
                 Linking.openURL(pdfUrl);
                }
