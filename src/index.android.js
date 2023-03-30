@@ -20,7 +20,7 @@ const {
 
 
 
-const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink }) => {
+const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLoggingEnabled }) => {
 
   const [source, setSource] = useState('');
   useEffect(() => {
@@ -115,7 +115,7 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink }) =>
 
   const askForGoogleFitPermission = async () => {
     try {
-      NativeModules.VisitFitnessModule.initiateSDK();
+      NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
 
       const isPermissionGranted =
         await NativeModules.VisitFitnessModule.askForFitnessPermission();
@@ -158,7 +158,7 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink }) =>
     gfHourlyLastSync,
   ) => {
     console.log('updateApiBaseUrl() called.');
-    NativeModules.VisitFitnessModule.initiateSDK();
+    NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
 
     NativeModules.VisitFitnessModule.updateApiBaseUrl(
       apiBaseUrl,
@@ -324,12 +324,12 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink }) =>
 
 
 
-export const fetchDailyFitnessData = (startTimeStamp)=>{
+export const fetchDailyFitnessData = (startTimeStamp,isLoggingEnabled)=>{
 
   return new Promise((resolve,reject)=>{
     console.log("fetchDailyFitnessData called: "+startTimeStamp);
 
-    NativeModules.VisitFitnessModule.initiateSDK();
+    NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
 
     NativeModules.VisitFitnessModule.fetchDailyFitnessData(startTimeStamp).then((result)=> {
       resolve(result);
@@ -340,13 +340,13 @@ export const fetchDailyFitnessData = (startTimeStamp)=>{
  
 }
 
-export const fetchHourlyFitnessData = startTimeStamp=>{
+export const fetchHourlyFitnessData = (startTimeStamp,isLoggingEnabled)=>{
 
   return new Promise((resolve,reject)=>{
 
     console.log("fetchHourlyFitnessData called: "+startTimeStamp);
 
-    NativeModules.VisitFitnessModule.initiateSDK();
+    NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
 
     NativeModules.VisitFitnessModule.fetchHourlyFitnessData(startTimeStamp).then((result)=> {
     resolve(result);
@@ -365,5 +365,6 @@ VisitHealthView.defaultProps = {
   phone: '',
   moduleName: '',
   magicLink: '',
+  isLoggingEnabled: false,
 };
 
