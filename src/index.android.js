@@ -132,7 +132,7 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
     console.log('getDailyFitnessData() called');
 
     NativeModules.VisitFitnessModule.requestDailyFitnessData(data => {
-      console.log(`getDailyFitnessData() data: ` + data);
+      // console.log(`getDailyFitnessData() data: ` + data);
       webviewRef.current.injectJavaScript(data);
     });
   };
