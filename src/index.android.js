@@ -180,7 +180,7 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink }) =>
 
     if (event.nativeEvent.data != null) {
       try {
-        console.log("Event :"+event.nativeEvent.data);
+        // console.log("Event :"+event.nativeEvent.data);
         const parsedObject = JSON.parse(event.nativeEvent.data);
         if (parsedObject.method != null) {
           switch (parsedObject.method) {
