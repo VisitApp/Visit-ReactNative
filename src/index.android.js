@@ -1,4 +1,4 @@
-import React, {useRef, useEffect, useState, useCallback} from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 
 import {
   SafeAreaView,
@@ -15,26 +15,28 @@ import LocationEnabler from 'react-native-location-enabler';
 const {
   PRIORITIES: { HIGH_ACCURACY },
   useLocationSettings,
-  addListener
+  addListener,
 } = LocationEnabler;
 
-
-
-const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLoggingEnabled }) => {
-
+const VisitHealthView = ({
+  baseUrl,
+  token,
+  id,
+  phone,
+  moduleName,
+  magicLink,
+  isLoggingEnabled,
+}) => {
   const [source, setSource] = useState('');
   useEffect(() => {
-    if((magicLink?.trim()?.length || 0) > 0){
-      setSource(
-        magicLink
-      );
-    }else{
+    if ((magicLink?.trim()?.length || 0) > 0) {
+      setSource(magicLink);
+    } else {
       setSource(
         `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`
       );
     }
-   
-  }, [id, token, baseUrl, phone, moduleName,magicLink]);
+  }, [id, token, baseUrl, phone, moduleName, magicLink]);
 
   const [enabled, requestResolution] = useLocationSettings(
     {
@@ -45,12 +47,7 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
     false /* optional: default undefined */
   );
 
-
-
-
-  
   const webviewRef = useRef(null);
-
 
   const requestActivityRecognitionPermission = async () => {
     console.log('inside requestActivityRecognitionPermission()');
@@ -63,7 +60,7 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
           buttonNeutral: 'Ask Me Later',
           buttonNegative: 'Cancel',
           buttonPositive: 'OK',
-        },
+        }
       );
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
         console.log('ACTIVITY_RECOGNITION granted');
@@ -86,25 +83,19 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
           buttonNeutral: 'Ask Me Later',
           buttonNegative: 'Cancel',
           buttonPositive: 'OK',
-        },
+        }
       );
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
         console.log('Location permission granted');
 
-        if(!enabled){
-
+        if (!enabled) {
           requestResolution();
-          
-        }else{
+        } else {
+          var finalString = `window.checkTheGpsPermission(true)`;
+          console.log('requestLocationPermission: ' + finalString);
 
-          var finalString=`window.checkTheGpsPermission(true)`;
-          console.log("requestLocationPermission: "+finalString);
-
-          webviewRef.current?.injectJavaScript(
-            finalString
-          );
+          webviewRef.current?.injectJavaScript(finalString);
         }
-       
       } else {
         console.log('Location permission denied');
       }
@@ -131,7 +122,7 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
   const getDailyFitnessData = () => {
     console.log('getDailyFitnessData() called');
 
-    NativeModules.VisitFitnessModule.requestDailyFitnessData(data => {
+    NativeModules.VisitFitnessModule.requestDailyFitnessData((data) => {
       // console.log(`getDailyFitnessData() data: ` + data);
       webviewRef.current.injectJavaScript(data);
     });
@@ -144,10 +135,10 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
       type,
       frequency,
       timeStamp,
-      data => {
+      (data) => {
         // console.log(`requestActivityData() data: ` + data);
         webviewRef.current.injectJavaScript('window.' + data);
-      },
+      }
     );
   };
 
@@ -155,7 +146,7 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
     apiBaseUrl,
     authtoken,
     googleFitLastSync,
-    gfHourlyLastSync,
+    gfHourlyLastSync
   ) => {
     console.log('updateApiBaseUrl() called.');
     NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
@@ -164,7 +155,7 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
       apiBaseUrl,
       authtoken,
       googleFitLastSync,
-      gfHourlyLastSync,
+      gfHourlyLastSync
     );
   };
 
@@ -175,9 +166,7 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
         true; // note: this is required, or you'll sometimes get silent failures
     `;
 
-
-  const handleMessage = event => {
-
+  const handleMessage = (event) => {
     if (event.nativeEvent.data != null) {
       try {
         // console.log("Event :"+event.nativeEvent.data);
@@ -189,7 +178,7 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
               break;
             case 'UPDATE_PLATFORM':
               webviewRef.current?.injectJavaScript(
-                'window.setSdkPlatform("ANDROID")',
+                'window.setSdkPlatform("ANDROID")'
               );
               break;
             case 'UPDATE_API_BASE_URL':
@@ -202,20 +191,20 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
 
                 console.log(
                   'apiBaseUrl: ' +
-                    "NOT SHOWN" +
+                    'NOT SHOWN' +
                     ' authtoken: ' +
-                    "NOT SHOWN" +
+                    'NOT SHOWN' +
                     ' googleFitLastSync: ' +
                     googleFitLastSync +
                     ' gfHourlyLastSync: ' +
-                    gfHourlyLastSync,
+                    gfHourlyLastSync
                 );
 
                 updateApiBaseUrl(
                   apiBaseUrl,
                   authtoken,
                   googleFitLastSync,
-                  gfHourlyLastSync,
+                  gfHourlyLastSync
                 );
               }
               break;
@@ -231,7 +220,7 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
                     ' frequency:' +
                     frequency +
                     ' timeStamp: ' +
-                    timeStamp,
+                    timeStamp
                 );
 
                 requestActivityData(type, frequency, timeStamp);
@@ -242,13 +231,14 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
                 requestLocationPermission();
               }
               break;
-            case 'OPEN_PDF':{
-                let pdfUrl=parsedObject.url;
+            case 'OPEN_PDF':
+              {
+                let pdfUrl = parsedObject.url;
                 // console.log("pdfUrl "+pdfUrl);
 
                 Linking.openURL(pdfUrl);
-               }
-               break;
+              }
+              break;
             case 'CLOSE_VIEW':
               {
               }
@@ -275,21 +265,15 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
   }, [canGoBack]);
 
   useEffect(() => {
+    const gpsListener = addListener(({ locationEnabled }) => {
+      if (locationEnabled) {
+        var finalString = `window.checkTheGpsPermission(true)`;
 
-    const gpsListener = addListener(({ locationEnabled }) =>{
+        console.log('listener: ' + finalString);
 
-      if(locationEnabled){
-        var finalString=`window.checkTheGpsPermission(true)`;
-
-        console.log("listener: "+finalString);
-  
-        webviewRef.current?.injectJavaScript(
-          finalString
-        );
+        webviewRef.current?.injectJavaScript(finalString);
       }
-      
-    }  
-    );
+    });
 
     BackHandler.addEventListener('hardwareBackPress', handleBack);
     return () => {
@@ -299,62 +283,53 @@ const VisitHealthView = ({ baseUrl, token, id, phone, moduleName,magicLink,isLog
   }, [handleBack]);
 
   return (
-
-    
-    <SafeAreaView style={{flex: 1}}>
+    <SafeAreaView style={{ flex: 1 }}>
       {source ? (
         <WebView
-        ref={webviewRef}
-        source={{
-          uri: source,
-          headers: {
-            platform: 'ANDROID',
-          },
-        }}
-        onMessage={handleMessage}
-        injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
-        javaScriptEnabled={true}
-        onLoadProgress={event => setCanGoBack(event.nativeEvent.canGoBack)}
-      />
-      ): null }
-      
+          ref={webviewRef}
+          source={{
+            uri: source,
+            headers: {
+              platform: 'ANDROID',
+            },
+          }}
+          onMessage={handleMessage}
+          injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
+          javaScriptEnabled={true}
+          onLoadProgress={(event) => setCanGoBack(event.nativeEvent.canGoBack)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 };
 
-
-
-export const fetchDailyFitnessData = (startTimeStamp,isLoggingEnabled)=>{
-
-  return new Promise((resolve,reject)=>{
-    console.log("fetchDailyFitnessData called: "+startTimeStamp);
+export const fetchDailyFitnessData = (startTimeStamp, isLoggingEnabled) => {
+  return new Promise((resolve, reject) => {
+    console.log('fetchDailyFitnessData called: ' + startTimeStamp);
 
     NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
 
-    NativeModules.VisitFitnessModule.fetchDailyFitnessData(startTimeStamp).then((result)=> {
-      resolve(result);
-    })
-    .catch((err)=> reject(err));
+    NativeModules.VisitFitnessModule.fetchDailyFitnessData(startTimeStamp)
+      .then((result) => {
+        resolve(result);
+      })
+      .catch((err) => reject(err));
   });
+};
 
- 
-}
-
-export const fetchHourlyFitnessData = (startTimeStamp,isLoggingEnabled)=>{
-
-  return new Promise((resolve,reject)=>{
-
-    console.log("fetchHourlyFitnessData called: "+startTimeStamp);
+export const fetchHourlyFitnessData = (startTimeStamp, isLoggingEnabled) => {
+  return new Promise((resolve, reject) => {
+    console.log('fetchHourlyFitnessData called: ' + startTimeStamp);
 
     NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
 
-    NativeModules.VisitFitnessModule.fetchHourlyFitnessData(startTimeStamp).then((result)=> {
-    resolve(result);
-    }).catch((err)=>reject(err));
-    
-});
-}
-
+    NativeModules.VisitFitnessModule.fetchHourlyFitnessData(startTimeStamp)
+      .then((result) => {
+        resolve(result);
+      })
+      .catch((err) => reject(err));
+  });
+};
 
 export default VisitHealthView;
 
@@ -367,4 +342,3 @@ VisitHealthView.defaultProps = {
   magicLink: '',
   isLoggingEnabled: false,
 };
-
