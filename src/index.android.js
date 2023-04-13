@@ -12,6 +12,8 @@ import WebView from 'react-native-webview';
 
 import LocationEnabler from 'react-native-location-enabler';
 
+import DeviceInfo from 'react-native-device-info';
+
 const {
   PRIORITIES: { HIGH_ACCURACY },
   useLocationSettings,
@@ -32,9 +34,34 @@ const VisitHealthView = ({
     if ((magicLink?.trim()?.length || 0) > 0) {
       setSource(magicLink);
     } else {
-      setSource(
-        `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`
-      );
+      DeviceInfo.getAndroidId()
+        .then((deviceId) => {
+          var buildNumber = DeviceInfo.getBuildNumber();
+          let systemVersion = DeviceInfo.getSystemVersion();
+          let version = DeviceInfo.getVersion();
+
+          console.log(
+            'buildNumber:' +
+              buildNumber +
+              ' systemVersion:' +
+              systemVersion +
+              ' version : ' +
+              version +
+              ' deviceId',
+            deviceId
+          );
+
+          setSource(
+            `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}&srcClientId=Android&deviceId=${deviceId}&appVersion=${version}&deviceVersion=${systemVersion}`
+          );
+        })
+        .catch((err) => {
+          console.log('getDeviceInfo err', err);
+
+          setSource(
+            `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`
+          );
+        });
     }
   }, [id, token, baseUrl, phone, moduleName, magicLink]);
 

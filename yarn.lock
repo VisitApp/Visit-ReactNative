@@ -7916,6 +7916,16 @@ react-native-builder-bob@^0.18.0:
   optionalDependencies:
     jetifier "^1.6.6"
 
+react-native-device-info@^10.6.0:
+  version "10.6.0"
+  resolved "https://registry.yarnpkg.com/react-native-device-info/-/react-native-device-info-10.6.0.tgz#51f1b2ec98abc32747149b0a5b7fb662b44d50e4"
+  integrity sha512-/MmINdojWdw2/9rwYpH/dX+1gFP0o78p8yYPjwxiPhoySSL2rZaNi+Mq9VwC+zFi/yQmJUvHntkKSw2KUc7rFw==
+
+react-native-location-enabler@^4.1.1:
+  version "4.1.1"
+  resolved "https://registry.yarnpkg.com/react-native-location-enabler/-/react-native-location-enabler-4.1.1.tgz#f9ba84db4dbd7ed011e60b8bf6c481249bf92387"
+  integrity sha512-1gXJ+NzH5JKpaR23t1P8afEB7TKKfBkdXk2avhNUuTBlhBrqa2HrL4uDwYHoc4ZcwchsVC2P0Q7gP9L5Ot+KJw==
+
 react-native-webview@^11.22.2:
   version "11.22.2"
   resolved "https://registry.yarnpkg.com/react-native-webview/-/react-native-webview-11.22.2.tgz#0a57893b637c2825c83395f22b686cc6ac88e465"
