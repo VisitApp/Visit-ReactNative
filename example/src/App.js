@@ -55,6 +55,7 @@ export default function App() {
         id="12795"
         phone="7382271170"
         moduleName="phc"
+        isLoggingEnabled
       />
     </SafeAreaView>
   );

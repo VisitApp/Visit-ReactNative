@@ -61,55 +61,37 @@ const VisitHealthView = ({
     if ((magicLink?.trim()?.length || 0) > 0) {
       setSource(magicLink);
     } else {
-      DeviceInfo.getAndroidId()
-        .then((deviceId) => {
-          let buildNumber = DeviceInfo.getBuildNumber();
-          let systemVersion = DeviceInfo.getSystemVersion();
-          let version = DeviceInfo.getVersion();
+      console.log('in here');
+      const deviceId = DeviceInfo.getDeviceId();
+      const buildNumber = DeviceInfo.getBuildNumber();
+      const systemVersion = DeviceInfo.getSystemVersion();
+      const version = DeviceInfo.getVersion();
 
-          if (isLoggingEnabled) {
-            console.log(
-              'buildNumber:' +
-                buildNumber +
-                ' systemVersion:' +
-                systemVersion +
-                ' version : ' +
-                version +
-                ' deviceId',
-              deviceId
-            );
-          }
+      if (isLoggingEnabled) {
+        console.log(
+          'buildNumber:' +
+            buildNumber +
+            ' systemVersion:' +
+            systemVersion +
+            ' version : ' +
+            version +
+            ' deviceId',
+          deviceId
+        );
+      }
 
-          let finalUrl = `${baseUrl}?token=${token}&id=${id}&phone=${phone}`;
+      let finalUrl = `${baseUrl}?token=${token}&id=${id}&phone=${phone}`;
 
-          if ((moduleName?.trim()?.length || 0) > 0) {
-            finalUrl += `&moduleName=${moduleName}`;
-          }
+      if ((moduleName?.trim()?.length || 0) > 0) {
+        finalUrl += `&moduleName=${moduleName}`;
+      }
 
-          finalUrl += `&srcClientId=Android&deviceId=${deviceId}&appVersion=${version}&deviceVersion=${systemVersion}`;
+      finalUrl += `&srcClientId=iOS&deviceId=${deviceId}&appVersion=${version}&deviceVersion=${systemVersion}`;
 
-          if (isLoggingEnabled) {
-            console.log('final Url: ', finalUrl);
-          }
-          setSource(finalUrl);
-        })
-        .catch((err) => {
-          if (isLoggingEnabled) {
-            console.log('getDeviceInfo err', err);
-          }
-
-          let finalUrl = `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`;
-
-          if (isLoggingEnabled) {
-            console.log('final Url: ', finalUrl);
-          }
-
-          setSource(finalUrl);
-        });
-
-      setSource(
-        `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`
-      );
+      if (isLoggingEnabled) {
+        console.log('final Url: ', finalUrl);
+      }
+      setSource(finalUrl);
     }
   }, [id, token, baseUrl, phone, moduleName, magicLink, isLoggingEnabled]);
 
