@@ -40,30 +40,41 @@ const VisitHealthView = ({
           let systemVersion = DeviceInfo.getSystemVersion();
           let version = DeviceInfo.getVersion();
 
-          console.log(
-            'buildNumber:' +
-              buildNumber +
-              ' systemVersion:' +
-              systemVersion +
-              ' version : ' +
-              version +
-              ' deviceId',
-            deviceId
-          );
+          if (isLoggingEnabled) {
+            console.log(
+              'buildNumber:' +
+                buildNumber +
+                ' systemVersion:' +
+                systemVersion +
+                ' version : ' +
+                version +
+                ' deviceId',
+              deviceId
+            );
+          }
 
-          setSource(
-            `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}&srcClientId=Android&deviceId=${deviceId}&appVersion=${version}&deviceVersion=${systemVersion}`
-          );
+          let finalUrl = `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}&srcClientId=Android&deviceId=${deviceId}&appVersion=${version}&deviceVersion=${systemVersion}`;
+
+          if (isLoggingEnabled) {
+            console.log('final Url: ', finalUrl);
+          }
+          setSource(finalUrl);
         })
         .catch((err) => {
-          console.log('getDeviceInfo err', err);
+          if (isLoggingEnabled) {
+            console.log('getDeviceInfo err', err);
+          }
 
-          setSource(
-            `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`
-          );
+          let finalUrl = `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`;
+
+          if (isLoggingEnabled) {
+            console.log('final Url: ', finalUrl);
+          }
+
+          setSource(finalUrl);
         });
     }
-  }, [id, token, baseUrl, phone, moduleName, magicLink]);
+  }, [id, token, baseUrl, phone, moduleName, magicLink, isLoggingEnabled]);
 
   const [enabled, requestResolution] = useLocationSettings(
     {
