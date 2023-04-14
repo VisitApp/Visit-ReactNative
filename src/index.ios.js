@@ -15,6 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import DeviceInfo from 'react-native-device-info';
 
 const LINKING_ERROR =
   "The package 'Visit-ReactNative' doesn't seem to be linked. Make sure: \n\n" +
@@ -53,17 +54,64 @@ const VisitHealthView = ({
   phone,
   moduleName,
   magicLink,
+  isLoggingEnabled,
 }) => {
   const [source, setSource] = useState('');
   useEffect(() => {
     if ((magicLink?.trim()?.length || 0) > 0) {
       setSource(magicLink);
     } else {
+      DeviceInfo.getAndroidId()
+        .then((deviceId) => {
+          let buildNumber = DeviceInfo.getBuildNumber();
+          let systemVersion = DeviceInfo.getSystemVersion();
+          let version = DeviceInfo.getVersion();
+
+          if (isLoggingEnabled) {
+            console.log(
+              'buildNumber:' +
+                buildNumber +
+                ' systemVersion:' +
+                systemVersion +
+                ' version : ' +
+                version +
+                ' deviceId',
+              deviceId
+            );
+          }
+
+          let finalUrl = `${baseUrl}?token=${token}&id=${id}&phone=${phone}`;
+
+          if ((moduleName?.trim()?.length || 0) > 0) {
+            finalUrl += `&moduleName=${moduleName}`;
+          }
+
+          finalUrl += `&srcClientId=Android&deviceId=${deviceId}&appVersion=${version}&deviceVersion=${systemVersion}`;
+
+          if (isLoggingEnabled) {
+            console.log('final Url: ', finalUrl);
+          }
+          setSource(finalUrl);
+        })
+        .catch((err) => {
+          if (isLoggingEnabled) {
+            console.log('getDeviceInfo err', err);
+          }
+
+          let finalUrl = `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`;
+
+          if (isLoggingEnabled) {
+            console.log('final Url: ', finalUrl);
+          }
+
+          setSource(finalUrl);
+        });
+
       setSource(
         `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`
       );
     }
-  }, [id, token, baseUrl, phone, moduleName]);
+  }, [id, token, baseUrl, phone, moduleName, magicLink, isLoggingEnabled]);
 
   const VisitHealthRn = useMemo(
     () =>
