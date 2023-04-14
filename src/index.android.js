@@ -53,7 +53,13 @@ const VisitHealthView = ({
             );
           }
 
-          let finalUrl = `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}&srcClientId=Android&deviceId=${deviceId}&appVersion=${version}&deviceVersion=${systemVersion}`;
+          var finalUrl = `${baseUrl}?token=${token}&id=${id}&phone=${phone}`;
+
+          if ((moduleName?.trim()?.length || 0) > 0) {
+            finalUrl += `&moduleName=${moduleName}`;
+          }
+
+          finalUrl += `&srcClientId=Android&deviceId=${deviceId}&appVersion=${version}&deviceVersion=${systemVersion}`;
 
           if (isLoggingEnabled) {
             console.log('final Url: ', finalUrl);
