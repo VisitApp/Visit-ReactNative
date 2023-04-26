@@ -61,37 +61,27 @@ const VisitHealthView = ({
     if ((magicLink?.trim()?.length || 0) > 0) {
       setSource(magicLink);
     } else {
-      console.log('in here');
-      const deviceId = DeviceInfo.getDeviceId();
-      const buildNumber = DeviceInfo.getBuildNumber();
-      const systemVersion = DeviceInfo.getSystemVersion();
-      const version = DeviceInfo.getVersion();
-
-      if (isLoggingEnabled) {
-        console.log(
-          'buildNumber:' +
-            buildNumber +
-            ' systemVersion:' +
-            systemVersion +
-            ' version : ' +
-            version +
-            ' deviceId',
-          deviceId
-        );
-      }
-
       let finalUrl = `${baseUrl}?token=${token}&id=${id}&phone=${phone}`;
-
       if ((moduleName?.trim()?.length || 0) > 0) {
         finalUrl += `&moduleName=${moduleName}`;
       }
+      const buildNumber = DeviceInfo.getBuildNumber();
+      const systemVersion = DeviceInfo.getSystemVersion();
+      const version = DeviceInfo.getVersion();
+      finalUrl += `&srcClientId=iPhone&appVersion=${version}&deviceVersion=${systemVersion}`;
 
-      finalUrl += `&srcClientId=iOS&deviceId=${deviceId}&appVersion=${version}&deviceVersion=${systemVersion}`;
+      DeviceInfo.getUniqueId()
+        .then((uniqueId) => {
+          finalUrl += `&deviceId=${uniqueId}`;
+        })
+        .catch((err) => console.log('err', err))
+        .finally(() => {
+          setSource(finalUrl);
+        });
 
       if (isLoggingEnabled) {
         console.log('final Url: ', finalUrl);
       }
-      setSource(finalUrl);
     }
   }, [id, token, baseUrl, phone, moduleName, magicLink, isLoggingEnabled]);
 
