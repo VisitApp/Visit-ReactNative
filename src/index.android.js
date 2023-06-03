@@ -30,7 +30,6 @@ const VisitHealthView = ({
   moduleName,
   magicLink,
   isLoggingEnabled,
-  environment,
 }) => {
   const [source, setSource] = useState('');
   useEffect(() => {
@@ -56,17 +55,11 @@ const VisitHealthView = ({
             );
           }
 
-          var visitBaseUrl = '';
+          var finalEndPoint = `${baseUrl}/partners/v2/generate-magic-link-star-health`;
 
-          if (environment === 'stage') {
-            visitBaseUrl = 'https://api.samuraijack.xyz/edith';
-          } else {
-            visitBaseUrl = 'https://api.getvisitapp.com/v4';
+          if (isLoggingEnabled) {
+            console.log('finalEndPoint: ' + finalEndPoint);
           }
-
-          var finalEndPoint = `${visitBaseUrl}/partners/v2/generate-magic-link-star-health`;
-
-          console.log('environment: ' + environment);
 
           axios
             .post(finalEndPoint, {
@@ -80,21 +73,32 @@ const VisitHealthView = ({
             })
             .then((response) => {
               var data = response.data;
-              var magicLink = data.result;
+              var visitMagicLink = data.result;
+              var errorMessage = data.errorMessage;
 
               if (data.message === 'success') {
                 if ((moduleName?.trim()?.length || 0) > 0) {
-                  magicLink += `&tab=${moduleName}`;
+                  visitMagicLink += `&tab=${moduleName}`;
                 }
-                console.log('magicLink: ' + magicLink);
 
-                setSource(magicLink);
+                if (isLoggingEnabled) {
+                  console.log('magicLink: ' + visitMagicLink);
+                }
+
+                setSource(visitMagicLink);
               } else {
-                console.log('erorMessage: ' + data.errorMessage);
+                var errorUrl = `${baseUrl}/star-health?error=${errorMessage}`;
+                setSource(errorUrl);
+
+                if (isLoggingEnabled) {
+                  console.log('erorMessage: ' + data.errorMessage);
+                }
               }
             })
             .catch((error) => {
-              console.log('error: ' + error);
+              if (isLoggingEnabled) {
+                console.log('error: ' + error);
+              }
             });
         })
         .catch((err) => {
@@ -103,16 +107,7 @@ const VisitHealthView = ({
           }
         });
     }
-  }, [
-    id,
-    token,
-    baseUrl,
-    phone,
-    moduleName,
-    magicLink,
-    environment,
-    isLoggingEnabled,
-  ]);
+  }, [id, token, baseUrl, phone, moduleName, magicLink, isLoggingEnabled]);
 
   const [enabled, requestResolution] = useLocationSettings(
     {
@@ -407,11 +402,6 @@ export const fetchHourlyFitnessData = (startTimeStamp, isLoggingEnabled) => {
   });
 };
 
-export const Environment = {
-  STAGE: 'stage',
-  PRODUCTION: 'production',
-};
-
 export default VisitHealthView;
 
 VisitHealthView.defaultProps = {
@@ -421,6 +411,5 @@ VisitHealthView.defaultProps = {
   phone: '',
   moduleName: '',
   magicLink: '',
-  environment: Environment.PRODUCTION,
   isLoggingEnabled: false,
 };
