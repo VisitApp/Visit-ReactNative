@@ -14,8 +14,6 @@ import LocationEnabler from 'react-native-location-enabler';
 
 import DeviceInfo from 'react-native-device-info';
 
-import { Environment } from './VisitEnvironment';
-
 import axios from 'axios';
 
 const {
@@ -407,6 +405,11 @@ export const fetchHourlyFitnessData = (startTimeStamp, isLoggingEnabled) => {
       })
       .catch((err) => reject(err));
   });
+};
+
+export const Environment = {
+  STAGE: 'stage',
+  PRODUCTION: 'production',
 };
 
 export default VisitHealthView;
