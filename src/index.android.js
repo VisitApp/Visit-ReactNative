@@ -63,7 +63,7 @@ const VisitHealthView = ({
           if (environment === 'stage') {
             visitBaseUrl = 'https://api.samuraijack.xyz/edith';
           } else {
-            visitBaseUrl = 'https://api.getvisitapp.com/v3';
+            visitBaseUrl = 'https://api.getvisitapp.com/v4';
           }
 
           var finalEndPoint = `${visitBaseUrl}/partners/v2/generate-magic-link-star-health`;
