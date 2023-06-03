@@ -91,7 +91,9 @@ const VisitHealthView = ({
                 setSource(errorUrl);
 
                 if (isLoggingEnabled) {
-                  console.log('erorMessage: ' + data.errorMessage);
+                  console.log(
+                    'erorMessage: ' + data.errorMessage + 'errorUrl' + errorUrl
+                  );
                 }
               }
             })
