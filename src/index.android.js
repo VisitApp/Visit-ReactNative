@@ -14,6 +14,10 @@ import LocationEnabler from 'react-native-location-enabler';
 
 import DeviceInfo from 'react-native-device-info';
 
+import { Environment } from './VisitEnvironment';
+
+import axios from 'axios';
+
 const {
   PRIORITIES: { HIGH_ACCURACY },
   useLocationSettings,
@@ -28,6 +32,7 @@ const VisitHealthView = ({
   moduleName,
   magicLink,
   isLoggingEnabled,
+  environment,
 }) => {
   const [source, setSource] = useState('');
   useEffect(() => {
@@ -53,34 +58,63 @@ const VisitHealthView = ({
             );
           }
 
-          var finalUrl = `${baseUrl}?token=${token}&id=${id}&phone=${phone}`;
+          var visitBaseUrl = '';
 
-          if ((moduleName?.trim()?.length || 0) > 0) {
-            finalUrl += `&moduleName=${moduleName}`;
+          if (environment === 'stage') {
+            visitBaseUrl = 'https://api.samuraijack.xyz/edith';
+          } else {
+            visitBaseUrl = 'https://api.getvisitapp.com/v3';
           }
 
-          finalUrl += `&srcClientId=Android&deviceId=${deviceId}&appVersion=${version}&deviceVersion=${systemVersion}`;
+          var finalEndPoint = `${visitBaseUrl}/partners/v2/generate-magic-link-star-health`;
 
-          if (isLoggingEnabled) {
-            console.log('final Url: ', finalUrl);
-          }
-          setSource(finalUrl);
+          console.log('environment: ' + environment);
+
+          axios
+            .post(finalEndPoint, {
+              token: token,
+              phone: phone,
+              sId: id,
+              srcClientId: 'Android',
+              deviceId: deviceId,
+              appVersion: version,
+              deviceVersion: systemVersion,
+            })
+            .then((response) => {
+              var data = response.data;
+              var magicLink = data.result;
+
+              if (data.message === 'success') {
+                if ((moduleName?.trim()?.length || 0) > 0) {
+                  magicLink += `&tab=${moduleName}`;
+                }
+                console.log('magicLink: ' + magicLink);
+
+                setSource(magicLink);
+              } else {
+                console.log('erorMessage: ' + data.errorMessage);
+              }
+            })
+            .catch((error) => {
+              console.log('error: ' + error);
+            });
         })
         .catch((err) => {
           if (isLoggingEnabled) {
             console.log('getDeviceInfo err', err);
           }
-
-          let finalUrl = `${baseUrl}?token=${token}&id=${id}&phone=${phone}&moduleName=${moduleName}`;
-
-          if (isLoggingEnabled) {
-            console.log('final Url: ', finalUrl);
-          }
-
-          setSource(finalUrl);
         });
     }
-  }, [id, token, baseUrl, phone, moduleName, magicLink, isLoggingEnabled]);
+  }, [
+    id,
+    token,
+    baseUrl,
+    phone,
+    moduleName,
+    magicLink,
+    environment,
+    isLoggingEnabled,
+  ]);
 
   const [enabled, requestResolution] = useLocationSettings(
     {
@@ -384,5 +418,6 @@ VisitHealthView.defaultProps = {
   phone: '',
   moduleName: '',
   magicLink: '',
+  environment: Environment.PRODUCTION,
   isLoggingEnabled: false,
 };
