@@ -11,8 +11,8 @@ import {
   SafeAreaView,
   NativeModules,
   NativeEventEmitter,
-  Linking, 
-  Platform, 
+  Linking,
+  Platform,
   ActivityIndicator,
   Alert,
 } from "react-native";
@@ -57,49 +57,52 @@ const VisitHealthView = ({
   phone,
   moduleName,
   magicLink,
-  environment,
+  isLoggingEnabled,
 }) => {
   const [source, setSource] = useState("");
   const [loading, setLoading] = useState(true);
-  const visitBaseUrl =
-    environment === "STAGE"
-      ? "https://api.samuraijack.xyz/edith"
-      : "https://api.getvisitapp.com";
   useEffect(() => {
-    if ((magicLink?.trim()?.length || 0) > 0) {
+    if (magicLink?.trim()?.length) {
       setSource(magicLink);
     } else {
       const systemVersion = DeviceInfo.getSystemVersion();
       const version = DeviceInfo.getVersion();
       DeviceInfo.getUniqueId()
-        .then((uniqueId) => {
-          finalUrl += `&deviceId=${uniqueId}`;
+        .then((uniqueId) =>
           getWebViewLink(
-            visitBaseUrl,
+            baseUrl,
             token,
             phone,
             id,
             "iPhone",
             uniqueId,
             version,
-            systemVersion,
-            moduleName
+            systemVersion
           )
-            .then((res) => {
-              console.log("getWebViewLink res", { res })
-              setSource(res.data.result)
-            })
-            .catch((err) => {
-              console.log("getWebViewLink err", { err })
-              Alert.alert('Error',err.errMessage)
-            });
+        )
+        .then((res) => {
+          let magicLink = res.data.result;
+          if (moduleName?.trim()?.length) {
+            magicLink += `&tab=${magicLink}`;
+          }
+          if(isLoggingEnabled) {
+            console.log("webviewlink is", { magicLink });
+          }
+          setSource(magicLink);
         })
-        .catch((err) => console.log("err", err))
+        .catch((err) => {
+          const errorMessage = err.errMessage;
+          const errorUrl = `${baseUrl}/star-health?error=${errorMessage}`;
+          setSource(errorUrl);
+          if(isLoggingEnabled) {
+            console.log("webviewlink is", { errorUrl });
+          }
+        })
         .finally(() => {
           setLoading(false);
         });
     }
-  }, [id, token, baseUrl, phone, moduleName, magicLink, environment]);
+  }, [id, token, baseUrl, phone, moduleName, magicLink]);
 
   const VisitHealthRn = useMemo(
     () =>

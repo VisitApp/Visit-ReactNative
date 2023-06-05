@@ -7675,6 +7675,23 @@
 			};
 			name = Release;
 		};
+		3757ECB0D162994C1EF3CB037E5423C4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E7C7BDC286F37CA24E952C84653EBB12 /* React-Core.debug.xcconfig */;
+			buildSettings = {
+				CODE_SIGNING_ALLOWED = NO;
+				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/React-Core";
+				IBSC_MODULE = React;
+				INFOPLIST_FILE = "Target Support Files/React-Core/ResourceBundle-AccessibilityResources-React-Core-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				PRODUCT_NAME = AccessibilityResources;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				WRAPPER_EXTENSION = bundle;
+			};
+			name = Debug;
+		};
 		3CC3D349F0E9C6C8EA089D4C196A5BE4 /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 17E5B5E0A588916FE0E7CF6E0EAE59AB /* React-RCTBlob.release.xcconfig */;
@@ -7943,22 +7960,6 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
-		591E348117C3843A7518DF8B2A326501 /* Release */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = 6A3A4E2370EF904C2E24AD0CC2F0B67B /* React-Core.release.xcconfig */;
-			buildSettings = {
-				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/React-Core";
-				IBSC_MODULE = React;
-				INFOPLIST_FILE = "Target Support Files/React-Core/ResourceBundle-AccessibilityResources-React-Core-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				PRODUCT_NAME = AccessibilityResources;
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				WRAPPER_EXTENSION = bundle;
 			};
 			name = Release;
 		};
@@ -8463,6 +8464,23 @@
 			};
 			name = Debug;
 		};
+		C401F94A925C37B0D1A1C485C43BE4A7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 6A3A4E2370EF904C2E24AD0CC2F0B67B /* React-Core.release.xcconfig */;
+			buildSettings = {
+				CODE_SIGNING_ALLOWED = NO;
+				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/React-Core";
+				IBSC_MODULE = React;
+				INFOPLIST_FILE = "Target Support Files/React-Core/ResourceBundle-AccessibilityResources-React-Core-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				PRODUCT_NAME = AccessibilityResources;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				WRAPPER_EXTENSION = bundle;
+			};
+			name = Release;
+		};
 		C45F1DE3BDB2D5DC415F5A2485F6313F /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 9FBE84782E1AB6B458478C893A195C97 /* boost-for-react-native.release.xcconfig */;
@@ -8491,22 +8509,6 @@
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
-		};
-		CE90F3773C3B3CD7FA12B1E40F1DB20E /* Debug */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = E7C7BDC286F37CA24E952C84653EBB12 /* React-Core.debug.xcconfig */;
-			buildSettings = {
-				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/React-Core";
-				IBSC_MODULE = React;
-				INFOPLIST_FILE = "Target Support Files/React-Core/ResourceBundle-AccessibilityResources-React-Core-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				PRODUCT_NAME = AccessibilityResources;
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				WRAPPER_EXTENSION = bundle;
-			};
-			name = Debug;
 		};
 		CF069449E036A8C20805336F617C5001 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -8955,8 +8957,8 @@
 		2A601561500EE0CF5DC397995A597C16 /* Build configuration list for PBXNativeTarget "React-Core-AccessibilityResources" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				CE90F3773C3B3CD7FA12B1E40F1DB20E /* Debug */,
-				591E348117C3843A7518DF8B2A326501 /* Release */,
+				3757ECB0D162994C1EF3CB037E5423C4 /* Debug */,
+				C401F94A925C37B0D1A1C485C43BE4A7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
