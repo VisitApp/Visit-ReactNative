@@ -1,6 +1,6 @@
 {
   "name": "Visit-ReactNative",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "a custom webview component that injects data into visit pwa through native modules and events",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
