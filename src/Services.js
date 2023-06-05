@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from 'axios';
 
 export const getWebViewLink = (
   baseUrl,
@@ -8,8 +8,7 @@ export const getWebViewLink = (
   srcClientId,
   deviceId,
   appVersion,
-  deviceVersion,
-  moduleName
+  deviceVersion
 ) => {
   const data = {
     token,
@@ -18,15 +17,11 @@ export const getWebViewLink = (
     srcClientId,
     deviceId,
     appVersion,
-    deviceVersion, 
-    moduleName,
+    deviceVersion,
   };
+  console.log('getWebViewLink data',{data})
   return axios
-    .post(`${baseUrl}/users/data-sync`, data, {
-      headers: {
-        Authorization: authToken,
-      },
-    })
-    .then((res) => console.log("callSyncData response,", res))
-    .catch((err) => console.log("callSyncData err,", { err }));
+    .post(`${baseUrl}/partners/v2/generate-magic-link-star-health`, data)
+    .then((res) => res)
+    .catch((err) => err);
 };

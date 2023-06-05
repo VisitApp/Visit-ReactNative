@@ -249,7 +249,7 @@ PODS:
     - React-jsi (= 0.63.4)
   - RNDeviceInfo (10.6.0):
     - React-Core
-  - Visit-ReactNative (0.2.3):
+  - Visit-ReactNative (0.2.5):
     - React-Core
   - Yoga (1.14.0)
 
@@ -379,9 +379,9 @@ SPEC CHECKSUMS:
   React-RCTVibration: ae4f914cfe8de7d4de95ae1ea6cc8f6315d73d9d
   ReactCommon: 73d79c7039f473b76db6ff7c6b159c478acbbb3b
   RNDeviceInfo: 475a4c447168d0ad4c807e48ef5e0963a0f4eb1b
-  Visit-ReactNative: 077c1188265bcaf53d7b50c28425a834669e0e87
+  Visit-ReactNative: 3fe458c4284c7f7846e6dc6763ade228449fab57
   Yoga: 4bd86afe9883422a7c4028c00e34790f560923d6
 
 PODFILE CHECKSUM: 55edea169be4fe4023e30e14c26e5dacf98cf054
 
-COCOAPODS: 1.11.3
+COCOAPODS: 1.12.1

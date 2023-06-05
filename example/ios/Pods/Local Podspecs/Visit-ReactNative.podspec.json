@@ -1,6 +1,6 @@
 {
   "name": "Visit-ReactNative",
-  "version": "0.2.3",
+  "version": "0.2.5",
   "summary": "a custom webview component that injects data into visit pwa through native modules and events",
   "homepage": "https://github.com/VisitApp/Visit-ReactNative#readme",
   "license": "MIT",
@@ -10,7 +10,7 @@
   },
   "source": {
     "git": "https://github.com/VisitApp/Visit-ReactNative.git",
-    "tag": "0.2.3"
+    "tag": "0.2.5"
   },
   "source_files": "ios/**/*.{h,m,mm}",
   "dependencies": {
