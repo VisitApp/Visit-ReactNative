@@ -83,7 +83,7 @@ const VisitHealthView = ({
         .then((res) => {
           let magicLink = res.data.result;
           if (moduleName?.trim()?.length) {
-            magicLink += `&tab=${magicLink}`;
+            magicLink += `&tab=${moduleName?.trim()}`;
           }
           if(isLoggingEnabled) {
             console.log("webviewlink is", { magicLink });
