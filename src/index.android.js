@@ -250,7 +250,11 @@ const VisitHealthView = ({
         if (parsedObject.method != null) {
           switch (parsedObject.method) {
             case 'CONNECT_TO_GOOGLE_FIT':
-              requestActivityRecognitionPermission();
+              if (parseInt(DeviceInfo.getSystemVersion(), 10) >= 10) {
+                requestActivityRecognitionPermission();
+              } else {
+                askForGoogleFitPermission();
+              }
               break;
             case 'UPDATE_PLATFORM':
               webviewRef.current?.injectJavaScript(
