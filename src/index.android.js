@@ -200,7 +200,7 @@ const VisitHealthView = ({
 
     NativeModules.VisitFitnessModule.requestDailyFitnessData((data) => {
       // console.log(`getDailyFitnessData() data: ` + data);
-      webviewRef.current.injectJavaScript(data);
+      webviewRef.current?.injectJavaScript(data);
     });
   };
 
@@ -213,7 +213,7 @@ const VisitHealthView = ({
       timeStamp,
       (data) => {
         // console.log(`requestActivityData() data: ` + data);
-        webviewRef.current.injectJavaScript('window.' + data);
+        webviewRef.current?.injectJavaScript('window.' + data);
       }
     );
   };
@@ -338,7 +338,7 @@ const VisitHealthView = ({
 
   const handleBack = useCallback(() => {
     if (canGoBack && webviewRef.current) {
-      webviewRef.current.goBack();
+      webviewRef.current?.goBack();
       return true;
     }
     return false;
