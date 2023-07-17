@@ -23,7 +23,8 @@ const {
 } = LocationEnabler;
 
 const VisitHealthView = ({
-  baseUrl,
+  magicLinkBaseUrl,
+  errorBaseUrl,
   token,
   id,
   phone,
@@ -55,7 +56,7 @@ const VisitHealthView = ({
             );
           }
 
-          var finalEndPoint = `${baseUrl}/partners/v2/generate-magic-link-star-health`;
+          var finalEndPoint = `${magicLinkBaseUrl}/partners/v2/generate-magic-link-star-health`;
 
           if (isLoggingEnabled) {
             console.log('finalEndPoint: ' + finalEndPoint);
@@ -87,7 +88,7 @@ const VisitHealthView = ({
 
                 setSource(visitMagicLink);
               } else {
-                var errorUrl = `${baseUrl}/star-health?error=${errorMessage}`;
+                var errorUrl = `${errorBaseUrl}/star-health?error=${errorMessage}`;
                 setSource(errorUrl);
 
                 if (isLoggingEnabled) {
@@ -112,7 +113,16 @@ const VisitHealthView = ({
           }
         });
     }
-  }, [id, token, baseUrl, phone, moduleName, magicLink, isLoggingEnabled]);
+  }, [
+    id,
+    token,
+    magicLinkBaseUrl,
+    errorBaseUrl,
+    phone,
+    moduleName,
+    magicLink,
+    isLoggingEnabled,
+  ]);
 
   const [enabled, requestResolution] = useLocationSettings(
     {
@@ -416,7 +426,8 @@ export default VisitHealthView;
 VisitHealthView.defaultProps = {
   id: '',
   token: '',
-  baseUrl: '',
+  magicLinkBaseUrl: '',
+  errorBaseUrl: '',
   phone: '',
   moduleName: '',
   magicLink: '',
