@@ -66,6 +66,7 @@ const VisitHealthView = ({
   useEffect(() => {
     if (magicLink?.trim()?.length) {
       setSource(magicLink);
+      setLoading(false)
     } else {
       const systemVersion = DeviceInfo.getSystemVersion();
       const version = DeviceInfo.getVersion();
