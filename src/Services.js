@@ -8,7 +8,8 @@ export const getWebViewLink = (
   srcClientId,
   deviceId,
   appVersion,
-  deviceVersion
+  deviceVersion,
+  environment
 ) => {
   const data = {
     token,
@@ -18,8 +19,9 @@ export const getWebViewLink = (
     deviceId,
     appVersion,
     deviceVersion,
+    environment,
   };
-  console.log('getWebViewLink data',{data})
+  console.log('getWebViewLink data', { data });
   return axios
     .post(`${baseUrl}/partners/v2/generate-magic-link-star-health`, data)
     .then((res) => res)

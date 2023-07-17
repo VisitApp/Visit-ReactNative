@@ -56,6 +56,7 @@ const VisitHealthView = ({
   token,
   id,
   phone,
+  environment,
   moduleName,
   magicLink,
   isLoggingEnabled,
@@ -78,7 +79,8 @@ const VisitHealthView = ({
             'iPhone',
             uniqueId,
             version,
-            systemVersion
+            systemVersion,
+            environment
           )
         )
         .then((res) => {
@@ -103,7 +105,17 @@ const VisitHealthView = ({
           setLoading(false);
         });
     }
-  }, [id, token, magicLinkBaseUrl, errorBaseUrl, phone, moduleName, magicLink]);
+  }, [
+    id,
+    token,
+    magicLinkBaseUrl,
+    errorBaseUrl,
+    phone,
+    environment,
+    moduleName,
+    magicLink,
+    isLoggingEnabled,
+  ]);
 
   const VisitHealthRn = useMemo(
     () =>
