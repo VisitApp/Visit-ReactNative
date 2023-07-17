@@ -29,6 +29,7 @@ const VisitHealthView = ({
   id,
   phone,
   moduleName,
+  environment,
   magicLink,
   isLoggingEnabled,
 }) => {
@@ -71,6 +72,7 @@ const VisitHealthView = ({
               deviceId: deviceId,
               appVersion: version,
               deviceVersion: systemVersion,
+              environment: environment,
             })
             .then((response) => {
               var data = response.data;
@@ -120,6 +122,7 @@ const VisitHealthView = ({
     errorBaseUrl,
     phone,
     moduleName,
+    environment,
     magicLink,
     isLoggingEnabled,
   ]);
@@ -430,6 +433,7 @@ VisitHealthView.defaultProps = {
   errorBaseUrl: '',
   phone: '',
   moduleName: '',
+  environment: '',
   magicLink: '',
   isLoggingEnabled: false,
 };
