@@ -15,7 +15,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { EventRegister } from 'react-native-event-listeners'
+import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
 import DeviceInfo from 'react-native-device-info';
 import { getWebViewLink } from './Services';
@@ -203,17 +203,24 @@ const VisitHealthView = ({
         webviewRef.current?.injectJavaScript('window.setSdkPlatform("IOS")');
         break;
       case 'CONNECT_TO_GOOGLE_FIT':
-        VisitHealthRn?.connectToAppleHealth((res) => {
-          if (res?.sleepTime || res?.numberOfSteps) {
-            webviewRef.current?.injectJavaScript(
-              `window.updateFitnessPermissions(true,${res?.numberOfSteps},${res?.sleepTime})`
-            );
-          } else {
-            webviewRef.current?.injectJavaScript(
-              'window.updateFitnessPermissions(true,0,0)'
-            );
-          }
-        });
+        if (DeviceInfo.getModel() === 'iPad') {
+          console.log('unsupportedHealthKitDevice triggered');
+          webviewRef.current?.injectJavaScript(
+            'window.unsupportedHealthKitDevice(true)'
+          );
+        } else {
+          VisitHealthRn?.connectToAppleHealth((res) => {
+            if (res?.sleepTime || res?.numberOfSteps) {
+              webviewRef.current?.injectJavaScript(
+                `window.updateFitnessPermissions(true,${res?.numberOfSteps},${res?.sleepTime})`
+              );
+            } else {
+              webviewRef.current?.injectJavaScript(
+                'window.updateFitnessPermissions(true,0,0)'
+              );
+            }
+          });
+        }
         break;
       case 'GET_DATA_TO_GENERATE_GRAPH':
         VisitHealthRn?.renderGraph(

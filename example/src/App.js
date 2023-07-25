@@ -20,7 +20,7 @@ export default class App extends Component {
     this.listener = EventRegister.addEventListener(
       'unauthorized-wellness-access',
       () => {
-        Alert.alert('unauthorized-wellness-access', 'heading happened');
+        Alert.alert('unauthorized-wellness-access');
       }
     );
   }
@@ -60,6 +60,7 @@ export default class App extends Component {
           isLoggingEnabled={false}
           environment="DEV"
           errorBaseUrl="https://star-health.getvisitapp.xyz/"
+          magicLink="https://star-health.getvisitapp.xyz/?mluib7c=J2c4KpQr"
         />
       </SafeAreaView>
     );
