@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { Component } from 'react';
 
 import VisitHealthView from 'Visit-ReactNative';
 
-import { SafeAreaView } from 'react-native';
+import { Alert, SafeAreaView } from 'react-native';
+import { EventRegister } from 'react-native-event-listeners';
 
 const visitBaseUrl = 'https://api.samuraijack.xyz/edith';
 
@@ -14,10 +15,24 @@ const id = '12575887';
 const phone = '6379220732';
 const moduleName = null;
 
-export default function App() {
-  return (
-    <SafeAreaView style={{ flex: 1 }}>
-      {/* <Button
+export default class App extends Component {
+  componentDidMount() {
+    this.listener = EventRegister.addEventListener(
+      'unauthorized-wellness-access',
+      () => {
+        Alert.alert('unauthorized-wellness-access', 'heading happened');
+      }
+    );
+  }
+
+  componentWillUnmount() {
+    EventRegister.removeEventListener(this.listener);
+  }
+
+  render() {
+    return (
+      <SafeAreaView style={{ flex: 1 }}>
+        {/* <Button
       onPress={() =>
         fetchDailyFitnessData(1661843593000)
           .then((res) => console.log('fetchDailyFitnessData res', res))
@@ -36,14 +51,17 @@ export default function App() {
       color="#841584"
     /> */}
 
-      <VisitHealthView
-        baseUrl={visitBaseUrl}
-        token={token}
-        id={id}
-        phone={phone}
-        moduleName={moduleName}
-        isLoggingEnabled={false}
-      />
-    </SafeAreaView>
-  );
+        <VisitHealthView
+          baseUrl={visitBaseUrl}
+          token={token}
+          id={id}
+          phone={phone}
+          moduleName={moduleName}
+          isLoggingEnabled={false}
+          environment="DEV"
+          errorBaseUrl="https://star-health.getvisitapp.xyz/"
+        />
+      </SafeAreaView>
+    );
+  }
 }
