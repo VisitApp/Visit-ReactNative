@@ -14,8 +14,8 @@ import {
   Linking,
   Platform,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
+import { EventRegister } from 'react-native-event-listeners'
 import { WebView } from 'react-native-webview';
 import DeviceInfo from 'react-native-device-info';
 import { getWebViewLink } from './Services';
@@ -66,7 +66,7 @@ const VisitHealthView = ({
   useEffect(() => {
     if (magicLink?.trim()?.length) {
       setSource(magicLink);
-      setLoading(false)
+      setLoading(false);
     } else {
       const systemVersion = DeviceInfo.getSystemVersion();
       const version = DeviceInfo.getVersion();
@@ -97,6 +97,7 @@ const VisitHealthView = ({
         .catch((err) => {
           const errorMessage = err.errMessage;
           const errorUrl = `${errorBaseUrl}/star-health?error=${errorMessage}`;
+          EventRegister.emit('unauthorized-wellness-access');
           setSource(errorUrl);
           if (isLoggingEnabled) {
             console.log('webviewlink is', { errorUrl });
