@@ -72,7 +72,7 @@ const VisitHealthView = ({
               deviceId: deviceId,
               appVersion: version,
               deviceVersion: systemVersion,
-              environment: environment,
+              userEnv: environment,
             })
             .then((response) => {
               var data = response.data;

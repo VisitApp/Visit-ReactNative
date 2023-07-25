@@ -9,7 +9,7 @@ export const getWebViewLink = (
   deviceId,
   appVersion,
   deviceVersion,
-  environment
+  userEnv
 ) => {
   const data = {
     token,
@@ -19,7 +19,7 @@ export const getWebViewLink = (
     deviceId,
     appVersion,
     deviceVersion,
-    environment,
+    userEnv,
   };
   console.log('getWebViewLink data', { data });
   return axios
