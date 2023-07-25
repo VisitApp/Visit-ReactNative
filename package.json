@@ -146,10 +146,13 @@
     ]
   },
   "dependencies": {
+    "add": "^2.0.6",
     "axios": "^0.27.2",
     "moment": "^2.29.3",
     "react-native-device-info": "^10.6.0",
+    "react-native-event-listeners": "^1.0.7",
     "react-native-location-enabler": "^4.1.1",
-    "react-native-webview": "^11.22.2"
+    "react-native-webview": "^11.22.2",
+    "yarn": "^1.22.19"
   }
 }

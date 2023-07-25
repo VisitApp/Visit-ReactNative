@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { EventRegister } from 'react-native-event-listeners';
 
 import {
   SafeAreaView,
@@ -92,7 +93,7 @@ const VisitHealthView = ({
               } else {
                 var errorUrl = `${errorBaseUrl}/star-health?error=${errorMessage}`;
                 setSource(errorUrl);
-
+                EventRegister.emitEvent('unauthorized-wellness-access');
                 if (isLoggingEnabled) {
                   console.log(
                     'erorMessage: ' +
