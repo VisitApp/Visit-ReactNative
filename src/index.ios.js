@@ -51,7 +51,7 @@ const unescapeHTML = (str) =>
   });
 
 const VisitHealthView = ({
-  magicLinkBaseUrl,
+  baseUrl,
   errorBaseUrl,
   token,
   id,
@@ -73,7 +73,7 @@ const VisitHealthView = ({
       DeviceInfo.getUniqueId()
         .then((uniqueId) =>
           getWebViewLink(
-            magicLinkBaseUrl,
+            baseUrl,
             token,
             phone,
             id,
@@ -85,24 +85,23 @@ const VisitHealthView = ({
           )
         )
         .then((res) => {
-          let magicLink = res.data.result;
-          if (moduleName?.trim()?.length) {
-            magicLink += `&tab=${moduleName?.trim()}`;
-          }
-          if (isLoggingEnabled) {
-            console.log('webviewlink is', { magicLink });
-          }
-          setSource(magicLink);
-        })
-        .catch((err) => {
-          const errorMessage = err.errMessage;
-          const errorUrl = `${errorBaseUrl}/star-health?error=${errorMessage}`;
-          EventRegister.emit('unauthorized-wellness-access');
-          setSource(errorUrl);
-          if (isLoggingEnabled) {
-            console.log('webviewlink is', { errorUrl });
+          if (res.data?.errorMessage === 'Please login again') {
+            const { errorMessage } = res.data;
+            const errorUrl = `${errorBaseUrl}/star-health?error=${errorMessage}`;
+            setSource(errorUrl);
+            EventRegister.emit('unauthorized-wellness-access');
+          } else {
+            let magicLink = res.data?.result;
+            if (moduleName?.trim()?.length) {
+              magicLink += `&tab=${moduleName?.trim()}`;
+            }
+            if (isLoggingEnabled) {
+              console.log('webviewlink is', { magicLink });
+            }
+            setSource(magicLink);
           }
         })
+        .catch((err) => console.log('getWebViewLink err', { err }))
         .finally(() => {
           setLoading(false);
         });
@@ -110,7 +109,7 @@ const VisitHealthView = ({
   }, [
     id,
     token,
-    magicLinkBaseUrl,
+    baseUrl,
     errorBaseUrl,
     phone,
     environment,
@@ -295,7 +294,7 @@ const styles = StyleSheet.create({
 VisitHealthView.defaultProps = {
   id: '',
   token: '',
-  magicLinkBaseUrl: '',
+  baseUrl: '',
   errorBaseUrl: '',
   phone: '',
   moduleName: '',

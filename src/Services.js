@@ -21,7 +21,6 @@ export const getWebViewLink = (
     deviceVersion,
     userEnv,
   };
-  console.log('getWebViewLink data', { data });
   return axios
     .post(`${baseUrl}/partners/v2/generate-magic-link-star-health`, data)
     .then((res) => res)
