@@ -76,9 +76,9 @@ const VisitHealthView = ({
               userEnv: environment,
             })
             .then((response) => {
-              var data = response.data;
-              var visitMagicLink = data.result;
-              var errorMessage = data.errorMessage;
+              let data = response.data;
+              let visitMagicLink = data.result;
+              let errorMessage = data.errorMessage;
 
               if (data.message === 'success') {
                 if ((moduleName?.trim()?.length || 0) > 0) {
@@ -93,7 +93,14 @@ const VisitHealthView = ({
               } else {
                 var errorUrl = `${errorBaseUrl}/star-health?error=${errorMessage}`;
                 setSource(errorUrl);
-                EventRegister.emitEvent('unauthorized-wellness-access');
+
+                if (
+                  errorMessage != null &&
+                  errorMessage === 'Please login again'
+                ) {
+                  EventRegister.emitEvent('unauthorized-wellness-access');
+                }
+
                 if (isLoggingEnabled) {
                   console.log(
                     'erorMessage: ' +
