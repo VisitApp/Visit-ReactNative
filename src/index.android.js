@@ -398,6 +398,12 @@ const VisitHealthView = ({
           injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
           javaScriptEnabled={true}
           onLoadProgress={(event) => setCanGoBack(event.nativeEvent.canGoBack)}
+          onError={(errorMessage) => {
+            EventRegister.emitEvent('web-view-error', { errorMessage });
+            if (isLoggingEnabled) {
+              console.warn('Webview error: ', errorMessage);
+            }
+          }}
         />
       ) : null}
     </SafeAreaView>
