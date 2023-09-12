@@ -275,6 +275,12 @@ const VisitHealthView = ({
           style={styles.webView}
           javascriptEnabled
           onMessage={handleMessage}
+          onError={(errorMessage) => {
+            EventRegister.emitEvent('web-view-error', { errorMessage });
+            if (isLoggingEnabled) {
+              console.warn('Webview error: ', errorMessage);
+            }
+          }}
         />
       )}
     </SafeAreaView>
