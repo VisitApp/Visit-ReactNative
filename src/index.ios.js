@@ -89,7 +89,10 @@ const VisitHealthView = ({
             const { errorMessage } = res.data;
             const errorUrl = `${errorBaseUrl}/star-health?error=${errorMessage}`;
             setSource(errorUrl);
-            EventRegister.emit('unauthorized-wellness-access');
+            EventRegister.emitEvent('visit-event', {
+              message: 'unauthorized-wellness-access',
+              errorMessage: errorMessage,
+            });
           } else {
             let magicLink = res.data?.result;
             if (moduleName?.trim()?.length) {
@@ -276,7 +279,10 @@ const VisitHealthView = ({
           javascriptEnabled
           onMessage={handleMessage}
           onError={(errorMessage) => {
-            EventRegister.emitEvent('web-view-error', { errorMessage });
+            EventRegister.emitEvent('visit-event', {
+              message: 'web-view-error',
+              errorMessage: errorMessage,
+            });
             if (isLoggingEnabled) {
               console.warn('Webview error: ', errorMessage);
             }

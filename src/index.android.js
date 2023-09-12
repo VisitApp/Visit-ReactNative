@@ -98,7 +98,10 @@ const VisitHealthView = ({
                   errorMessage != null &&
                   errorMessage === 'Please login again'
                 ) {
-                  EventRegister.emitEvent('unauthorized-wellness-access');
+                  EventRegister.emitEvent('visit-event', {
+                    message: 'unauthorized-wellness-access',
+                    errorMessage: errorMessage,
+                  });
                 }
 
                 if (isLoggingEnabled) {
@@ -399,7 +402,10 @@ const VisitHealthView = ({
           javaScriptEnabled={true}
           onLoadProgress={(event) => setCanGoBack(event.nativeEvent.canGoBack)}
           onError={(errorMessage) => {
-            EventRegister.emitEvent('web-view-error', { errorMessage });
+            EventRegister.emitEvent('visit-event', {
+              message: 'web-view-error',
+              errorMessage: errorMessage,
+            });
             if (isLoggingEnabled) {
               console.warn('Webview error: ', errorMessage);
             }
