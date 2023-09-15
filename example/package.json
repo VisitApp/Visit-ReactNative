@@ -11,7 +11,11 @@
   },
   "dependencies": {
     "react": "18.2.0",
-    "react-native": "0.71.13"
+    "react-native": "0.71.13",
+    "react-native-device-info": "^10.9.0",
+    "react-native-location-enabler": "https://github.com/sashko9807/react-native-location-enabler",
+    "react-native-visit-rn-sdk": "https://github.com/VisitApp/Visit-ReactNative#updated_new_example",
+    "react-native-webview": "^13.6.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

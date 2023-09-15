@@ -100,6 +100,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        buildConfigField "String", "FIREBASE_DEFAULT_CLIENT_ID", "\"292562059614-hab0gdnr614dr3enlhu8690oredl3g8d.apps.googleusercontent.com\""
     }
 
     splits {
@@ -165,6 +166,15 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+  //copy from here.
+  implementation files('google_fit-debug.aar')
+  implementation 'com.google.android.gms:play-services-fitness:21.1.0'
+  implementation 'com.google.android.gms:play-services-auth:20.6.0'
+  implementation 'io.reactivex:rxjava:1.3.3'
+  implementation 'io.reactivex:rxandroid:1.2.1'
+  implementation 'com.google.code.gson:gson:2.8.8'
+  implementation 'com.squareup.okhttp3:okhttp:3.8.1'
 }
 
 apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
