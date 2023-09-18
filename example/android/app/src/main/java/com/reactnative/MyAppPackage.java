@@ -1,8 +1,8 @@
-package com.example;
+package com.reactnative;
 
 import androidx.annotation.NonNull;
 
-import com.example.modules.VisitFitnessModule;
+import com.reactnative.modules.VisitFitnessModule;
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.bridge.ReactApplicationContext;

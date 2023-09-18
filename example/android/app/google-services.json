@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:292562059614:android:645a3c9e57651aaf1e0fcf",
+        "mobilesdk_app_id": "1:292562059614:android:6be9e46e57cfb70f1e0fcf",
         "android_client_info": {
-          "package_name": "com.example"
+          "package_name": "com.reactnative"
         }
       },
       "oauth_client": [
@@ -20,7 +20,7 @@
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyCdQ7Ws1iPmSK8Qaclsy1ceHMXY6gsN1MI"
+          "current_key": "AIzaSyAgS5iGxmfGU08mMD0tJIa2GVaWmZ6wSEs"
         }
       ],
       "services": {
