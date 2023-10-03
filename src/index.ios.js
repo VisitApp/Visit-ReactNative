@@ -109,16 +109,7 @@ const VisitRnSdkView = ({
                 finalBaseUrl = constants.STAGE_BASE_URL;
               }
             }
-            if (isLoggingEnabled) {
-              console.log('webviewlink is', { magicLink });
-            }
             if (finalBaseUrl && magicCode) {
-              console.log(
-                'finalBaseUrl is',
-                finalBaseUrl,
-                'while magicCode is',
-                magicCode
-              );
               setSource(`${finalBaseUrl}=${magicCode}`);
             }
           }
