@@ -17,14 +17,13 @@ import DeviceInfo from 'react-native-device-info';
 
 import axios from 'axios';
 
+import constants from './constants';
+
 const {
   PRIORITIES: { HIGH_ACCURACY },
   useLocationSettings,
   addListener,
 } = LocationEnabler;
-
-const STAGE_BASE_URL = 'https://star-health.getvisitapp.xyz/?mluib7c';
-const PROD_BASE_URL = 'https://star-health.getvisitapp.com/?mluib7c';
 
 const VisitRnSdkView = ({
   baseUrl,
@@ -87,9 +86,9 @@ const VisitRnSdkView = ({
               let finalBaseUrl = '';
 
               if (environment.toUpperCase() === 'PROD') {
-                finalBaseUrl = PROD_BASE_URL;
+                finalBaseUrl = constants.PROD_BASE_URL;
               } else {
-                finalBaseUrl = STAGE_BASE_URL;
+                finalBaseUrl = constants.STAGE_BASE_URL;
               }
 
               let finalUrl = `${finalBaseUrl}=${magicCode}`;

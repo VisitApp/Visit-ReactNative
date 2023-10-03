@@ -20,6 +20,7 @@ import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
 import DeviceInfo from 'react-native-device-info';
 import { getWebViewLink } from './Services';
+import constants from './constants';
 
 const LINKING_ERROR =
   `The package 'react-native-visit-rn-sdk' doesn't seem to be linked. Make sure: \n\n` +
@@ -88,23 +89,38 @@ const VisitRnSdkView = ({
           )
         )
         .then((res) => {
-          if (res.data?.errorMessage === 'Please login again') {
+          if (res.data?.errorMessage) {
             const { errorMessage } = res.data;
             const errorUrl = `${errorBaseUrl}/star-health?error=${errorMessage}`;
             setSource(errorUrl);
-            EventRegister.emitEvent(visitEvent, {
-              message: 'unauthorized-wellness-access',
-              errorMessage: errorMessage,
-            });
+            if (res.data?.errorMessage === 'Please login again') {
+              EventRegister.emitEvent(visitEvent, {
+                message: 'unauthorized-wellness-access',
+                errorMessage: errorMessage,
+              });
+            }
           } else {
-            let magicLink = res.data?.result;
-            if (moduleName?.trim()?.length) {
-              magicLink += `&tab=${moduleName?.trim()}`;
+            const magicCode = res.data?.magicCode;
+            let finalBaseUrl = '';
+            if (magicCode) {
+              if (environment.toUpperCase() === 'PROD') {
+                finalBaseUrl = constants.PROD_BASE_URL;
+              } else {
+                finalBaseUrl = constants.STAGE_BASE_URL;
+              }
             }
             if (isLoggingEnabled) {
               console.log('webviewlink is', { magicLink });
             }
-            setSource(magicLink);
+            if (finalBaseUrl && magicCode) {
+              console.log(
+                'finalBaseUrl is',
+                finalBaseUrl,
+                'while magicCode is',
+                magicCode
+              );
+              setSource(`${finalBaseUrl}=${magicCode}`);
+            }
           }
         })
         .catch((err) => console.log('getWebViewLink err', { err }))

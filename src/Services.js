@@ -29,7 +29,7 @@ export const getWebViewLink = (
   return axios
     .post(`${baseUrl}/partners/v2/generate-magic-link-star-health`, data)
     .then((res) => {
-      console.log('getWebViewLink err', { res });
+      console.log('getWebViewLink res', { res });
       return res;
     })
     .catch((err) => {
