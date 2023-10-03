@@ -23,6 +23,9 @@ const {
   addListener,
 } = LocationEnabler;
 
+const STAGE_BASE_URL = 'https://star-health.getvisitapp.xyz/?mluib7c';
+const PROD_BASE_URL = 'https://star-health.getvisitapp.com/?mluib7c';
+
 const VisitRnSdkView = ({
   baseUrl,
   errorBaseUrl,
@@ -77,19 +80,30 @@ const VisitRnSdkView = ({
             })
             .then((response) => {
               let data = response.data;
-              let visitMagicLink = data.result;
+              // let visitMagicLink = data.result; //@Deprecated. Superseded by magic code usage.
               let errorMessage = data.errorMessage;
+              let magicCode = data.magicCode;
+
+              let finalBaseUrl = '';
+
+              if (environment.toUpperCase() === 'PROD') {
+                finalBaseUrl = PROD_BASE_URL;
+              } else {
+                finalBaseUrl = STAGE_BASE_URL;
+              }
+
+              let finalUrl = `${finalBaseUrl}=${magicCode}`;
 
               if (data.message === 'success') {
                 if ((moduleName?.trim()?.length || 0) > 0) {
-                  visitMagicLink += `&tab=${moduleName}`;
+                  finalUrl += `&tab=${moduleName}`;
                 }
 
                 if (isLoggingEnabled) {
-                  console.log('magicLink: ' + visitMagicLink);
+                  console.log('magicLink: ' + finalUrl);
                 }
 
-                setSource(visitMagicLink);
+                setSource(finalUrl);
               } else {
                 var errorUrl = `${errorBaseUrl}/star-health?error=${errorMessage}`;
                 setSource(errorUrl);
