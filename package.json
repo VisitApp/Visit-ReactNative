@@ -166,6 +166,6 @@
     "react-native-device-info": "^10.9.0",
     "react-native-event-listeners": "^1.0.7",
     "react-native-location-enabler": "https://github.com/sashko9807/react-native-location-enabler",
-    "react-native-webview": "^13.6.0"
+    "react-native-webview": "^12.4.0"
   }
 }
