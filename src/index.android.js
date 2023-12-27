@@ -128,12 +128,28 @@ const VisitRnSdkView = ({
               }
             })
             .catch((error) => {
+              var errorUrl = `${errorBaseUrl}/star-health?error=${error}`;
+              setSource(errorUrl);
+
+              EventRegister.emitEvent('visit-event', {
+                message: 'generate magic link failed',
+                errorMessage: error,
+              });
+
               if (isLoggingEnabled) {
                 console.log('error: ' + error);
               }
             });
         })
         .catch((err) => {
+          var errorUrl = `${errorBaseUrl}/star-health?error=${err}`;
+          setSource(errorUrl);
+
+          EventRegister.emitEvent('visit-event', {
+            message: 'getDeviceInfo failed',
+            errorMessage: err,
+          });
+
           if (isLoggingEnabled) {
             console.log('getDeviceInfo err', err);
           }
