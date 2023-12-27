@@ -1918,9 +1918,9 @@ available-typed-arrays@^1.0.5:
   integrity sha512-DMD0KiN46eipeziST1LPP/STfDU0sufISXmjSgvVsoU2tqxctQeASejWcfNtxYKqETM1UxQ8sp2OrSBWpHY6sw==
 
 axios@^1.5.0:
-  version "1.5.1"
-  resolved "https://registry.yarnpkg.com/axios/-/axios-1.5.1.tgz#11fbaa11fc35f431193a9564109c88c1f27b585f"
-  integrity sha512-Q28iYCWzNHjAm+yEAot5QaAMxhMghWLFVf7rRdwhUI+c2jix2DUXjAHXVi+s1ibs3mjPO/cCgbA++3BjD0vP/A==
+  version "1.6.3"
+  resolved "https://registry.yarnpkg.com/axios/-/axios-1.6.3.tgz#7f50f23b3aa246eff43c54834272346c396613f4"
+  integrity sha512-fWyNdeawGam70jXSVlKl+SUNVcL6j6W79CuSIPfi6HnDUmSCH6gyUys/HrqHeA/wU0Az41rRgean494d0Jb+ww==
   dependencies:
     follow-redirects "^1.15.0"
     form-data "^4.0.0"
@@ -4744,7 +4744,7 @@ react-native-event-listeners@^1.0.7:
 
 "react-native-visit-rn-sdk@https://github.com/VisitApp/Visit-ReactNative#master":
   version "0.1.0"
-  resolved "https://github.com/VisitApp/Visit-ReactNative#2cd3f9fe0714146a7ad827b7e5671b740c743d77"
+  resolved "https://github.com/VisitApp/Visit-ReactNative#ff6ae4f52dfc6e510c4ed257d815417dd7b8b385"
   dependencies:
     axios "^1.5.0"
     moment "^2.29.4"

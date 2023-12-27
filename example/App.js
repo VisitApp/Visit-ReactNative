@@ -43,6 +43,12 @@ function App() {
     const listener = EventRegister.addEventListener(visitEvent, data => {
       if (data.message === 'unauthorized-wellness-access') {
         Alert.alert('Error', data.errorMessage);
+      } else if (data.message === 'generate-magic-link-failed') {
+        console.log('magic link failed');
+        //add analytics event to track for whom this is happening.
+      } else if (data.message === 'getDeviceInfo-failed') {
+        console.log('device Info library failed');
+        //add analytics event to track for whom this is happening.
       }
     });
     return () => {
