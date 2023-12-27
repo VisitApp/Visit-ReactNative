@@ -4744,7 +4744,7 @@ react-native-event-listeners@^1.0.7:
 
 "react-native-visit-rn-sdk@https://github.com/VisitApp/Visit-ReactNative#master":
   version "0.1.0"
-  resolved "https://github.com/VisitApp/Visit-ReactNative#ff6ae4f52dfc6e510c4ed257d815417dd7b8b385"
+  resolved "https://github.com/VisitApp/Visit-ReactNative#346e5bd1d42048a9ac7ff98b7ac79eab55cadf52"
   dependencies:
     axios "^1.5.0"
     moment "^2.29.4"

@@ -133,7 +133,7 @@ const VisitRnSdkView = ({
 
               EventRegister.emitEvent('visit-event', {
                 message: 'generate-magic-link-failed',
-                errorMessage: error,
+                errorMessage: `${error}`,
               });
 
               if (isLoggingEnabled) {
@@ -147,7 +147,7 @@ const VisitRnSdkView = ({
 
           EventRegister.emitEvent('visit-event', {
             message: 'getDeviceInfo-failed',
-            errorMessage: err,
+            errorMessage: `${err}`,
           });
 
           if (isLoggingEnabled) {
