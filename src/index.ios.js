@@ -99,7 +99,7 @@ const VisitRnSdkView = ({
                 errorMessage: errorMessage,
               });
             }
-          } else {
+          } else if (res.data.message === 'success') {
             const magicCode = res.data?.magicCode;
             let finalBaseUrl = '';
             if (magicCode) {
@@ -112,9 +112,20 @@ const VisitRnSdkView = ({
             if (finalBaseUrl && magicCode) {
               setSource(`${finalBaseUrl}=${magicCode}`);
             }
+          } else {
+            EventRegister.emitEvent('visit-event', {
+              message: 'generate-magic-link-failed',
+              errorMessage: `${res.data}`,
+            });
           }
         })
-        .catch((err) => console.log('getWebViewLink err', { err }))
+        .catch((err) => {
+          console.log('getWebViewLink err', { err })
+          EventRegister.emitEvent('visit-event', {
+            message: 'generate-magic-link-failed',
+            errorMessage: `${err}`,
+          });
+        })
         .finally(() => {
           setLoading(false);
         });
@@ -136,13 +147,13 @@ const VisitRnSdkView = ({
       NativeModules.VisitRnSdkViewManager
         ? NativeModules.VisitRnSdkViewManager
         : new Proxy(
-            {},
-            {
-              get() {
-                throw new Error(LINKING_ERROR);
-              },
-            }
-          ),
+          {},
+          {
+            get() {
+              throw new Error(LINKING_ERROR);
+            },
+          }
+        ),
     []
   );
 
