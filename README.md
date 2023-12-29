@@ -11,11 +11,11 @@ npm install react-native-visit-rn-sdk
 ## Usage
 
 ```js
-import { VisitRnSdkView } from "react-native-visit-rn-sdk";
+import VisitRnSdkView from "react-native-visit-rn-sdk";
 
 // ...
 
-<VisitRnSdkView color="tomato" />
+<VisitRnSdkView magicLink="magic-link" />
 ```
 
 ## Contributing

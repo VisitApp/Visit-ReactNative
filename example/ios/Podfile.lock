@@ -285,7 +285,7 @@ PODS:
   - react-native-visit-rn-sdk (0.1.0):
     - RCT-Folly (= 2021.07.22.00)
     - React-Core
-  - react-native-webview (13.6.0):
+  - react-native-webview (12.4.0):
     - React-Core
   - React-NativeModulesApple (0.72.4):
     - React-callinvoker
@@ -553,7 +553,7 @@ SPEC CHECKSUMS:
   React-jsinspector: aaed4cf551c4a1c98092436518c2d267b13a673f
   React-logger: da1ebe05ae06eb6db4b162202faeafac4b435e77
   react-native-visit-rn-sdk: 1b9375f57e5468683f0eb6e24563315fa84fd030
-  react-native-webview: 669ae162965f629a8d6a4bdd3b99a304d36ef1f2
+  react-native-webview: 65f1143983cfeaedf02fd25b2621d3f4a37075de
   React-NativeModulesApple: 759309419da76ef4c9f331968b840022ee2aa5b1
   React-perflogger: 496a1a3dc6737f964107cb3ddae7f9e265ddda58
   React-RCTActionSheet: 02904b932b50e680f4e26e7a686b33ebf7ef3c00

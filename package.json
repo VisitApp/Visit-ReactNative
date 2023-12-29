@@ -43,13 +43,16 @@
     "ios",
     "android"
   ],
-  "repository": "https://github.com/yash-vardhan-mishra/react-native-visit-rn-sdk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VisitApp/Visit-ReactNative.git"
+  },
   "author": "Yash <yash-vardhan@hotmail.com> (https://github.com/yash-vardhan-mishra)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/yash-vardhan-mishra/react-native-visit-rn-sdk/issues"
+    "url": "https://github.com/VisitApp/Visit-ReactNative/issues"
   },
-  "homepage": "https://github.com/yash-vardhan-mishra/react-native-visit-rn-sdk#readme",
+  "homepage": "https://github.com/VisitApp/Visit-ReactNative",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
@@ -165,7 +168,10 @@
     "moment": "^2.29.4",
     "react-native-device-info": "^10.9.0",
     "react-native-event-listeners": "^1.0.7",
-    "react-native-location-enabler": "https://github.com/sashko9807/react-native-location-enabler",
+    "react-native-location-enabler": "git+https://github.com/sashko9807/react-native-location-enabler.git",
     "react-native-webview": "^12.4.0"
+  },
+  "directories": {
+    "example": "example"
   }
 }
