@@ -49,6 +49,9 @@ function App() {
       } else if (data.message === 'getDeviceInfo-failed') {
         console.log('device Info library failed', data);
         //add analytics event to track for whom this is happening.
+      } else if (data.message === 'web-view-error') {
+        console.log('web-view-error', data.errorMessage);
+        //when webview throws error.
       }
     });
     return () => {
@@ -65,15 +68,15 @@ function App() {
       /> */}
 
       <VisitRnSdkView
-        baseUrl={visitBaseUrl}
-        errorBaseUrl={'https://star-health.getvisitapp.xyz/'}
-        token={token}
-        id={id}
-        phone={phone}
-        // moduleName={null}
-        environment={'dev'}
-        isLoggingEnabled={true}
-        // magicLink={magicLink}
+        // baseUrl={visitBaseUrl}
+        // errorBaseUrl={'https://star-health.getvisitapp.xyz/'}
+        // token={token}
+        // id={id}
+        // phone={phone}
+        // // moduleName={null}
+        // environment={'dev'}
+        // isLoggingEnabled={true}
+        magicLink={magicLink}
       />
     </SafeAreaView>
   );
