@@ -1,6 +1,6 @@
 {
   "name": "react-native-visit-rn-sdk",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "a package to inject data into visit health pwa",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",

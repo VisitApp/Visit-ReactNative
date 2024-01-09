@@ -294,7 +294,6 @@ const VisitRnSdkView = ({
   };
 
   const { height, width } = Dimensions.get('screen');
-  console.log('source in webview is', source);
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'white', height, width }}>
       {loading ? (
