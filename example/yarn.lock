@@ -4762,7 +4762,7 @@ react-native-event-listeners@^1.0.7:
   version "4.1.1"
   resolved "https://github.com/sashko9807/react-native-location-enabler#e18d7895e7f8aa807e5f9324316204c7ee66baec"
 
-react-native-visit-rn-sdk@^0.3.5:
+react-native-visit-rn-sdk@^0.3.6:
   version "0.3.6"
   resolved "https://registry.yarnpkg.com/react-native-visit-rn-sdk/-/react-native-visit-rn-sdk-0.3.6.tgz#7d094fe17a7e9784b4119abf9e6a248d564c1fae"
   integrity sha512-kDh8qQNyH5tp1z/K9q/eL0vD9Mq6wxrgYK9asYWGVdqYqdtc5QzasctuNs2leeeXSXo24LWQSSk4xe5Gs86vyQ==
