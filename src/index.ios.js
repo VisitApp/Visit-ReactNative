@@ -110,7 +110,11 @@ const VisitRnSdkView = ({
               }
             }
             if (finalBaseUrl && magicCode) {
-              setSource(`${finalBaseUrl}=${magicCode}`);
+              let finalUrl = `${finalBaseUrl}=${magicCode}`;
+              if (moduleName?.trim()) {
+                finalUrl += `&tab=${moduleName}`;
+              }
+              setSource(finalUrl);
             }
           } else {
             EventRegister.emitEvent('visit-event', {
@@ -120,7 +124,7 @@ const VisitRnSdkView = ({
           }
         })
         .catch((err) => {
-          console.log('getWebViewLink err', { err })
+          console.log('getWebViewLink err', { err });
           EventRegister.emitEvent('visit-event', {
             message: 'generate-magic-link-failed',
             errorMessage: `${err}`,
@@ -147,13 +151,13 @@ const VisitRnSdkView = ({
       NativeModules.VisitRnSdkViewManager
         ? NativeModules.VisitRnSdkViewManager
         : new Proxy(
-          {},
-          {
-            get() {
-              throw new Error(LINKING_ERROR);
-            },
-          }
-        ),
+            {},
+            {
+              get() {
+                throw new Error(LINKING_ERROR);
+              },
+            }
+          ),
     []
   );
 
@@ -290,7 +294,7 @@ const VisitRnSdkView = ({
   };
 
   const { height, width } = Dimensions.get('screen');
-
+  console.log('source in webview is', source);
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'white', height, width }}>
       {loading ? (
