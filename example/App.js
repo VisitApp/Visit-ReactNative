@@ -34,7 +34,7 @@ const token =
 const id = '14368';
 
 const phone = '9080476159';
-const moduleName = 'pharmacy';
+const moduleName = 'hra';
 
 const visitEvent = 'visit-event';
 
@@ -76,9 +76,9 @@ function App() {
         moduleName={moduleName}
         environment={'qa'}
         isLoggingEnabled={true}
-        // magicLink={
-        //   'https://digit-visit.getvisitapp.xyz/sso?userParams=rZO06fTBddwYlizYcahUHtU6RdAuHD6hcPoxKlDaj_B05A0ryYs7Mon_P_yX7nFKjeud5mN9T_IlE_ch8Cbgye8y-_z6RtIUWgiB87HweKGPLFSywSuzkO077oa1srKJ3ENWlkVuysvvOgplM7MNNO6RuNHWjIpxmDDxV8bsFMCNBynwEEKQEKi3QyjE5bpYYicqd8JRCozN9Cn-o2iY1gPzwwC86_OR0ckCukoZP9_S7_Pt41mrH8IzVsjX6JAHsModhAEaZesQfS4wc2uq0omEREyQ2V4PG77dNFCWkd4=&clientId=digit-777'
-        // }
+        magicLink={
+          'https://star-health.getvisitapp.xyz/?mluib7c=XNES26N9&tab=book-lab'
+        }
       />
     </SafeAreaView>
   );

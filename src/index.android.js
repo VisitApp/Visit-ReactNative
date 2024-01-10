@@ -7,6 +7,7 @@ import {
   PermissionsAndroid,
   BackHandler,
   Linking,
+  Alert,
 } from 'react-native';
 
 import WebView from 'react-native-webview';
@@ -202,6 +203,53 @@ const VisitRnSdkView = ({
     }
   };
 
+  const requestCameraAndLocationPermission = async () => {
+    console.log('requestCameraPermission called');
+
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.CAMERA,
+        {
+          title: 'Need Camera Permission',
+          message: 'Need access to camera permission',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'OK',
+        }
+      );
+
+      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+        console.log('Camera Permission granted');
+        requestLocationPermission();
+      } else {
+        Alert.alert(
+          'Disclaimer',
+          'Please provide the camera permission from settings to avail this feature',
+          [
+            {
+              text: 'Cancel',
+              onPress: () => {},
+              style: 'cancel',
+            },
+            {
+              text: 'Go To Settings',
+              onPress: () => openSettings(),
+            },
+          ],
+          {
+            cancelable: true,
+          }
+        );
+
+        if (isLoggingEnabled) {
+          console.log('Camera permission denied');
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const requestLocationPermission = async () => {
     try {
       const granted = await PermissionsAndroid.request(
@@ -226,11 +274,36 @@ const VisitRnSdkView = ({
           webviewRef.current?.injectJavaScript(finalString);
         }
       } else {
-        console.log('Location permission denied');
+        Alert.alert(
+          'Disclaimer',
+          'Please provide the require permission from settings to avail this feature',
+          [
+            {
+              text: 'Cancel',
+              onPress: () => {},
+              style: 'cancel',
+            },
+            {
+              text: 'Go To Settings',
+              onPress: () => openSettings(),
+            },
+          ],
+          {
+            cancelable: true,
+          }
+        );
+        if (isLoggingEnabled) {
+          console.log('Location permission denied');
+        }
       }
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const openSettings = () => {
+    // Linking.sendIntent("android.settings.LOCATION_SOURCE_SETTINGS")
+    Linking.openSettings();
   };
 
   const askForGoogleFitPermission = async () => {
@@ -361,7 +434,8 @@ const VisitRnSdkView = ({
               break;
             case 'GET_LOCATION_PERMISSIONS':
               {
-                requestLocationPermission();
+                requestCameraAndLocationPermission();
+                // requestLocationPermission();
               }
               break;
             case 'OPEN_PDF':
@@ -372,6 +446,10 @@ const VisitRnSdkView = ({
                 Linking.openURL(pdfUrl);
               }
               break;
+
+            case 'GET_CAMERA_AND_LOCATION_PERMISSION': {
+              requestCameraAndLocationPermission();
+            }
             case 'CLOSE_VIEW':
               {
               }
@@ -398,6 +476,8 @@ const VisitRnSdkView = ({
   }, [canGoBack]);
 
   useEffect(() => {
+    console.log('useEffect called');
+
     const gpsListener = addListener(({ locationEnabled }) => {
       if (locationEnabled) {
         var finalString = `window.checkTheGpsPermission(true)`;
@@ -405,6 +485,8 @@ const VisitRnSdkView = ({
         console.log('listener: ' + finalString);
 
         webviewRef.current?.injectJavaScript(finalString);
+      } else {
+        //can't add the else case, because the location enabler don't not return any event if the user trigger cancel.
       }
     });
 
