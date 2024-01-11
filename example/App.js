@@ -73,7 +73,7 @@ function App() {
         token={token}
         id={id}
         phone={phone}
-        moduleName={moduleName}
+        // moduleName={moduleName}
         environment={'qa'}
         isLoggingEnabled={true}
         magicLink={

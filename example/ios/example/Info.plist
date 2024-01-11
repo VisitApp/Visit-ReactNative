@@ -24,6 +24,10 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Visit requires access to your camera for video consultations and to upload prescriptions</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Visit requires your location in order to personalize your services, show doctors near you and curated products available for you.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Visit requires your permission to read health and fitness data.</string>
 	<key>NSHealthUpdateUsageDescription</key>
