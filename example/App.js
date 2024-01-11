@@ -77,7 +77,7 @@ function App() {
         environment={'qa'}
         isLoggingEnabled={true}
         magicLink={
-          'https://star-health.getvisitapp.xyz/?mluib7c=XNES26N9&tab=book-lab'
+          'https://star-health.getvisitapp.xyz/?mluib7c=XNES26N9&tab=scan-pay'
         }
       />
     </SafeAreaView>

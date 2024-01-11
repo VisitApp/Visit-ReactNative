@@ -434,8 +434,8 @@ const VisitRnSdkView = ({
               break;
             case 'GET_LOCATION_PERMISSIONS':
               {
-                requestCameraAndLocationPermission();
-                // requestLocationPermission();
+                console.log('GET_LOCATION_PERMISSIONS');
+                requestLocationPermission();
               }
               break;
             case 'OPEN_PDF':
@@ -448,6 +448,7 @@ const VisitRnSdkView = ({
               break;
 
             case 'GET_CAMERA_AND_LOCATION_PERMISSION': {
+              console.log('GET_CAMERA_AND_LOCATION_PERMISSION');
               requestCameraAndLocationPermission();
             }
             case 'CLOSE_VIEW':
@@ -480,11 +481,26 @@ const VisitRnSdkView = ({
 
     const gpsListener = addListener(({ locationEnabled }) => {
       if (locationEnabled) {
-        var finalString = `window.checkTheGpsPermission(true)`;
+        const permissionAndroid = async () => {
+          const result = await PermissionsAndroid.check(
+            'android.permission.CAMERA'
+          );
 
-        console.log('listener: ' + finalString);
+          if (result) {
+            var finalString = `window.checkTheGpsPermission(true)`;
+            console.log('gpsListener: locationEnabled:' + finalString);
+            webviewRef.current?.injectJavaScript(finalString);
+          }
 
-        webviewRef.current?.injectJavaScript(finalString);
+          console.log(
+            'location Permission: ' +
+              result +
+              ' gpsPermission: ' +
+              locationEnabled
+          );
+        };
+
+        permissionAndroid();
       } else {
         //can't add the else case, because the location enabler don't not return any event if the user trigger cancel.
       }
