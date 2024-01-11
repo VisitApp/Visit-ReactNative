@@ -21,6 +21,11 @@ import { WebView } from 'react-native-webview';
 import DeviceInfo from 'react-native-device-info';
 import { getWebViewLink } from './Services';
 import constants from './constants';
+import {
+  PERMISSIONS,
+  RESULTS,
+  requestMultiple,
+} from 'react-native-permissions';
 
 const LINKING_ERROR =
   `The package 'react-native-visit-rn-sdk' doesn't seem to be linked. Make sure: \n\n` +
@@ -210,6 +215,27 @@ const VisitRnSdkView = ({
     };
   }, [VisitRnSdkViewManager, callEmbellishApi, callSyncApi]);
 
+  const requestCameraAndLocationPermission = () => {
+    requestMultiple([
+      PERMISSIONS.IOS.CAMERA,
+      PERMISSIONS.IOS.LOCATION_WHEN_IN_USE,
+    ])
+      .then((statuses) => {
+        const permissionsGranted = [];
+        Object.keys(statuses).forEach((key) => {
+          if (statuses[key] === RESULTS.GRANTED) {
+            permissionsGranted.push(key);
+          }
+        });
+        if (Object.keys(statuses).length === permissionsGranted.length) {
+        }
+        console.log('permissionsGranted are', permissionsGranted);
+      })
+      .catch((err) =>
+        console.log('err in camera and location permission', { err })
+      );
+  };
+
   const handleMessage = async (event) => {
     const data = JSON.parse(unescapeHTML(event.nativeEvent.data));
     const {
@@ -226,6 +252,11 @@ const VisitRnSdkView = ({
     console.log('handleMessage data is', data);
     console.log(unescapeHTML(event.nativeEvent.data));
     switch (method) {
+      case 'GET_CAMERA_AND_LOCATION_PERMISSION': {
+        requestCameraAndLocationPermission();
+        break;
+      }
+
       case 'UPDATE_PLATFORM':
         webviewRef.current?.injectJavaScript('window.setSdkPlatform("IOS")');
         break;
