@@ -15,6 +15,8 @@ import {
   Platform,
   ActivityIndicator,
   Dimensions,
+  Alert,
+  AppState,
 } from 'react-native';
 import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
@@ -25,6 +27,7 @@ import {
   PERMISSIONS,
   RESULTS,
   requestMultiple,
+  request,
 } from 'react-native-permissions';
 
 const LINKING_ERROR =
@@ -70,6 +73,13 @@ const VisitRnSdkView = ({
   magicLink,
   isLoggingEnabled,
 }) => {
+  const appState = useRef(AppState.currentState);
+  const [
+    cameraAndLocationPermissionRequested,
+    setCameraAndLocationPermissionRequested,
+  ] = useState(false);
+  const [locationPermissionRequested, setLocationPermissionRequested] =
+    useState(false);
   const [source, setSource] = useState('');
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -198,6 +208,25 @@ const VisitRnSdkView = ({
   );
 
   useEffect(() => {
+    const _handleAppStateChange = (nextAppState) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        if (cameraAndLocationPermissionRequested) {
+          requestCameraAndLocationPermission();
+        }
+        if (locationPermissionRequested) {
+          requestLocationPermission();
+        }
+      }
+      appState.current = nextAppState;
+    };
+
+    const appStateListener = AppState.addEventListener(
+      'change',
+      _handleAppStateChange
+    );
     const apiManagerEmitter = new NativeEventEmitter(VisitRnSdkViewManager);
     const subscription = apiManagerEmitter.addListener(
       'EventReminder',
@@ -212,10 +241,61 @@ const VisitRnSdkView = ({
     );
     return () => {
       subscription.remove();
+      if (appStateListener) {
+        appStateListener.remove();
+      }
     };
-  }, [VisitRnSdkViewManager, callEmbellishApi, callSyncApi]);
+  }, [
+    VisitRnSdkViewManager,
+    callEmbellishApi,
+    callSyncApi,
+    cameraAndLocationPermissionRequested,
+    locationPermissionRequested,
+    requestCameraAndLocationPermission,
+    requestLocationPermission,
+  ]);
 
-  const requestCameraAndLocationPermission = () => {
+  const requestLocationPermission = useCallback(() => {
+    setLocationPermissionRequested(true);
+    request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE)
+      .then((res) => {
+        if (res === RESULTS.GRANTED) {
+          setLocationPermissionRequested(false);
+          webviewRef.current?.injectJavaScript(
+            'window.checkTheGpsPermission(true)'
+          );
+        } else {
+          showSettingsAlert();
+        }
+      })
+      .catch((err) => console.log('requestLocationPermission says', err));
+  }, [showSettingsAlert]);
+
+  const showSettingsAlert = useCallback(() => {
+    Alert.alert(
+      'Disclaimer',
+      'Please provide the require permission from settings to avail this feature',
+      [
+        {
+          text: 'Cancel',
+          onPress: () => {
+            clearPermissionRequests();
+          },
+          style: 'cancel',
+        },
+        {
+          text: 'Go To Settings',
+          onPress: () => Linking.openSettings(),
+        },
+      ],
+      {
+        cancelable: true,
+      }
+    );
+  }, [clearPermissionRequests]);
+
+  const requestCameraAndLocationPermission = useCallback(() => {
+    setCameraAndLocationPermissionRequested(true);
     requestMultiple([
       PERMISSIONS.IOS.CAMERA,
       PERMISSIONS.IOS.LOCATION_WHEN_IN_USE,
@@ -228,15 +308,30 @@ const VisitRnSdkView = ({
           }
         });
         if (Object.keys(statuses).length === permissionsGranted.length) {
+          setCameraAndLocationPermissionRequested(false);
+          webviewRef.current?.injectJavaScript(
+            'window.checkTheGpsPermission(true)'
+          );
+        } else {
+          showSettingsAlert();
         }
-        console.log('permissionsGranted are', permissionsGranted);
       })
       .catch((err) =>
         console.log('err in camera and location permission', { err })
       );
-  };
+  }, [showSettingsAlert]);
+
+  const clearPermissionRequests = useCallback(() => {
+    if (cameraAndLocationPermissionRequested) {
+      setCameraAndLocationPermissionRequested(false);
+    }
+    if (locationPermissionRequested) {
+      setLocationPermissionRequested(false);
+    }
+  }, [cameraAndLocationPermissionRequested, locationPermissionRequested]);
 
   const handleMessage = async (event) => {
+    clearPermissionRequests();
     const data = JSON.parse(unescapeHTML(event.nativeEvent.data));
     const {
       method,
@@ -249,8 +344,8 @@ const VisitRnSdkView = ({
       gfHourlyLastSync,
       url,
     } = data;
-    console.log('handleMessage data is', data);
-    console.log(unescapeHTML(event.nativeEvent.data));
+    // console.log('handleMessage data is', data);
+    // console.log(unescapeHTML(event.nativeEvent.data));
     switch (method) {
       case 'GET_CAMERA_AND_LOCATION_PERMISSION': {
         requestCameraAndLocationPermission();
@@ -314,9 +409,7 @@ const VisitRnSdkView = ({
       case 'CLOSE_VIEW':
         break;
       case 'GET_LOCATION_PERMISSIONS':
-        webviewRef.current?.injectJavaScript(
-          'window.checkTheGpsPermission(true)'
-        );
+        requestLocationPermission();
         break;
 
       default:
