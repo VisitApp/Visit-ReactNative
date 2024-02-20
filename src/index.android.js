@@ -49,7 +49,17 @@ const VisitRnSdkView = ({
 
           if (isLoggingEnabled) {
             console.log(
-              'buildNumber:' +
+              'baseUrl: ' +
+                baseUrl +
+                'token: ' +
+                token +
+                ' id: ' +
+                id +
+                ' phone: ' +
+                phone +
+                ' environment: ' +
+                environment +
+                'buildNumber:' +
                 buildNumber +
                 ' systemVersion:' +
                 systemVersion +
