@@ -19,6 +19,10 @@ import axios from 'axios';
 
 import constants from './constants';
 
+export const httpClient = axios.create({
+  timeout: 60000,
+});
+
 const {
   PRIORITIES: { HIGH_ACCURACY },
   useLocationSettings,
@@ -49,7 +53,7 @@ const VisitRnSdkView = ({
 
           if (isLoggingEnabled) {
             console.log(
-              'baseUrl: ' +
+              ' : ' +
                 baseUrl +
                 'token: ' +
                 token +
@@ -76,7 +80,7 @@ const VisitRnSdkView = ({
             console.log('finalEndPoint: ' + finalEndPoint);
           }
 
-          axios
+          httpClient
             .post(finalEndPoint, {
               token: token,
               phone: phone,
