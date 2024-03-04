@@ -1,4 +1,3 @@
-import axios from 'axios';
 import React, {
   useRef,
   useEffect,
@@ -19,7 +18,7 @@ import {
 import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
 import DeviceInfo from 'react-native-device-info';
-import { getWebViewLink } from './Services';
+import { getWebViewLink, httpClient } from './Services';
 import constants from './constants';
 
 const LINKING_ERROR =
@@ -168,7 +167,7 @@ const VisitRnSdkView = ({
 
   const callSyncApi = useCallback(
     (data) =>
-      axios
+    httpClient
         .post(`${apiBaseUrl}/users/data-sync`, data, {
           headers: {
             Authorization: authToken,
@@ -181,7 +180,7 @@ const VisitRnSdkView = ({
 
   const callEmbellishApi = useCallback(
     (data) =>
-      axios
+    httpClient
         .post(`${apiBaseUrl}/users/embellish-sync`, data, {
           headers: {
             Authorization: authToken,
