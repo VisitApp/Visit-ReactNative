@@ -30,11 +30,10 @@ const {
 } = LocationEnabler;
 
 const VisitRnSdkView = ({
+  cpsid,
   baseUrl,
   errorBaseUrl,
   token,
-  id,
-  phone,
   moduleName,
   environment,
   magicLink,
@@ -53,14 +52,12 @@ const VisitRnSdkView = ({
 
           if (isLoggingEnabled) {
             console.log(
-              ' : ' +
+              ' baseUrl : ' +
                 baseUrl +
                 'token: ' +
                 token +
-                ' id: ' +
-                id +
-                ' phone: ' +
-                phone +
+                ' cpsid: ' +
+                cpsid +
                 ' environment: ' +
                 environment +
                 'buildNumber:' +
@@ -83,8 +80,6 @@ const VisitRnSdkView = ({
           httpClient
             .post(finalEndPoint, {
               token: token,
-              phone: phone,
-              sId: id,
               srcClientId: 'Android',
               deviceId: deviceId,
               appVersion: version,
@@ -170,11 +165,10 @@ const VisitRnSdkView = ({
         });
     }
   }, [
-    id,
+    cpsid,
     token,
     baseUrl,
     errorBaseUrl,
-    phone,
     moduleName,
     environment,
     magicLink,
@@ -490,11 +484,10 @@ export const fetchHourlyFitnessData = (startTimeStamp, isLoggingEnabled) => {
 export default VisitRnSdkView;
 
 VisitRnSdkView.defaultProps = {
-  id: '',
+  cpsid: '',
   token: '',
   baseUrl: '',
   errorBaseUrl: '',
-  phone: '',
   moduleName: '',
   environment: '',
   magicLink: '',

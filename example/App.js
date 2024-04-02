@@ -71,8 +71,7 @@ function App() {
         baseUrl={visitBaseUrl}
         errorBaseUrl={'https://star-health.getvisitapp.xyz/'}
         token={token}
-        id={id}
-        phone={phone}
+        cpsid={'123'}
         moduleName={moduleName}
         environment={'qa'}
         isLoggingEnabled={true}
