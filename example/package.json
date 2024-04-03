@@ -14,6 +14,7 @@
     "react-native": "0.72.4",
     "react-native-device-info": "^10.9.0",
     "react-native-location-enabler": "https://github.com/sashko9807/react-native-location-enabler",
+    "react-native-visit-rn-sdk": "github:VisitApp/Visit-ReactNative#f-add-cpsid",
     "react-native-webview": "12.4.0"
   },
   "devDependencies": {
