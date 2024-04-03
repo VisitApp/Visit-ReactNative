@@ -71,7 +71,7 @@ const VisitRnSdkView = ({
             );
           }
 
-          var finalEndPoint = `${baseUrl}/partners/v2/generate-magic-link-star-health`;
+          var finalEndPoint = `${baseUrl}/partners/v3/generate-magic-link-star-health`;
 
           if (isLoggingEnabled) {
             console.log('finalEndPoint: ' + finalEndPoint);
@@ -79,6 +79,7 @@ const VisitRnSdkView = ({
 
           httpClient
             .post(finalEndPoint, {
+              cpsid: cpsid,
               token: token,
               srcClientId: 'Android',
               deviceId: deviceId,
