@@ -7,8 +7,7 @@ export const httpClient = axios.create({
 export const getWebViewLink = (
   baseUrl,
   token,
-  phone,
-  sId,
+  cpsid,
   srcClientId,
   deviceId,
   appVersion,
@@ -16,9 +15,8 @@ export const getWebViewLink = (
   userEnv
 ) => {
   const data = {
+    cpsid,
     token,
-    phone,
-    sId,
     srcClientId,
     deviceId,
     appVersion,
