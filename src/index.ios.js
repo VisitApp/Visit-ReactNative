@@ -54,13 +54,12 @@ const unescapeHTML = (str) =>
 const visitEvent = 'visit-event';
 
 const VisitRnSdkView = ({
+  cpsid,
   baseUrl,
   errorBaseUrl,
   token,
-  id,
-  phone,
-  environment,
   moduleName,
+  environment,
   magicLink,
   isLoggingEnabled,
 }) => {
@@ -78,8 +77,7 @@ const VisitRnSdkView = ({
           getWebViewLink(
             baseUrl,
             token,
-            phone,
-            id,
+            cpsid,
             'iPhone',
             uniqueId,
             version,
@@ -134,13 +132,12 @@ const VisitRnSdkView = ({
         });
     }
   }, [
-    id,
+    cpsid,
     token,
     baseUrl,
     errorBaseUrl,
-    phone,
-    environment,
     moduleName,
+    environment,
     magicLink,
     isLoggingEnabled,
   ]);
@@ -334,7 +331,6 @@ VisitRnSdkView.defaultProps = {
   token: '',
   baseUrl: '',
   errorBaseUrl: '',
-  phone: '',
   moduleName: '',
 };
 

@@ -30,11 +30,10 @@ const {
 } = LocationEnabler;
 
 const VisitRnSdkView = ({
+  cpsid,
   baseUrl,
   errorBaseUrl,
   token,
-  id,
-  phone,
   moduleName,
   environment,
   magicLink,
@@ -53,14 +52,12 @@ const VisitRnSdkView = ({
 
           if (isLoggingEnabled) {
             console.log(
-              ' : ' +
+              ' baseUrl : ' +
                 baseUrl +
                 'token: ' +
                 token +
-                ' id: ' +
-                id +
-                ' phone: ' +
-                phone +
+                ' cpsid: ' +
+                cpsid +
                 ' environment: ' +
                 environment +
                 'buildNumber:' +
@@ -74,7 +71,7 @@ const VisitRnSdkView = ({
             );
           }
 
-          var finalEndPoint = `${baseUrl}/partners/v2/generate-magic-link-star-health`;
+          var finalEndPoint = `${baseUrl}/partners/v3/generate-magic-link-star-health`;
 
           if (isLoggingEnabled) {
             console.log('finalEndPoint: ' + finalEndPoint);
@@ -82,9 +79,8 @@ const VisitRnSdkView = ({
 
           httpClient
             .post(finalEndPoint, {
+              cpsid: cpsid,
               token: token,
-              phone: phone,
-              sId: id,
               srcClientId: 'Android',
               deviceId: deviceId,
               appVersion: version,
@@ -170,11 +166,10 @@ const VisitRnSdkView = ({
         });
     }
   }, [
-    id,
+    cpsid,
     token,
     baseUrl,
     errorBaseUrl,
-    phone,
     moduleName,
     environment,
     magicLink,
@@ -490,11 +485,10 @@ export const fetchHourlyFitnessData = (startTimeStamp, isLoggingEnabled) => {
 export default VisitRnSdkView;
 
 VisitRnSdkView.defaultProps = {
-  id: '',
+  cpsid: '',
   token: '',
   baseUrl: '',
   errorBaseUrl: '',
-  phone: '',
   moduleName: '',
   environment: '',
   magicLink: '',
