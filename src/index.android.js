@@ -117,14 +117,18 @@ const VisitRnSdkView = ({
                 var errorUrl = `${errorBaseUrl}/star-health?error=${errorMessage}`;
                 setSource(errorUrl);
 
-                if (
-                  errorMessage != null &&
-                  errorMessage === 'Please login again'
-                ) {
-                  EventRegister.emitEvent('visit-event', {
-                    message: 'unauthorized-wellness-access',
-                    errorMessage: errorMessage,
-                  });
+                if (errorMessage != null) {
+                  if (errorMessage === 'Please login again') {
+                    EventRegister.emitEvent('visit-event', {
+                      message: 'unauthorized-wellness-access',
+                      errorMessage: errorMessage,
+                    });
+                  } else if (errorMessage.includes('External Server Error')) {
+                    EventRegister.emitEvent('visit-event', {
+                      message: 'external-server-error',
+                      errorMessage: errorMessage,
+                    });
+                  }
                 }
 
                 if (isLoggingEnabled) {

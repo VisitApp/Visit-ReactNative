@@ -29,13 +29,12 @@ const visitBaseUrl = 'https://insurance-uat.getvisitapp.xyz/wonderwomen';
 const errorBaseUrl = 'https://api.samuraijack.xyz';
 
 const token =
-  '78ftP8oDeLCCdBp8QH5d/o7QvxeFBcBYT1nPtn/LgVQ3CW4R+xE5kSZJZvtNcfTwtOeD2aSoxjcjoJcaiSFY1CjyuH2qAHG9JX888hFKQXutxbumqxYaGZjK4nUg2Te6JxfNTlWjFk8/cPNI6JWJaypvOpMgLSpU6v53G5n/pwkUwIEZUst3utaVuF2deBpa9eNIT2CDadScgplcHI04gqqBEbkf1l7osI6qkNMJBE4vIxdCX6OjYMIpWo5YWBTUbATXb81SrkhmV6Kg5uKefjmaCh9Q3NRGUKC+3rM2qQgtv7RUnygqCLnuH93rhUOTb99rSCW7UNxpPo257oXxx/pN8P+xquP+2Y7z1esUjTezw+tQDoO/3EsTeZq7/B4V7aUOZgz3EYSDIXj+7nkJ3M3ONJJ2CyYWXr/YIuPl5xVWSui9i/IEmJDyiqOe9fToG/iU9oUsf9S/uYEMZB8koklSmTGX5XXaWYvZb4IpUMUYbsHS0yAyf8m8icd8zS594NDpj/N0+DBVY+YFjPViRXTC7pcAt3/83f8LYLxUQd+xSHAOG0cGsAXHh5qJKNAG1j7oTLKq13Rjxd8maX0RSjXrHgWmuIYuYGUWU7R2unB68z3cpjva71nZSEyuZi/sCDamtxoSf5TT1hA5tBWP5ywTwfHb+SUCBkG9t7cgjHP9WIneFZKU5/7XGeAE/PFEBr1HlXeUDdycFg3E4RqFZZvOXjprVeUaTgA23gcKjxtG1ewfCU/DIEKrmEcjVlHUz6ULNQ+pwKew8puYaZT34xelFYsavPLA+ycdrWKP8AsIHWRani7tKn3G1GAN3af6MUaSxo/JuZJ4AQbXCqZL6wtxa1xooLIumYokmqJW06r1bnpGlS/1d6MLaRKHElQKxVTBU++gB6WYeZVA3hq19Qv3nqxMFde3boPuMQOdTCFUOVvQgbMSKna4XI6bCZY1T5S9sY9XdP/EfhhRm5p64o8/785TcuqAT6QDekeF2y6HmkVPoagFQwlNoeJaQqcMTml5P1WN5jS7H49xxUu0pGkdMOnyBtNLmg7bflf0JJox39gOfmVVnWHTLx9KkR8BxgvkKwp3xdS97Dl9eALL0+oM0C9kuXQTrRQIuE6oi1PfGbj6vft78hbQqZQzdU0N7LwOVDrHIwXvfU+pPR3On7l71zlhGEx1kXLkZuy+lkwsieLB70kGYfWzKXW+MwMIUQ3ip/sQ8RvAtrVoSp0LUsIr6scl5su4sCeWeKiyHq7Bj2Lm0M4gy6luq8uXWc6S3Fqx1EUMSpylR6+qHfTsKw/DRcP25N/IWuQa1A4ggfc4sJp37EeXYjVSPbuNjgVGerRKZrutQnmwRU3OSYT6oY83DRANTOtfsFPaEE0a4G6anvnlnr8xlafbGVsna38y3x4+kcIKtLgQGJpvCQYcqWOK8fivO+KTJnZX1sfSQkQeDzKyAeucYZ2XxjdIz/Iaec1oD51W6/DOGR7/rC3C2TJ3VqKDoZ3Oig81UhFGgWOxxImkcIset0/HBSxLATLmkEirwCcJBtNe/bre9TEzK/efDS5zfcpO4Iu2f5B5yCaNoMkosDNARhYzJiUEIb0k+iwiCmsnOOis9a0BPw/J5U32/P1mleR3vqi4ULLpTvvDPRXgiMtaKFJgdQ4dBbJLlRe/S67tWVZISQ/PUWUG//V52yNch8766XeEnygaOuQ6WSrqDGDSMt06KB4SThXhIPUjMsnQAJEFKSf5MWzEqL5UkMIfXFfFFO0D1imNb0h2+zafoSyy5ls0uDCv4HLvsRdPgjFKBYGFAieYZosoIRzPEG1YYPGOJCBiDYgxrDsr64oXJeNdeNoevGMxDuAJVtMEsN5FDfR6pf36+Prs9+8uQtH+S3ome9Ui9zf9uMXn6rsAbe3QB6rJp5J+eapqXgObbnz0PaxhmRl7kCbtLAusQWaOx7bOnIMYl2rEmjg=';
+  '78ftP8oDeLCCdBp8QH5d/o7QvxeFBcBYT1nPtn/LgVQ3CW4R+xE5kSZJZvtNcfTwtOeD2aSoxjcjoJcaiSFY1CjyuH2qAHG9JX888hFKQXutxbumqxYaGZjK4nUg2Te6JxfNTlWjFk8/cPNI6JWJa7kKYYcV7xssd63oLvTP9sks42cU/XbCFeXMXHmyCtXC2vV2aOiVNAjZytzsBuHgWhP5LKzGwcCIvRzmoT1DSOgnow+Ccf1uvAvva4krj41JWLGNugqH097BW5jcbVlpCY3xMBKoPn3mWTIblFtZaujOIZY4a2qjjOYuDy2xrx1aLytiKnmTe18Af6Br9qxp7yZQ0NmNrp2rIYfrJvB+T1Itzn19hQ0cOIfrAIUvQbseFhFUN3IEj8ifc6lpeG5R9XpII4jsVBWuo/i/9xuMKVz1Um0dL9E2mREEI+bEzdOSGjOF7CzjXdOF3hVi3xe6ESP/LNtI28ORrf/4juWj4wc2v+5Auhqi0jEkNTCXqcWQm+SbKqBYJxaw7m5A3HUx/uLUmhJLujHn25r8cVXTxO+SugooP/EygzzEsiPvpnqMER0Suze1YBU4rWjeHrkZGYlcMNO1sm2LjmzFe+SSDt7X6EplduwdKZtnDydnP3QNR0fiOKqfcItZ6yKNJ6Am1JVceNfFiR0+LX+NdLLi90pUfbaO3cKuQvxwTW/ann6Uki739ob8IYj44bPQB9COG2BRbjgwUOr2FrJJRXPwPTI0douUPkLzc0s1H3glG2c2CwCfRxuAvRCAh6DYIKxIhBnHh1kF5TLA6D4KK3SkbdSApFYs6KdWp6yQf00X3whYFRFUIoT46JJzYfK45G7c+oecV228koQbJEGVOVXdlFI0cOyOyxXvIG3lbTm78YHhWTlFChoSOVoWfGUI91pFJOoa4YGSbnVij8PqMn+1oPV3ytRPJVOSwQRFKDUZhFOGkcfj+xDAOJpdU8BrFrf4XRpf9aXfjqCcsEwBp5fwfKLstVyU40g6reRCg5YtR0QE4YmUTjl0RX4AYFSTANabKsnJnLkd7ELJQbOV6PlE5IhEYqFAM2tB1yFrWh138ff/aPVEXS5Z18YinXq4VxyIqcqGOA4qp0Zf5LQeF6hJ3M2MnRp3OJTITBk64ns8FibnzpwHmuunxKhfqJT9ukGVVISfLr8RuFHbM89HMpCPgNrL5r/G3mRRwfi+d9PUaewYvxZYTdaeS//2t4+p/LNwxNeNMbbqIEJbb8iVb61hTUGidIlE4LaA40NxZPTx3rzj5cR6QOGXFelD0ChnWyidH71YEwsnGpCiHqeTPex2ibzHV+8UccamlLsUAHL44BjA4ytarehkXv+XEGhO+gIwq55xQqY7vWes/PGfZKnRGonfQUrb58Z14lJ90XVsosbkyorYp8R0EJ9yTM8+Kuxqr3UYfDpnHFdWjW5BhYwvjjT5O+sWUD/GYEdxEMi7tyG3BmHH/i0zaUKE2QS7piLFVCK8FqNkvQXqZ8/OLVfUf8RWVoS1kAElfzaPGIYT7ucKn4hmhj/dM5jI5ts+Tj3u+/24j3Zxu5LvEeyFfULSiCOwzcPYtXAryAQdVu/DtbgYbEDVnlguKzb73voJy5P4RBcEm3K+qwOThTfA42nQaMx3suF52GHrJ+lDVKRTiNpF7pyculnmdt8CQ1WLyLVFTf3EBFGxRt6K6zXYdQGeg4Poa5ShlP2aCzT9fBElpTuC9VAtW81pMOJKUVcsJbRmGO9kM6kcc6FgxVaVWxZpoQ+Ltz4284M9M8jW33kKhsJalxC5zUlVb4vJcxzqv40m0E9QE7UrK3icfdNZPcAjueGvBQyHsw1oKMqeZPejrBIvH0SCTaB6IsYWCNdtxUV9brriUak1D8jJoh8Cj2ubjaD9wCIvy5aw7w/HyfPkhK5rwbSO1ZflB1X0kR2YnqFV/sN1opR8PmEXisGsYBT+38E=';
 
 const id = '14368';
 
 const phone = '9080476159';
 const moduleName = 'pharmacy';
-
 const visitEvent = 'visit-event';
 
 function App() {
@@ -52,6 +51,8 @@ function App() {
       } else if (data.message === 'web-view-error') {
         console.log('web-view-error', data.errorMessage);
         //when webview throws error.
+      } else if (data.message === 'external-server-error') {
+        Alert.alert('Error', data.errorMessage);
       }
     });
     return () => {
@@ -71,7 +72,7 @@ function App() {
         baseUrl={visitBaseUrl}
         errorBaseUrl={'https://star-health.getvisitapp.xyz/'}
         token={token}
-        cpsid={'CPS1871416363965810178'}
+        cpsid={''}
         moduleName={moduleName}
         environment={'sit'}
         isLoggingEnabled={true}
