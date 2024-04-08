@@ -96,6 +96,12 @@ const VisitRnSdkView = ({
                 errorMessage: errorMessage,
               });
             }
+            if (res.data?.errorMessage.includes('External Server Error')) {
+              EventRegister.emitEvent('visit-event', {
+                message: 'external-server-error',
+                errorMessage: errorMessage,
+              });
+            }
           } else if (res.data.message === 'success') {
             const magicCode = res.data?.magicCode;
             let finalBaseUrl = '';
@@ -164,7 +170,7 @@ const VisitRnSdkView = ({
 
   const callSyncApi = useCallback(
     (data) =>
-    httpClient
+      httpClient
         .post(`${apiBaseUrl}/users/data-sync`, data, {
           headers: {
             Authorization: authToken,
@@ -177,7 +183,7 @@ const VisitRnSdkView = ({
 
   const callEmbellishApi = useCallback(
     (data) =>
-    httpClient
+      httpClient
         .post(`${apiBaseUrl}/users/embellish-sync`, data, {
           headers: {
             Authorization: authToken,
