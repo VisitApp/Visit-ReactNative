@@ -3,7 +3,6 @@ import { EventRegister } from 'react-native-event-listeners';
 
 import {
   SafeAreaView,
-  NativeModules,
   PermissionsAndroid,
   BackHandler,
   Linking,
@@ -13,11 +12,7 @@ import WebView from 'react-native-webview';
 
 import LocationEnabler from 'react-native-location-enabler';
 
-import DeviceInfo from 'react-native-device-info';
-
 import axios from 'axios';
-
-import constants from './constants';
 
 export const httpClient = axios.create({
   timeout: 60000,
@@ -29,156 +24,15 @@ const {
   addListener,
 } = LocationEnabler;
 
-const VisitRnSdkView = ({
-  cpsid,
-  baseUrl,
-  errorBaseUrl,
-  token,
-  moduleName,
-  environment,
-  magicLink,
-  isLoggingEnabled,
-}) => {
+const VisitRnSdkView = ({ magicLink, isLoggingEnabled }) => {
   const [source, setSource] = useState('');
   useEffect(() => {
-    if ((magicLink?.trim()?.length || 0) > 0) {
-      setSource(magicLink);
-    } else {
-      DeviceInfo.getAndroidId()
-        .then((deviceId) => {
-          var buildNumber = DeviceInfo.getBuildNumber();
-          let systemVersion = DeviceInfo.getSystemVersion();
-          let version = DeviceInfo.getVersion();
-
-          if (isLoggingEnabled) {
-            console.log(
-              ' baseUrl : ' +
-                baseUrl +
-                'token: ' +
-                token +
-                ' cpsid: ' +
-                cpsid +
-                ' environment: ' +
-                environment +
-                'buildNumber:' +
-                buildNumber +
-                ' systemVersion:' +
-                systemVersion +
-                ' version : ' +
-                version +
-                ' deviceId',
-              deviceId
-            );
-          }
-
-          var finalEndPoint = `${baseUrl}/partners/v3/generate-magic-link-star-health`;
-
-          if (isLoggingEnabled) {
-            console.log('finalEndPoint: ' + finalEndPoint);
-          }
-
-          httpClient
-            .post(finalEndPoint, {
-              cpsid: cpsid,
-              token: token,
-              srcClientId: 'Android',
-              deviceId: deviceId,
-              appVersion: version,
-              deviceVersion: systemVersion,
-              userEnv: environment,
-            })
-            .then((response) => {
-              let data = response.data;
-              // let visitMagicLink = data.result; //@Deprecated. Superseded by magic code usage.
-              let errorMessage = data.errorMessage;
-              let magicCode = data.magicCode;
-
-              let finalBaseUrl = '';
-
-              if (environment.toUpperCase() === 'PROD') {
-                finalBaseUrl = constants.PROD_BASE_URL;
-              } else {
-                finalBaseUrl = constants.STAGE_BASE_URL;
-              }
-
-              let finalUrl = `${finalBaseUrl}=${magicCode}`;
-
-              if (data.message === 'success') {
-                if ((moduleName?.trim()?.length || 0) > 0) {
-                  finalUrl += `&tab=${moduleName}`;
-                }
-
-                if (isLoggingEnabled) {
-                  console.log('magicLink: ' + finalUrl);
-                }
-
-                setSource(finalUrl);
-              } else {
-                var errorUrl = `${errorBaseUrl}/star-health?error=${errorMessage}`;
-                setSource(errorUrl);
-
-                if (errorMessage != null) {
-                  if (errorMessage === 'Please login again') {
-                    EventRegister.emitEvent('visit-event', {
-                      message: 'unauthorized-wellness-access',
-                      errorMessage: errorMessage,
-                    });
-                  } else if (errorMessage.includes('External Server Error')) {
-                    EventRegister.emitEvent('visit-event', {
-                      message: 'external-server-error',
-                      errorMessage: errorMessage,
-                    });
-                  }
-                }
-
-                if (isLoggingEnabled) {
-                  console.log(
-                    'erorMessage: ' +
-                      data.errorMessage +
-                      ' errorUrl: ' +
-                      errorUrl
-                  );
-                }
-              }
-            })
-            .catch((error) => {
-              var errorUrl = `${errorBaseUrl}/star-health?error=${error}`;
-              setSource(errorUrl);
-
-              EventRegister.emitEvent('visit-event', {
-                message: 'generate-magic-link-failed',
-                errorMessage: `${error}`,
-              });
-
-              if (isLoggingEnabled) {
-                console.log('error: ' + error);
-              }
-            });
-        })
-        .catch((err) => {
-          var errorUrl = `${errorBaseUrl}/star-health?error=${err}`;
-          setSource(errorUrl);
-
-          EventRegister.emitEvent('visit-event', {
-            message: 'getDeviceInfo-failed',
-            errorMessage: `${err}`,
-          });
-
-          if (isLoggingEnabled) {
-            console.log('getDeviceInfo err', err);
-          }
-        });
+    if (isLoggingEnabled) {
+      console.log(magicLink);
     }
-  }, [
-    cpsid,
-    token,
-    baseUrl,
-    errorBaseUrl,
-    moduleName,
-    environment,
-    magicLink,
-    isLoggingEnabled,
-  ]);
+
+    setSource(magicLink);
+  }, [magicLink, isLoggingEnabled]);
 
   const [enabled, requestResolution] = useLocationSettings(
     {
@@ -190,30 +44,6 @@ const VisitRnSdkView = ({
   );
 
   const webviewRef = useRef(null);
-
-  const requestActivityRecognitionPermission = async () => {
-    console.log('inside requestActivityRecognitionPermission()');
-    try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION,
-        {
-          title: 'Need Activity Recognition Permission',
-          message: 'This needs access to your Fitness Permission',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        }
-      );
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        console.log('ACTIVITY_RECOGNITION granted');
-        askForGoogleFitPermission();
-      } else {
-        console.log('Fitness permission denied');
-      }
-    } catch (err) {
-      console.warn(err);
-    }
-  };
 
   const requestLocationPermission = async () => {
     try {
@@ -246,61 +76,6 @@ const VisitRnSdkView = ({
     }
   };
 
-  const askForGoogleFitPermission = async () => {
-    try {
-      NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
-
-      const isPermissionGranted =
-        await NativeModules.VisitFitnessModule.askForFitnessPermission();
-      if (isPermissionGranted == 'GRANTED') {
-        getDailyFitnessData();
-      }
-      console.log(`Google Fit Permissionl: ${isPermissionGranted}`);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const getDailyFitnessData = () => {
-    console.log('getDailyFitnessData() called');
-
-    NativeModules.VisitFitnessModule.requestDailyFitnessData((data) => {
-      // console.log(`getDailyFitnessData() data: ` + data);
-      webviewRef.current?.injectJavaScript(data);
-    });
-  };
-
-  const requestActivityData = (type, frequency, timeStamp) => {
-    console.log('requestActivityData() called');
-
-    NativeModules.VisitFitnessModule.requestActivityDataFromGoogleFit(
-      type,
-      frequency,
-      timeStamp,
-      (data) => {
-        // console.log(`requestActivityData() data: ` + data);
-        webviewRef.current?.injectJavaScript('window.' + data);
-      }
-    );
-  };
-
-  const updateApiBaseUrl = (
-    apiBaseUrl,
-    authtoken,
-    googleFitLastSync,
-    gfHourlyLastSync
-  ) => {
-    console.log('updateApiBaseUrl() called.');
-    NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
-
-    NativeModules.VisitFitnessModule.updateApiBaseUrl(
-      apiBaseUrl,
-      authtoken,
-      googleFitLastSync,
-      gfHourlyLastSync
-    );
-  };
-
   const runBeforeFirst = `
         window.isNativeApp = true;
         window.platform = "ANDROID";
@@ -315,64 +90,13 @@ const VisitRnSdkView = ({
         const parsedObject = JSON.parse(event.nativeEvent.data);
         if (parsedObject.method != null) {
           switch (parsedObject.method) {
-            case 'CONNECT_TO_GOOGLE_FIT':
-              if (parseInt(DeviceInfo.getSystemVersion(), 10) >= 10) {
-                requestActivityRecognitionPermission();
-              } else {
-                askForGoogleFitPermission();
-              }
-              break;
             case 'UPDATE_PLATFORM':
               webviewRef.current?.injectJavaScript(
                 'window.setSdkPlatform("ANDROID")'
               );
               break;
-            case 'UPDATE_API_BASE_URL':
-              {
-                let apiBaseUrl = parsedObject.apiBaseUrl;
-                let authtoken = parsedObject.authtoken;
-
-                let googleFitLastSync = parsedObject.googleFitLastSync;
-                let gfHourlyLastSync = parsedObject.gfHourlyLastSync;
-
-                console.log(
-                  'apiBaseUrl: ' +
-                    'NOT SHOWN' +
-                    ' authtoken: ' +
-                    'NOT SHOWN' +
-                    ' googleFitLastSync: ' +
-                    googleFitLastSync +
-                    ' gfHourlyLastSync: ' +
-                    gfHourlyLastSync
-                );
-
-                updateApiBaseUrl(
-                  apiBaseUrl,
-                  authtoken,
-                  googleFitLastSync,
-                  gfHourlyLastSync
-                );
-              }
-              break;
-            case 'GET_DATA_TO_GENERATE_GRAPH':
-              {
-                let type = parsedObject.type;
-                let frequency = parsedObject.frequency;
-                let timeStamp = parsedObject.timestamp;
-
-                console.log(
-                  'type: ' +
-                    type +
-                    ' frequency:' +
-                    frequency +
-                    ' timeStamp: ' +
-                    timeStamp
-                );
-
-                requestActivityData(type, frequency, timeStamp);
-              }
-              break;
             case 'GET_LOCATION_PERMISSIONS':
+              // eslint-disable-next-line no-lone-blocks
               {
                 requestLocationPermission();
               }
@@ -386,6 +110,7 @@ const VisitRnSdkView = ({
               }
               break;
             case 'CLOSE_VIEW':
+              // eslint-disable-next-line no-lone-blocks
               {
               }
               break;
@@ -458,43 +183,9 @@ const VisitRnSdkView = ({
   );
 };
 
-export const fetchDailyFitnessData = (startTimeStamp, isLoggingEnabled) => {
-  return new Promise((resolve, reject) => {
-    console.log('fetchDailyFitnessData called: ' + startTimeStamp);
-
-    NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
-
-    NativeModules.VisitFitnessModule.fetchDailyFitnessData(startTimeStamp)
-      .then((result) => {
-        resolve(result);
-      })
-      .catch((err) => reject(err));
-  });
-};
-
-export const fetchHourlyFitnessData = (startTimeStamp, isLoggingEnabled) => {
-  return new Promise((resolve, reject) => {
-    console.log('fetchHourlyFitnessData called: ' + startTimeStamp);
-
-    NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
-
-    NativeModules.VisitFitnessModule.fetchHourlyFitnessData(startTimeStamp)
-      .then((result) => {
-        resolve(result);
-      })
-      .catch((err) => reject(err));
-  });
-};
-
 export default VisitRnSdkView;
 
 VisitRnSdkView.defaultProps = {
-  cpsid: '',
-  token: '',
-  baseUrl: '',
-  errorBaseUrl: '',
-  moduleName: '',
-  environment: '',
   magicLink: '',
   isLoggingEnabled: false,
 };
