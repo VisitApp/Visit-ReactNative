@@ -9,18 +9,7 @@ import React from 'react';
 
 import VisitRnSdkView from 'react-native-visit-rn-sdk';
 
-import {
-  Text,
-  View,
-  StyleSheet,
-  SafeAreaView,
-  Button,
-  NativeModules,
-  PermissionsAndroid,
-  BackHandler,
-  LogBox,
-  Alert,
-} from 'react-native';
+import {SafeAreaView} from 'react-native';
 
 function App() {
   return (
