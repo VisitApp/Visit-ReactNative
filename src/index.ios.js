@@ -8,9 +8,6 @@ import {
 } from 'react-native';
 import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
-import DeviceInfo from 'react-native-device-info';
-import { getWebViewLink } from './Services';
-import constants from './constants';
 
 const escapeChars = {
   lt: '<',
@@ -39,12 +36,6 @@ const unescapeHTML = (str) =>
 const visitEvent = 'visit-event';
 
 const VisitRnSdkView = ({
-  cpsid,
-  baseUrl,
-  errorBaseUrl,
-  token,
-  moduleName,
-  environment,
   magicLink,
   isLoggingEnabled,
 }) => {
@@ -54,84 +45,8 @@ const VisitRnSdkView = ({
     if (magicLink?.trim()?.length) {
       setSource(magicLink);
       setLoading(false);
-    } else {
-      const systemVersion = DeviceInfo.getSystemVersion();
-      const version = DeviceInfo.getVersion();
-      DeviceInfo.getUniqueId()
-        .then((uniqueId) =>
-          getWebViewLink(
-            baseUrl,
-            token,
-            cpsid,
-            'iPhone',
-            uniqueId,
-            version,
-            systemVersion,
-            environment
-          )
-        )
-        .then((res) => {
-          if (res.data?.errorMessage) {
-            const { errorMessage } = res.data;
-            const errorUrl = `${errorBaseUrl}/star-health?error=${errorMessage}`;
-            setSource(errorUrl);
-            if (res.data?.errorMessage === 'Please login again') {
-              EventRegister.emitEvent(visitEvent, {
-                message: 'unauthorized-wellness-access',
-                errorMessage: errorMessage,
-              });
-            }
-            if (res.data?.errorMessage.includes('External Server Error')) {
-              EventRegister.emitEvent('visit-event', {
-                message: 'external-server-error',
-                errorMessage: errorMessage,
-              });
-            }
-          } else if (res.data.message === 'success') {
-            const magicCode = res.data?.magicCode;
-            let finalBaseUrl = '';
-            if (magicCode) {
-              if (environment.toUpperCase() === 'PROD') {
-                finalBaseUrl = constants.PROD_BASE_URL;
-              } else {
-                finalBaseUrl = constants.STAGE_BASE_URL;
-              }
-            }
-            if (finalBaseUrl && magicCode) {
-              let finalUrl = `${finalBaseUrl}=${magicCode}`;
-              if (moduleName?.trim()) {
-                finalUrl += `&tab=${moduleName}`;
-              }
-              setSource(finalUrl);
-            }
-          } else {
-            EventRegister.emitEvent('visit-event', {
-              message: 'generate-magic-link-failed',
-              errorMessage: `${res.data}`,
-            });
-          }
-        })
-        .catch((err) => {
-          console.log('getWebViewLink err', { err });
-          EventRegister.emitEvent('visit-event', {
-            message: 'generate-magic-link-failed',
-            errorMessage: `${err}`,
-          });
-        })
-        .finally(() => {
-          setLoading(false);
-        });
     }
-  }, [
-    cpsid,
-    token,
-    baseUrl,
-    errorBaseUrl,
-    moduleName,
-    environment,
-    magicLink,
-    isLoggingEnabled,
-  ]);
+  }, []);
 
   const webviewRef = useRef(null);
 
