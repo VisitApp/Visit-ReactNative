@@ -24,7 +24,7 @@ import {
   Alert,
 } from 'react-native';
 
-const visitBaseUrl = 'https://insurance-uat.getvisitapp.xyz/wonderwomen';
+const visitBaseUrl = 'https://insurance-uat.getvisitapp.net/wonderwomen';
 
 const errorBaseUrl = 'https://api.samuraijack.xyz';
 
@@ -70,7 +70,7 @@ function App() {
 
       <VisitRnSdkView
         baseUrl={visitBaseUrl}
-        errorBaseUrl={'https://star-health.getvisitapp.xyz/'}
+        errorBaseUrl={'https://star-health.getvisitapp.net/'}
         token={token}
         cpsid={''}
         moduleName={moduleName}
