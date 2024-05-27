@@ -25,7 +25,7 @@ export const getWebViewLink = (
   };
 
   return httpClient
-    .post(`${baseUrl}/partners/v2/generate-magic-link-star-health`, data)
+    .post(`${baseUrl}/partners/v3/generate-magic-link-star-health`, data)
     .then((res) => {
       console.log('getWebViewLink res', { res });
       return res;
