@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export const httpClient = axios.create({
-  timeout : 60000
+  timeout: 60000,
 });
 
 export const getWebViewLink = (
@@ -24,8 +24,10 @@ export const getWebViewLink = (
     userEnv,
   };
 
+  console.log('getWebViewLink req', data);
+
   return httpClient
-    .post(`${baseUrl}/partners/v2/generate-magic-link-star-health`, data)
+    .post(`${baseUrl}/partners/v3/generate-magic-link-star-health`, data)
     .then((res) => {
       console.log('getWebViewLink res', { res });
       return res;

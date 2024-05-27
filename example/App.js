@@ -24,12 +24,14 @@ import {
   Alert,
 } from 'react-native';
 
-const visitBaseUrl = 'https://insurance-uat.getvisitapp.xyz/wonderwomen';
+const visitBaseUrl = 'https://insurance-uat.getvisitapp.net/wonderwomen';
+
+const cpsid = 'CPS1985253411823397284';
 
 const errorBaseUrl = 'https://api.samuraijack.xyz';
 
 const token =
-  '78ftP8oDeLCCdBp8QH5d/o7QvxeFBcBYT1nPtn/LgVQ3CW4R+xE5kSZJZvtNcfTwtOeD2aSoxjcjoJcaiSFY1CjyuH2qAHG9JX888hFKQXutxbumqxYaGZjK4nUg2Te6JxfNTlWjFk8/cPNI6JWJa7kKYYcV7xssd63oLvTP9sks42cU/XbCFeXMXHmyCtXC2vV2aOiVNAjZytzsBuHgWhP5LKzGwcCIvRzmoT1DSOgnow+Ccf1uvAvva4krj41JWLGNugqH097BW5jcbVlpCY3xMBKoPn3mWTIblFtZaujOIZY4a2qjjOYuDy2xrx1aLytiKnmTe18Af6Br9qxp7yZQ0NmNrp2rIYfrJvB+T1Itzn19hQ0cOIfrAIUvQbseFhFUN3IEj8ifc6lpeG5R9XpII4jsVBWuo/i/9xuMKVz1Um0dL9E2mREEI+bEzdOSGjOF7CzjXdOF3hVi3xe6ESP/LNtI28ORrf/4juWj4wc2v+5Auhqi0jEkNTCXqcWQm+SbKqBYJxaw7m5A3HUx/uLUmhJLujHn25r8cVXTxO+SugooP/EygzzEsiPvpnqMER0Suze1YBU4rWjeHrkZGYlcMNO1sm2LjmzFe+SSDt7X6EplduwdKZtnDydnP3QNR0fiOKqfcItZ6yKNJ6Am1JVceNfFiR0+LX+NdLLi90pUfbaO3cKuQvxwTW/ann6Uki739ob8IYj44bPQB9COG2BRbjgwUOr2FrJJRXPwPTI0douUPkLzc0s1H3glG2c2CwCfRxuAvRCAh6DYIKxIhBnHh1kF5TLA6D4KK3SkbdSApFYs6KdWp6yQf00X3whYFRFUIoT46JJzYfK45G7c+oecV228koQbJEGVOVXdlFI0cOyOyxXvIG3lbTm78YHhWTlFChoSOVoWfGUI91pFJOoa4YGSbnVij8PqMn+1oPV3ytRPJVOSwQRFKDUZhFOGkcfj+xDAOJpdU8BrFrf4XRpf9aXfjqCcsEwBp5fwfKLstVyU40g6reRCg5YtR0QE4YmUTjl0RX4AYFSTANabKsnJnLkd7ELJQbOV6PlE5IhEYqFAM2tB1yFrWh138ff/aPVEXS5Z18YinXq4VxyIqcqGOA4qp0Zf5LQeF6hJ3M2MnRp3OJTITBk64ns8FibnzpwHmuunxKhfqJT9ukGVVISfLr8RuFHbM89HMpCPgNrL5r/G3mRRwfi+d9PUaewYvxZYTdaeS//2t4+p/LNwxNeNMbbqIEJbb8iVb61hTUGidIlE4LaA40NxZPTx3rzj5cR6QOGXFelD0ChnWyidH71YEwsnGpCiHqeTPex2ibzHV+8UccamlLsUAHL44BjA4ytarehkXv+XEGhO+gIwq55xQqY7vWes/PGfZKnRGonfQUrb58Z14lJ90XVsosbkyorYp8R0EJ9yTM8+Kuxqr3UYfDpnHFdWjW5BhYwvjjT5O+sWUD/GYEdxEMi7tyG3BmHH/i0zaUKE2QS7piLFVCK8FqNkvQXqZ8/OLVfUf8RWVoS1kAElfzaPGIYT7ucKn4hmhj/dM5jI5ts+Tj3u+/24j3Zxu5LvEeyFfULSiCOwzcPYtXAryAQdVu/DtbgYbEDVnlguKzb73voJy5P4RBcEm3K+qwOThTfA42nQaMx3suF52GHrJ+lDVKRTiNpF7pyculnmdt8CQ1WLyLVFTf3EBFGxRt6K6zXYdQGeg4Poa5ShlP2aCzT9fBElpTuC9VAtW81pMOJKUVcsJbRmGO9kM6kcc6FgxVaVWxZpoQ+Ltz4284M9M8jW33kKhsJalxC5zUlVb4vJcxzqv40m0E9QE7UrK3icfdNZPcAjueGvBQyHsw1oKMqeZPejrBIvH0SCTaB6IsYWCNdtxUV9brriUak1D8jJoh8Cj2ubjaD9wCIvy5aw7w/HyfPkhK5rwbSO1ZflB1X0kR2YnqFV/sN1opR8PmEXisGsYBT+38E=';
+  'vou2woxaoaTAQ57KUQavE0PbTC98G74uefWqF6Lm9RAnh4yYs7skuvpY3j7kML/jxQKMPSsKDIxHSEYfVl18pqfD2phNnqE0tbFnNZwlrKQIgchVP25PxiqBkCuL1NMkWH+wDJ+XMDunYWrUZouJfYPCA9gj3S3m4MMoZT9F/Jgs1IYLvb3exFT/gbEf1klIZIX0HFpmvZ+4GB8DBn6GARbZKPXyIac2WjJEqYF8zsfvzWFhbPzWvvk5ZYMIITQ0mV0GYMbKgBG48gVY1W8rx90EYnHe2s99mmpiNDFJyZ56E/nE2m2CU2mFXHSVfASYyERvUjUQbGBLiqLK23OKp2hBYgT8/A3dBwTVk022JlluBVzNxdOEB/DUiAIH9UAUg/qvTLK82lQg+o1ZSWpFiiTf6zVOJdobqLe9FsYTuSApemgqfaau8DZ7CiKd4FiGA9NaKGenKlwNLzEymXw5Y0Q7rp1LxZBAWZRPDmuFX1MQlRfxgwEr6u8ufIdNagCYUoq4qnw1um+Cnp/33GhwRXlnKosBaM5Rzoa6gw8hMvHjAP9t/KmPNq7kve8wi6SAvvm4e2a+cSCBYQJUq/Fwh8bQDL3UVskFAZIULQe2tMfp/LQNkGXCHjpTwFVknl8PFnso7TdHRDYeF6IjthnEFbh1h9Df/E6yo1kURw3jRRWvKmuz0O0joEHevZpDMPKB+P7U+LOD5dFVVUCofPSqbuszzRlptLYkKZAWexmWWLdcXxL5cQrIKeqqgGZuCzmGLDuTT2HPur8qKNG6H6XGRDJqdCdSpz/wZjWjGdMYqpMGrMAWzeHwNWhvytXwpnN2FzBZ+d1fREkIhYJnFFNaCOCSRAZlVo7Ka9wuHoXxydFCEADKcwmhbXOFMHzTDsBV680N/V+9Dw7b5tiT7ZNbqZpm20BKCcYIiUrNH47KfmzkBvd/PvcoM1IRI+0UC4x0x/YHNtGbZCi73n0G6wReUgSD8EJaCY7Q/vVNs35TS+0xySkfsysEbiQD+LTbdT03X4xDAvnGHKq4Z7G1BIU7GuYpCAcuL68ic6D4ZL4KJXaeIfm7xzIOKWRJsFt1r4n7g3giUUIinuxKVoPpZcCsreuIPTgXDLOTtiU2//xmOSMOO5S3xtojBNcFeh9emjah+lM1iwYUZkr+EQv1JsYE6ZFLxT76t7DOIWZM1068b8CkjNz9Gct0IxJ6cnzNWlS385o+VSp+5BLu/DsNZsxJcaos8GuIgA+XnI+CAwKde76uQH8ysUm4b4aOHuA5IeLLJtzrfk5QOy+yzTDmiCmGxmVyvKjjLfW926YQTum01CxW6BptsiOk+tso8t00JZUUsxvVW3SMCfVS3Jo/sAkzwN+re3rQRvLElOmkHt5X60tzbmcc9a894O1OZacuXeub+8mjV2vmpWRy1rScAs2/Okwj85f53xFM7HgNuLMYyzr9IYx89cAFCVK9ikZIMXOrYGUNervl1MRmv/TWJzpuBf0GQBXiuEuJ2Y2i0lNQB0rf52T/FqiWmeY31r+9zEGsxAfrUCNSf+1mdmxzFmxLWkBgWhc//nQlJRf63q5ZteahpoaklF4spxSEH3WKn8cyjRb+Tm5vzytuMc0mKaD5KwNMKhAaN2IRNzWgdIGFdPxdxMcjPIdScXrdh8EFjGnyeGZ1M/rtsJm9I+p45lMETXkLYaBGRf6pjWHMWneKqCiET9pPELMWGDLxg7/916Pr+4j7oXdV7NoeLkCnfVzHnMPl04Jp4EF0eJK8AIfa9MKHI+bLXWGmkXrIFLaY9ass6cm1fx+LdlNfC72S9jUCkdZaM4ODt8yyzURrUf1QMlALh+GEtKuF8Kx4A9Snkf6cIt2o5/kV8oJQ7YROUMJ5A7geaP/LYVzpyKtFdVIxBeRlxmNauWdTHDL7yuTAisbHsOu6ZVMyXfljHBvbwQynGkaAxGecGq4oa913soXcqMfrXSjqcYy1s8HjstnhpXRTqRw=';
 
 const id = '14368';
 
@@ -70,15 +72,13 @@ function App() {
 
       <VisitRnSdkView
         baseUrl={visitBaseUrl}
-        errorBaseUrl={'https://star-health.getvisitapp.xyz/'}
+        errorBaseUrl={'https://star-health.getvisitapp.net/'}
         token={token}
-        cpsid={''}
+        cpsid={cpsid}
         moduleName={moduleName}
-        environment={'sit'}
+        environment={'qa'}
         isLoggingEnabled={true}
-        // magicLink={
-        //   'https://digit-visit.getvisitapp.xyz/sso?userParams=rZO06fTBddwYlizYcahUHtU6RdAuHD6hcPoxKlDaj_B05A0ryYs7Mon_P_yX7nFKjeud5mN9T_IlE_ch8Cbgye8y-_z6RtIUWgiB87HweKGPLFSywSuzkO077oa1srKJ3ENWlkVuysvvOgplM7MNNO6RuNHWjIpxmDDxV8bsFMCNBynwEEKQEKi3QyjE5bpYYicqd8JRCozN9Cn-o2iY1gPzwwC86_OR0ckCukoZP9_S7_Pt41mrH8IzVsjX6JAHsModhAEaZesQfS4wc2uq0omEREyQ2V4PG77dNFCWkd4=&clientId=digit-777'
-        // }
+        // magicLink='https://star-health.getvisitapp.net/?mluib7c=LCPCcVb0'
       />
     </SafeAreaView>
   );
