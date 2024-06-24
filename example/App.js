@@ -5,13 +5,19 @@
  * @format
  */
 
-import React from 'react';
+import React, { useRef, useState } from 'react';
 
 import VisitRnSdkView from 'react-native-visit-rn-sdk';
 
-import {EventRegister} from 'react-native-event-listeners';
+import { EventRegister } from 'react-native-event-listeners';
 
-import {SafeAreaView, Alert} from 'react-native';
+import { SafeAreaView, Alert, TextInput, Pressable, Text, StyleSheet } from 'react-native';
+
+const styles = StyleSheet.create({
+  textInput: { borderRadius: 8, borderWidth: 1, padding: 8, marginHorizontal: 20 },
+  button: { backgroundColor: '#714FFF', padding: 8, borderRadius: 8, marginHorizontal: 60, marginTop: 12, alignItems: 'center', justifyContent: 'center' },
+  buttonText: { color: 'white' }
+})
 
 const visitBaseUrl = 'https://insurance-uat.getvisitapp.net/wonderwomen';
 
@@ -27,6 +33,13 @@ const moduleName = 'pharmacy';
 const visitEvent = 'visit-event';
 
 function App() {
+  const [state, setState] = useState({
+    text: '',
+    url: ''
+  })
+  const { text, url } = state
+
+  const textInputRef = useRef()
   React.useEffect(() => {
     const listener = EventRegister.addEventListener(visitEvent, data => {
       if (data.message === 'unauthorized-wellness-access') {
@@ -49,14 +62,42 @@ function App() {
     };
   }, []);
 
-  return (
-    <SafeAreaView style={{flex: 1}}>
-      {/* <Button
-        title="Press me"
-        color="#f194ff"
-        onPress={() => Alert.alert('Button with adjusted color pressed')}
-      /> */}
+  const onChangeText = (txt) =>
+    setState(val => ({ ...val, text: txt }))
 
+
+  const setUrl = () => {
+    console.log('seturl called',);
+    setState(val => ({ ...val, url: text }))
+  }
+
+
+  const resetUrl = () => setState(val => ({ ...val, url: '' }))
+
+  console.log('url is', url);
+  return (
+    <SafeAreaView style={{ flex: 1 }}>
+      {!url ? <>
+        <Pressable style={styles.textInput} onPress={() => textInputRef.current.focus()}>
+          <TextInput
+            autoCapitalize='none'
+            keyboardType='url'
+            ref={textInputRef}
+            placeholder={"Enter custom url"}
+            value={text}
+            onChangeText={onChangeText}
+          />
+        </Pressable>
+        <Pressable onPress={setUrl} style={styles.button} >
+          <Text style={styles.buttonText}>
+            Change Url
+          </Text>
+        </Pressable>
+      </> : <Pressable style={styles.button} onPress={resetUrl}>
+        <Text style={styles.buttonText}>
+          Reset Url
+        </Text>
+      </Pressable>}
       <VisitRnSdkView
         baseUrl={visitBaseUrl}
         errorBaseUrl={errorBaseUrl}
@@ -65,7 +106,7 @@ function App() {
         moduleName={moduleName}
         environment={'sit'}
         isLoggingEnabled={true}
-        // magicLink={''}
+        magicLink={url || ''}
       />
     </SafeAreaView>
   );
