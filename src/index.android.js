@@ -41,6 +41,8 @@ const VisitRnSdkView = ({
 }) => {
   const [source, setSource] = useState('');
   useEffect(() => {
+    NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
+
     if ((magicLink?.trim()?.length || 0) > 0) {
       setSource(magicLink);
     } else {
@@ -191,29 +193,29 @@ const VisitRnSdkView = ({
 
   const webviewRef = useRef(null);
 
-  const requestActivityRecognitionPermission = async () => {
-    console.log('inside requestActivityRecognitionPermission()');
-    try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION,
-        {
-          title: 'Need Activity Recognition Permission',
-          message: 'This needs access to your Fitness Permission',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        }
-      );
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        console.log('ACTIVITY_RECOGNITION granted');
-        askForGoogleFitPermission();
-      } else {
-        console.log('Fitness permission denied');
-      }
-    } catch (err) {
-      console.warn(err);
-    }
-  };
+  // const requestActivityRecognitionPermission = async () => {
+  //   console.log('inside requestActivityRecognitionPermission()');
+  //   try {
+  //     const granted = await PermissionsAndroid.request(
+  //       PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION,
+  //       {
+  //         title: 'Need Activity Recognition Permission',
+  //         message: 'This needs access to your Fitness Permission',
+  //         buttonNeutral: 'Ask Me Later',
+  //         buttonNegative: 'Cancel',
+  //         buttonPositive: 'OK',
+  //       }
+  //     );
+  //     if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+  //       console.log('ACTIVITY_RECOGNITION granted');
+  //       askForGoogleFitPermission();
+  //     } else {
+  //       console.log('Fitness permission denied');
+  //     }
+  //   } catch (err) {
+  //     console.warn(err);
+  //   }
+  // };
 
   const requestLocationPermission = async () => {
     try {
@@ -246,16 +248,31 @@ const VisitRnSdkView = ({
     }
   };
 
-  const askForGoogleFitPermission = async () => {
-    try {
-      NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
+  // const askForGoogleFitPermission = async () => {
+  //   try {
+  //     NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
 
+  //     const isPermissionGranted =
+  //       await NativeModules.VisitFitnessModule.askForFitnessPermission();
+  //     if (isPermissionGranted == 'GRANTED') {
+  //       getDailyFitnessData();
+  //     }
+  //     console.log(`Google Fit Permissionl: ${isPermissionGranted}`);
+  //   } catch (e) {
+  //     console.error(e);
+  //   }
+  // };
+
+  const askForHealthConnectPermission = async () => {
+    try {
       const isPermissionGranted =
         await NativeModules.VisitFitnessModule.askForFitnessPermission();
-      if (isPermissionGranted == 'GRANTED') {
+
+      console.log('isPermissionGranted: ' + isPermissionGranted);
+
+      if (isPermissionGranted === 'GRANTED') {
         getDailyFitnessData();
       }
-      console.log(`Google Fit Permissionl: ${isPermissionGranted}`);
     } catch (e) {
       console.error(e);
     }
@@ -291,7 +308,6 @@ const VisitRnSdkView = ({
     gfHourlyLastSync
   ) => {
     console.log('updateApiBaseUrl() called.');
-    NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
 
     NativeModules.VisitFitnessModule.updateApiBaseUrl(
       apiBaseUrl,
@@ -316,11 +332,12 @@ const VisitRnSdkView = ({
         if (parsedObject.method != null) {
           switch (parsedObject.method) {
             case 'CONNECT_TO_GOOGLE_FIT':
-              if (parseInt(DeviceInfo.getSystemVersion(), 10) >= 10) {
-                requestActivityRecognitionPermission();
-              } else {
-                askForGoogleFitPermission();
-              }
+              askForHealthConnectPermission();
+              // if (parseInt(DeviceInfo.getSystemVersion(), 10) >= 10) {
+              //   requestActivityRecognitionPermission();
+              // } else {
+              //   askForGoogleFitPermission();
+              // }
               break;
             case 'UPDATE_PLATFORM':
               webviewRef.current?.injectJavaScript(
@@ -462,8 +479,6 @@ export const fetchDailyFitnessData = (startTimeStamp, isLoggingEnabled) => {
   return new Promise((resolve, reject) => {
     console.log('fetchDailyFitnessData called: ' + startTimeStamp);
 
-    NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
-
     NativeModules.VisitFitnessModule.fetchDailyFitnessData(startTimeStamp)
       .then((result) => {
         resolve(result);
@@ -475,8 +490,6 @@ export const fetchDailyFitnessData = (startTimeStamp, isLoggingEnabled) => {
 export const fetchHourlyFitnessData = (startTimeStamp, isLoggingEnabled) => {
   return new Promise((resolve, reject) => {
     console.log('fetchHourlyFitnessData called: ' + startTimeStamp);
-
-    NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
 
     NativeModules.VisitFitnessModule.fetchHourlyFitnessData(startTimeStamp)
       .then((result) => {
