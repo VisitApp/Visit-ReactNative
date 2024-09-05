@@ -41,6 +41,10 @@ const VisitRnSdkView = ({
 }) => {
   const [source, setSource] = useState('');
   useEffect(() => {
+    if (isLoggingEnabled) {
+      console.log('useEffect ran');
+    }
+
     NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
 
     if ((magicLink?.trim()?.length || 0) > 0) {
@@ -193,30 +197,6 @@ const VisitRnSdkView = ({
 
   const webviewRef = useRef(null);
 
-  // const requestActivityRecognitionPermission = async () => {
-  //   console.log('inside requestActivityRecognitionPermission()');
-  //   try {
-  //     const granted = await PermissionsAndroid.request(
-  //       PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION,
-  //       {
-  //         title: 'Need Activity Recognition Permission',
-  //         message: 'This needs access to your Fitness Permission',
-  //         buttonNeutral: 'Ask Me Later',
-  //         buttonNegative: 'Cancel',
-  //         buttonPositive: 'OK',
-  //       }
-  //     );
-  //     if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-  //       console.log('ACTIVITY_RECOGNITION granted');
-  //       askForGoogleFitPermission();
-  //     } else {
-  //       console.log('Fitness permission denied');
-  //     }
-  //   } catch (err) {
-  //     console.warn(err);
-  //   }
-  // };
-
   const requestLocationPermission = async () => {
     try {
       const granted = await PermissionsAndroid.request(
@@ -230,7 +210,9 @@ const VisitRnSdkView = ({
         }
       );
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        console.log('Location permission granted');
+        if (isLoggingEnabled) {
+          console.log('Location permission granted');
+        }
 
         if (!enabled) {
           requestResolution();
@@ -248,54 +230,51 @@ const VisitRnSdkView = ({
     }
   };
 
-  // const askForGoogleFitPermission = async () => {
-  //   try {
-  //     NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
-
-  //     const isPermissionGranted =
-  //       await NativeModules.VisitFitnessModule.askForFitnessPermission();
-  //     if (isPermissionGranted == 'GRANTED') {
-  //       getDailyFitnessData();
-  //     }
-  //     console.log(`Google Fit Permissionl: ${isPermissionGranted}`);
-  //   } catch (e) {
-  //     console.error(e);
-  //   }
-  // };
-
   const askForHealthConnectPermission = async () => {
     try {
       const isPermissionGranted =
         await NativeModules.VisitFitnessModule.askForFitnessPermission();
 
-      console.log('isPermissionGranted: ' + isPermissionGranted);
+      if (isLoggingEnabled) {
+        console.log('isPermissionGranted: ' + isPermissionGranted);
+      }
 
       if (isPermissionGranted === 'GRANTED') {
         getDailyFitnessData();
       }
     } catch (e) {
-      console.error(e);
+      if (isLoggingEnabled) {
+        console.error(e);
+      }
     }
   };
 
   const getDailyFitnessData = () => {
-    console.log('getDailyFitnessData() called');
+    if (isLoggingEnabled) {
+      console.log('getDailyFitnessData() called');
+    }
 
     NativeModules.VisitFitnessModule.requestDailyFitnessData((data) => {
-      // console.log(`getDailyFitnessData() data: ` + data);
+      if (isLoggingEnabled) {
+        console.log(`getDailyFitnessData() data: ` + data);
+      }
       webviewRef.current?.injectJavaScript(data);
     });
   };
 
   const requestActivityData = (type, frequency, timeStamp) => {
-    console.log('requestActivityData() called');
+    if (isLoggingEnabled) {
+      console.log('requestActivityData() called');
+    }
 
-    NativeModules.VisitFitnessModule.requestActivityDataFromGoogleFit(
+    NativeModules.VisitFitnessModule.requestActivityDataFromHealthConnect(
       type,
       frequency,
       timeStamp,
       (data) => {
-        // console.log(`requestActivityData() data: ` + data);
+        if (isLoggingEnabled) {
+          console.log(`requestActivityData() data: ` + data);
+        }
         webviewRef.current?.injectJavaScript('window.' + data);
       }
     );
@@ -307,7 +286,9 @@ const VisitRnSdkView = ({
     googleFitLastSync,
     gfHourlyLastSync
   ) => {
-    console.log('updateApiBaseUrl() called.');
+    if (isLoggingEnabled) {
+      console.log('updateApiBaseUrl() called.');
+    }
 
     NativeModules.VisitFitnessModule.updateApiBaseUrl(
       apiBaseUrl,
@@ -327,7 +308,9 @@ const VisitRnSdkView = ({
   const handleMessage = (event) => {
     if (event.nativeEvent.data != null) {
       try {
-        // console.log("Event :"+event.nativeEvent.data);
+        if (isLoggingEnabled) {
+          console.log('Event :' + event.nativeEvent.data);
+        }
         const parsedObject = JSON.parse(event.nativeEvent.data);
         if (parsedObject.method != null) {
           switch (parsedObject.method) {
@@ -352,16 +335,18 @@ const VisitRnSdkView = ({
                 let googleFitLastSync = parsedObject.googleFitLastSync;
                 let gfHourlyLastSync = parsedObject.gfHourlyLastSync;
 
-                console.log(
-                  'apiBaseUrl: ' +
-                    'NOT SHOWN' +
-                    ' authtoken: ' +
-                    'NOT SHOWN' +
-                    ' googleFitLastSync: ' +
-                    googleFitLastSync +
-                    ' gfHourlyLastSync: ' +
-                    gfHourlyLastSync
-                );
+                if (isLoggingEnabled) {
+                  console.log(
+                    'apiBaseUrl: ' +
+                      'NOT SHOWN' +
+                      ' authtoken: ' +
+                      'NOT SHOWN' +
+                      ' googleFitLastSync: ' +
+                      googleFitLastSync +
+                      ' gfHourlyLastSync: ' +
+                      gfHourlyLastSync
+                  );
+                }
 
                 updateApiBaseUrl(
                   apiBaseUrl,
@@ -377,14 +362,16 @@ const VisitRnSdkView = ({
                 let frequency = parsedObject.frequency;
                 let timeStamp = parsedObject.timestamp;
 
-                console.log(
-                  'type: ' +
-                    type +
-                    ' frequency:' +
-                    frequency +
-                    ' timeStamp: ' +
-                    timeStamp
-                );
+                if (isLoggingEnabled) {
+                  console.log(
+                    'type: ' +
+                      type +
+                      ' frequency:' +
+                      frequency +
+                      ' timeStamp: ' +
+                      timeStamp
+                  );
+                }
 
                 requestActivityData(type, frequency, timeStamp);
               }
@@ -432,7 +419,9 @@ const VisitRnSdkView = ({
       if (locationEnabled) {
         var finalString = `window.checkTheGpsPermission(true)`;
 
-        console.log('listener: ' + finalString);
+        if (isLoggingEnabled) {
+          console.log('listener: ' + finalString);
+        }
 
         webviewRef.current?.injectJavaScript(finalString);
       }
@@ -489,7 +478,9 @@ export const fetchDailyFitnessData = (startTimeStamp, isLoggingEnabled) => {
 
 export const fetchHourlyFitnessData = (startTimeStamp, isLoggingEnabled) => {
   return new Promise((resolve, reject) => {
-    console.log('fetchHourlyFitnessData called: ' + startTimeStamp);
+    if (isLoggingEnabled) {
+      console.log('fetchHourlyFitnessData called: ' + startTimeStamp);
+    }
 
     NativeModules.VisitFitnessModule.fetchHourlyFitnessData(startTimeStamp)
       .then((result) => {
