@@ -24,10 +24,6 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSHealthShareUsageDescription</key>
-	<string>Visit requires your permission to read health and fitness data.</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>Visit requires your permission to store health and fitness data in HealthKit.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSExceptionDomains</key>

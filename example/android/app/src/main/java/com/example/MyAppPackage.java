@@ -1,12 +1,12 @@
-package com.reactnative;
+package com.example;
 
 import androidx.annotation.NonNull;
 
-import com.reactnative.modules.VisitFitnessModule;
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.uimanager.ViewManager;
+import com.example.modules.VisitFitnessModule;
 
 import java.util.ArrayList;
 import java.util.Collections;

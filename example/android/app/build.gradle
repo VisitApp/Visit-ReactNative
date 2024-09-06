@@ -1,5 +1,6 @@
 apply plugin: "com.android.application"
 apply plugin: "com.facebook.react"
+apply plugin: 'kotlin-android'
 
 import com.android.build.OutputFile
 
@@ -93,14 +94,14 @@ android {
 
     compileSdkVersion rootProject.ext.compileSdkVersion
 
-    namespace "com.reactnative"
+    namespace "com.example"
     defaultConfig {
-        applicationId "com.reactnative"
+        applicationId "com.example"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
-        buildConfigField "String", "FIREBASE_DEFAULT_CLIENT_ID", "\"292562059614-hab0gdnr614dr3enlhu8690oredl3g8d.apps.googleusercontent.com\""
+        multiDexEnabled true
     }
 
     splits {
@@ -108,7 +109,7 @@ android {
             reset()
             enable enableSeparateBuildPerCPUArchitecture
             universalApk false  // If true, also generate a universal APK
-            include (*reactNativeArchitectures())
+            include(*reactNativeArchitectures())
         }
     }
     signingConfigs {
@@ -132,6 +133,18 @@ android {
         }
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+    compileOptions {
+        coreLibraryDesugaringEnabled = true
+
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    namespace 'com.reactnative'
+
     // applicationVariants are e.g. debug, release
     applicationVariants.all { variant ->
         variant.outputs.each { output ->
@@ -147,6 +160,10 @@ android {
 
         }
     }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
 }
 
 dependencies {
@@ -157,7 +174,7 @@ dependencies {
 
     debugImplementation("com.facebook.flipper:flipper:${FLIPPER_VERSION}")
     debugImplementation("com.facebook.flipper:flipper-network-plugin:${FLIPPER_VERSION}") {
-        exclude group:'com.squareup.okhttp3', module:'okhttp'
+        exclude group: 'com.squareup.okhttp3', module: 'okhttp'
     }
 
     debugImplementation("com.facebook.flipper:flipper-fresco-plugin:${FLIPPER_VERSION}")
@@ -167,14 +184,33 @@ dependencies {
         implementation jscFlavor
     }
 
-  //copy from here.
-  implementation files('google_fit-debug.aar')
-  implementation 'com.google.android.gms:play-services-fitness:21.1.0'
-  implementation 'com.google.android.gms:play-services-auth:20.6.0'
-  implementation 'io.reactivex:rxjava:1.3.3'
-  implementation 'io.reactivex:rxandroid:1.2.1'
-  implementation 'com.google.code.gson:gson:2.8.8'
-  implementation 'com.squareup.okhttp3:okhttp:3.8.1'
+
+    //copy from here.
+    implementation files('google_fit-debug.aar')
+
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.24"
+    implementation 'androidx.core:core-ktx:1.13.1'
+
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.4.2'
+
+    def retrofit_version = "2.9.0"
+    implementation "com.squareup.retrofit2:retrofit:$retrofit_version"
+    implementation "com.squareup.retrofit2:converter-gson:$retrofit_version"
+    implementation 'de.hdodenhof:circleimageview:3.1.0'
+    implementation 'com.squareup.okhttp3:okhttp:3.8.1'
+
+    implementation("com.squareup.okhttp3:logging-interceptor:4.9.0")
+
+    //Chucker
+    debugApi "com.github.chuckerteam.chucker:library:3.5.2"
+    releaseApi "com.github.chuckerteam.chucker:library-no-op:3.5.2"
+
+    implementation "androidx.health.connect:connect-client:1.1.0-alpha07"
+    implementation "com.jakewharton.timber:timber:5.0.1"
+    implementation "androidx.activity:activity-ktx:1.6.0"
+
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'
 }
 
 apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
