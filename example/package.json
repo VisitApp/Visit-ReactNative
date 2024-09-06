@@ -15,7 +15,7 @@
     "react-native-device-info": "^11.1.0",
     "react-native-event-listeners": "^1.0.7",
     "react-native-location-enabler": "github:sashko9807/react-native-location-enabler",
-    "react-native-visit-rn-sdk": "github:VisitApp/Visit-ReactNative#f-cpsid-change",
+    "react-native-visit-rn-sdk": "github:VisitApp/Visit-ReactNative#f-health-connect-migration",
     "react-native-webview": "^13.12.1"
   },
   "devDependencies": {
