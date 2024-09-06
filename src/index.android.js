@@ -249,6 +249,33 @@ const VisitRnSdkView = ({
     }
   };
 
+  const getHealthConnectStatus = async () => {
+    try {
+      const healthConnectStatus =
+        await NativeModules.VisitFitnessModule.getHealthConnectStatus();
+
+      if (isLoggingEnabled) {
+        console.log('getHealthConnectStatus: ' + healthConnectStatus);
+      }
+
+      if (healthConnectStatus === 'NOT_SUPPORTED') {
+        webviewRef.current?.injectJavaScript(
+          'window.healthConnectNotSupported()'
+        );
+      } else if (healthConnectStatus === 'NOT_INSTALLED') {
+        webviewRef.current?.injectJavaScript(
+          'window.healthConnectNotInstall()'
+        );
+      } else if (healthConnectStatus === 'INSTALLED') {
+        webviewRef.current?.injectJavaScript('window.healthConnectAvailable()');
+      }
+    } catch (e) {
+      if (isLoggingEnabled) {
+        console.error(e);
+      }
+    }
+  };
+
   const getDailyFitnessData = () => {
     if (isLoggingEnabled) {
       console.log('getDailyFitnessData() called');
@@ -314,13 +341,11 @@ const VisitRnSdkView = ({
         const parsedObject = JSON.parse(event.nativeEvent.data);
         if (parsedObject.method != null) {
           switch (parsedObject.method) {
+            case 'GET_HEALTH_CONNECT_STATUS':
+              getHealthConnectStatus();
+              break;
             case 'CONNECT_TO_GOOGLE_FIT':
               askForHealthConnectPermission();
-              // if (parseInt(DeviceInfo.getSystemVersion(), 10) >= 10) {
-              //   requestActivityRecognitionPermission();
-              // } else {
-              //   askForGoogleFitPermission();
-              // }
               break;
             case 'UPDATE_PLATFORM':
               webviewRef.current?.injectJavaScript(
