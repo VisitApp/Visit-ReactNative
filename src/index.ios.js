@@ -104,6 +104,7 @@ const VisitRnSdkView = ({
             }
           } else if (res.data.message === 'success') {
             const magicCode = res.data?.magicCode;
+            const responseReferenceId = res.data?.responseReferenceId;
             let finalBaseUrl = '';
             if (magicCode) {
               if (environment.toUpperCase() === 'PROD') {
@@ -117,6 +118,11 @@ const VisitRnSdkView = ({
               if (moduleName?.trim()) {
                 finalUrl += `&tab=${moduleName}`;
               }
+
+              if (responseReferenceId?.trim()) {
+                finalUrl += `&responseReferenceId=${responseReferenceId}`;
+              }
+
               setSource(finalUrl);
             }
           } else {

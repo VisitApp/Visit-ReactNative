@@ -96,8 +96,9 @@ const VisitRnSdkView = ({
             .then((response) => {
               let data = response.data;
               // let visitMagicLink = data.result; //@Deprecated. Superseded by magic code usage.
-              let errorMessage = data.errorMessage;
-              let magicCode = data.magicCode;
+              const errorMessage = data.errorMessage;
+              const magicCode = data.magicCode;
+              const responseReferenceId = data.responseReferenceId;
 
               let finalBaseUrl = '';
 
@@ -112,6 +113,10 @@ const VisitRnSdkView = ({
               if (data.message === 'success') {
                 if ((moduleName?.trim()?.length || 0) > 0) {
                   finalUrl += `&tab=${moduleName}`;
+                }
+
+                if ((responseReferenceId?.trim()?.length || 0) > 0) {
+                  finalUrl += `&responseReferenceId=${responseReferenceId}`;
                 }
 
                 if (isLoggingEnabled) {
