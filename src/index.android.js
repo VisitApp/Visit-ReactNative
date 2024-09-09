@@ -2,7 +2,6 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { EventRegister } from 'react-native-event-listeners';
 
 import {
-  SafeAreaView,
   NativeModules,
   PermissionsAndroid,
   BackHandler,
@@ -11,7 +10,10 @@ import {
 
 import WebView from 'react-native-webview';
 
-import LocationEnabler from 'react-native-location-enabler';
+import {
+  isLocationEnabled,
+  promptForEnableLocationIfNeeded,
+} from 'react-native-android-location-enabler';
 
 import DeviceInfo from 'react-native-device-info';
 
@@ -22,12 +24,6 @@ import constants from './constants';
 export const httpClient = axios.create({
   timeout: 60000,
 });
-
-const {
-  PRIORITIES: { HIGH_ACCURACY },
-  useLocationSettings,
-  addListener,
-} = LocationEnabler;
 
 const VisitRnSdkView = ({
   cpsid,
@@ -180,14 +176,31 @@ const VisitRnSdkView = ({
     isLoggingEnabled,
   ]);
 
-  const [enabled, requestResolution] = useLocationSettings(
-    {
-      priority: HIGH_ACCURACY, // default BALANCED_POWER_ACCURACY
-      alwaysShow: true, // default false
-      needBle: true, // default false
-    },
-    false /* optional: default undefined */
-  );
+  const askForGpsPermissionAccess = async () => {
+    try {
+      const enableResult = await promptForEnableLocationIfNeeded();
+      console.log('enableResult', enableResult);
+
+      var finalString = `window.checkTheGpsPermission(true)`;
+      console.log('requestLocationPermission: ' + finalString);
+
+      webviewRef.current?.injectJavaScript(finalString);
+
+      // The user has accepted to enable the location services
+      // data can be :
+      //  - "already-enabled" if the location services has been already enabled
+      //  - "enabled" if user has clicked on OK button in the popup
+    } catch (err) {
+      console.error(err.message);
+      // The user has not accepted to enable the location services or something went wrong during the process
+      // "err" : { "code" : "ERR00|ERR01|ERR02|ERR03", "message" : "message"}
+      // codes :
+      //  - ERR00 : The user has clicked on Cancel button in the popup
+      //  - ERR01 : If the Settings change are unavailable
+      //  - ERR02 : If the popup has failed to open
+      //  - ERR03 : Internal error
+    }
+  };
 
   const webviewRef = useRef(null);
 
@@ -230,8 +243,9 @@ const VisitRnSdkView = ({
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
         console.log('Location permission granted');
 
-        if (!enabled) {
-          requestResolution();
+        const checkEnabled = await isLocationEnabled();
+        if (!checkEnabled) {
+          askForGpsPermissionAccess();
         } else {
           var finalString = `window.checkTheGpsPermission(true)`;
           console.log('requestLocationPermission: ' + finalString);
@@ -411,20 +425,9 @@ const VisitRnSdkView = ({
   }, [canGoBack]);
 
   useEffect(() => {
-    const gpsListener = addListener(({ locationEnabled }) => {
-      if (locationEnabled) {
-        var finalString = `window.checkTheGpsPermission(true)`;
-
-        console.log('listener: ' + finalString);
-
-        webviewRef.current?.injectJavaScript(finalString);
-      }
-    });
-
     BackHandler.addEventListener('hardwareBackPress', handleBack);
     return () => {
       BackHandler.removeEventListener('hardwareBackPress', handleBack);
-      gpsListener.remove();
     };
   }, [handleBack]);
 

@@ -168,7 +168,7 @@
     "moment": "^2.29.4",
     "react-native-device-info": "^10.9.0",
     "react-native-event-listeners": "^1.0.7",
-    "react-native-location-enabler": "git+https://github.com/sashko9807/react-native-location-enabler.git",
+    "react-native-android-location-enabler": "^2.0.1",
     "react-native-webview": "^12.4.0"
   },
   "directories": {
