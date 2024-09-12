@@ -281,35 +281,46 @@ const VisitRnSdkView = ({
     }
   };
 
-  const getDailyFitnessData = () => {
+  const getDailyFitnessData = async () => {
     if (isLoggingEnabled) {
       console.log('getDailyFitnessData() called');
     }
 
-    NativeModules.VisitFitnessModule.requestDailyFitnessData((data) => {
+    try {
+      const dailyFitnessData =
+        await NativeModules.VisitFitnessModule.requestDailyFitnessData();
+
+      webviewRef.current?.injectJavaScript(dailyFitnessData);
+    } catch (error) {
       if (isLoggingEnabled) {
-        console.log(`getDailyFitnessData() data: ` + data);
+        console.log(error);
       }
-      webviewRef.current?.injectJavaScript(data);
-    });
+    }
   };
 
-  const requestActivityData = (type, frequency, timeStamp) => {
+  const requestActivityData = async (type, frequency, timeStamp) => {
     if (isLoggingEnabled) {
       console.log('requestActivityData() called');
     }
 
-    NativeModules.VisitFitnessModule.requestActivityDataFromHealthConnect(
-      type,
-      frequency,
-      timeStamp,
-      (data) => {
-        if (isLoggingEnabled) {
-          console.log(`requestActivityData() data: ` + data);
-        }
-        webviewRef.current?.injectJavaScript('window.' + data);
+    try {
+      const graphData =
+        await NativeModules.VisitFitnessModule.requestActivityDataFromHealthConnect(
+          type,
+          frequency,
+          timeStamp
+        );
+
+      if (isLoggingEnabled) {
+        console.log(`requestActivityData() data: ` + graphData);
       }
-    );
+
+      webviewRef.current?.injectJavaScript('window.' + graphData);
+    } catch (error) {
+      if (isLoggingEnabled) {
+        console.log(error);
+      }
+    }
   };
 
   const updateApiBaseUrl = (
@@ -519,6 +530,30 @@ export const fetchHourlyFitnessData = (startTimeStamp, isLoggingEnabled) => {
       .catch((err) => reject(err));
   });
 };
+
+// debounce, deferred
+function debounce(task, ms) {
+  let t = { promise: null, cancel: (_) => void 0 };
+  return async (...args) => {
+    try {
+      t.cancel();
+      t = deferred(ms);
+      await t.promise;
+      await task(...args);
+    } catch (_) {
+      console.log('cleaning up cancelled promise');
+    }
+  };
+}
+
+function deferred(ms) {
+  let cancel,
+    promise = new Promise((resolve, reject) => {
+      cancel = reject;
+      setTimeout(resolve, ms);
+    });
+  return { promise, cancel };
+}
 
 export default VisitRnSdkView;
 

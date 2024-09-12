@@ -9,7 +9,6 @@ import android.util.Log;
 import androidx.annotation.Keep;
 
 import com.example.MainActivity;
-import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContext;
@@ -33,13 +32,14 @@ public class VisitFitnessModule extends ReactContextBaseJavaModule implements He
   private final ReactContext reactContext;
 
   private Promise promise;
-  private Callback successCallback;
+  private Promise dataRetrivalPromise;
   private boolean isLoggingEnabled = false;
 
   private VisitStepSyncHelper visitStepSyncHelper;
   private HealthConnectUtil healthConnectUtil;
   private boolean syncDataWithServer = false;
   private MainActivity mainActivity;
+
 
   public VisitFitnessModule(ReactApplicationContext reactContext) {
     super(reactContext);
@@ -119,8 +119,8 @@ public class VisitFitnessModule extends ReactContextBaseJavaModule implements He
   }
 
   @ReactMethod
-  public void requestDailyFitnessData(Callback successCallback) {
-    this.successCallback = successCallback;
+  public void requestDailyFitnessData(Promise promise) {
+    this.dataRetrivalPromise = promise;
 
     if (healthConnectUtil.getHealthConnectConnectionState() == HealthConnectConnectionState.CONNECTED) {
       healthConnectUtil.getVisitDashboardGraph();
@@ -128,8 +128,8 @@ public class VisitFitnessModule extends ReactContextBaseJavaModule implements He
   }
 
   @ReactMethod
-  public void requestActivityDataFromHealthConnect(String type, String frequency, double timestamp, Callback successCallback) {
-    this.successCallback = successCallback;
+  public void requestActivityDataFromHealthConnect(String type, String frequency, double timestamp, Promise promise) {
+    this.dataRetrivalPromise = promise;
     Timber.d("mytag: requestActivityData() called.");
     healthConnectUtil.getActivityData(type, frequency, Math.round(timestamp));
   }
@@ -183,7 +183,7 @@ public class VisitFitnessModule extends ReactContextBaseJavaModule implements He
       if (isLoggingEnabled) {
         Log.d("mytag", "loadVisitWebViewGraphData: " + webString);
       }
-      successCallback.invoke(webString);
+      dataRetrivalPromise.resolve(webString);
     });
   }
 
