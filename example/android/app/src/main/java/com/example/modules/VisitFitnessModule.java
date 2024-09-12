@@ -6,6 +6,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import androidx.annotation.Keep;
+
 import com.example.MainActivity;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.Promise;
@@ -24,6 +26,7 @@ import java.util.Set;
 
 import timber.log.Timber;
 
+@Keep
 public class VisitFitnessModule extends ReactContextBaseJavaModule implements HealthConnectListener {
 
   private final String TAG = "mytag";
