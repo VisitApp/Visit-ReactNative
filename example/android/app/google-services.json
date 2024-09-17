@@ -7,12 +7,20 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:292562059614:android:6be9e46e57cfb70f1e0fcf",
+        "mobilesdk_app_id": "1:292562059614:android:91910798b674824d1e0fcf",
         "android_client_info": {
           "package_name": "com.reactnative"
         }
       },
       "oauth_client": [
+        {
+          "client_id": "292562059614-7uauakhvm9qu55apgj97kia3bphjvg1d.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.reactnative",
+            "certificate_hash": "83af2c55af5e27f01cc77ea87000a39401de7351"
+          }
+        },
         {
           "client_id": "292562059614-hab0gdnr614dr3enlhu8690oredl3g8d.apps.googleusercontent.com",
           "client_type": 3
@@ -20,7 +28,7 @@
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyAgS5iGxmfGU08mMD0tJIa2GVaWmZ6wSEs"
+          "current_key": "AIzaSyDEL63iBR3EC3p8-UrbNVpbjHqUivXan_0"
         }
       ],
       "services": {
