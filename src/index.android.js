@@ -7,6 +7,7 @@ import {
   PermissionsAndroid,
   BackHandler,
   Linking,
+  Alert
 } from 'react-native';
 
 import WebView from 'react-native-webview';
@@ -40,6 +41,13 @@ const VisitRnSdkView = ({
   isLoggingEnabled,
 }) => {
   const [source, setSource] = useState('');
+
+  const [
+    showPermissionAlreadyDeniedDialog,
+    setShowPermissionAlreadyDeniedDialog,
+  ] = useState(false);
+
+
   useEffect(() => {
     if ((magicLink?.trim()?.length || 0) > 0) {
       setSource(magicLink);
@@ -229,6 +237,7 @@ const VisitRnSdkView = ({
       );
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
         console.log('Location permission granted');
+        setShowPermissionAlreadyDeniedDialog(false);
 
         if (!enabled) {
           requestResolution();
@@ -239,6 +248,7 @@ const VisitRnSdkView = ({
           webviewRef.current?.injectJavaScript(finalString);
         }
       } else {
+        setShowPermissionAlreadyDeniedDialog(true);
         console.log('Location permission denied');
       }
     } catch (e) {
@@ -259,6 +269,27 @@ const VisitRnSdkView = ({
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const showLocationPermissionAlert = () => {
+    Alert.alert(
+      'Permission Required',
+      'Allow location permission from app settings',
+      [
+        {
+          text: 'Cancel',
+          onPress: () => {
+            console.log('Cancel clicked');
+          },
+        },
+        {
+          text: 'Go to Settings',
+          onPress: () => {
+            Linking.openSettings();
+          },
+        },
+      ],
+    );
   };
 
   const getDailyFitnessData = () => {
@@ -374,7 +405,12 @@ const VisitRnSdkView = ({
               break;
             case 'GET_LOCATION_PERMISSIONS':
               {
-                requestLocationPermission();
+                if (showPermissionAlreadyDeniedDialog) {
+                  showLocationPermissionAlert();
+                } else {
+                  requestLocationPermission();
+                }
+                
               }
               break;
             case 'OPEN_PDF':
