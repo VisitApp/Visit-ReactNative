@@ -223,54 +223,6 @@ const VisitRnSdkView = ({
     }
   };
 
-  const requestLocationPermission = async () => {
-    try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Need Location Permission',
-          message: 'Need access to location permission',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        }
-      );
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        console.log('Location permission granted');
-        setShowPermissionAlreadyDeniedDialog(false);
-
-        if (!enabled) {
-          requestResolution();
-        } else {
-          var finalString = `window.checkTheGpsPermission(true)`;
-          console.log('requestLocationPermission: ' + finalString);
-
-          webviewRef.current?.injectJavaScript(finalString);
-        }
-      } else {
-        setShowPermissionAlreadyDeniedDialog(true);
-        console.log('Location permission denied');
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const askForGoogleFitPermission = async () => {
-    try {
-      NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
-
-      const isPermissionGranted =
-        await NativeModules.VisitFitnessModule.askForFitnessPermission();
-      if (isPermissionGranted == 'GRANTED') {
-        getDailyFitnessData();
-      }
-      console.log(`Google Fit Permissionl: ${isPermissionGranted}`);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const showLocationPermissionAlert = () => {
     Alert.alert(
       'Permission Required',
@@ -291,6 +243,73 @@ const VisitRnSdkView = ({
       ],
     );
   };
+
+  const requestLocationPermission = async () => {
+    try {
+      console.log("requestLocationPermission called");
+      
+
+      const isLocationPermissionPresent = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+
+      console.log("isLocationPermissionPresent: "+isLocationPermissionPresent + " showPermissionAlreadyDeniedDialog: "+showPermissionAlreadyDeniedDialog);
+      
+
+      if (!isLocationPermissionPresent && showPermissionAlreadyDeniedDialog) {
+
+        console.log("showLocationPermissionAlert() called");
+  
+        showLocationPermissionAlert();
+      } else {
+        console.log("requesting location permission");
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Need Location Permission',
+            message: 'Need access to location permission',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          console.log('Location permission granted');
+          setShowPermissionAlreadyDeniedDialog(false);
+  
+          if (!enabled) {
+            requestResolution();
+          } else {
+            var finalString = `window.checkTheGpsPermission(true)`;
+            console.log('requestLocationPermission: ' + finalString);
+  
+            webviewRef.current?.injectJavaScript(finalString);
+          }
+        } else {
+          setShowPermissionAlreadyDeniedDialog(true);
+          console.log('Location permission denied');
+        }
+      }
+      
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const askForGoogleFitPermission = async () => {
+    try {
+      NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
+
+      const isPermissionGranted =
+        await NativeModules.VisitFitnessModule.askForFitnessPermission();
+      if (isPermissionGranted == 'GRANTED') {
+        getDailyFitnessData();
+      }
+      console.log(`Google Fit Permissionl: ${isPermissionGranted}`);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+
 
   const getDailyFitnessData = () => {
     console.log('getDailyFitnessData() called');
@@ -405,12 +424,8 @@ const VisitRnSdkView = ({
               break;
             case 'GET_LOCATION_PERMISSIONS':
               {
-                if (showPermissionAlreadyDeniedDialog) {
-                  showLocationPermissionAlert();
-                } else {
-                  requestLocationPermission();
-                }
-                
+                console.log("GET_LOCATION_PERMISSIONS")
+                requestLocationPermission();
               }
               break;
             case 'OPEN_PDF':
@@ -449,11 +464,9 @@ const VisitRnSdkView = ({
   useEffect(() => {
     const gpsListener = addListener(({ locationEnabled }) => {
       if (locationEnabled) {
-        var finalString = `window.checkTheGpsPermission(true)`;
 
-        console.log('listener: ' + finalString);
+        checkLocationPermissionAndSendCallback();
 
-        webviewRef.current?.injectJavaScript(finalString);
       }
     });
 
@@ -463,6 +476,23 @@ const VisitRnSdkView = ({
       gpsListener.remove();
     };
   }, [handleBack]);
+
+  const checkLocationPermissionAndSendCallback = async () =>{
+
+    const isLocationPermissionAvailable = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+
+    console.log("checkLocationPermissionAndSendCallback() isLocationPermissionAvailable: "+isLocationPermissionAvailable + "isGPSPermissionAvailabe: true");
+
+    if(isLocationPermissionAvailable){
+      var finalString = `window.checkTheGpsPermission(true)`;
+
+      console.log('listener: ' + finalString);
+  
+      webviewRef.current?.injectJavaScript(finalString);
+    }
+    
+  }
+
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
