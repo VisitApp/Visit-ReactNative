@@ -5,13 +5,13 @@
  * @format
  */
 
-import React from 'react';
+import React, {useState} from 'react';
 
 import VisitRnSdkView from 'react-native-visit-rn-sdk';
 
 import {EventRegister} from 'react-native-event-listeners';
 
-import {SafeAreaView, Alert} from 'react-native';
+import {SafeAreaView, Alert, TextInput, Button} from 'react-native';
 
 const visitBaseUrl = 'https://insurance-uat.getvisitapp.net/wonderwomen';
 
@@ -27,6 +27,16 @@ const moduleName = 'pharmacy';
 const visitEvent = 'visit-event';
 
 function App() {
+  const [inputText, setInputText] = useState('');
+
+  const [magicLink, setMagicLink] = useState(
+    'https://star-health.getvisitapp.net/?mluib7c=%5B%7B%22policyNumber%22:%2211240005322400%22,%22policyId%22:1442,%22userId%22:1005320,%22magicUserId%22:41548,%22userMagicCode%22:%22gXGJC5JY%22,%22policyName%22:%22Assure%20Insurance-2021%22,%22policyStartDate%22:%222024-02-21T00:00:00.000Z%22,%22policyEndDate%22:%222025-02-20T23:59:59.000Z%22,%22isHospiCash%22:false,%22isAlreadyOnboarded%22:true,%22isPolicyAvailable%22:true%7D,%7B%22policyNumber%22:%2211250007942700%22,%22policyId%22:1537,%22userId%22:3462363,%22magicUserId%22:42010,%22userMagicCode%22:%22B0AZu5xW%22,%22policyName%22:%22Young%20Star%20Insurance%20Policy%22,%22policyStartDate%22:%222024-07-02T00:00:00.000Z%22,%22policyEndDate%22:%222025-07-01T23:59:59.000Z%22,%22isHospiCash%22:false,%22isAlreadyOnboarded%22:true,%22isPolicyAvailable%22:true%7D,%7B%22policyNumber%22:%2211230003549501%22,%22policyId%22:1566,%22userId%22:1005320,%22magicUserId%22:41548,%22userMagicCode%22:%22gXGJC5JY%22,%22policyName%22:%22POS%20Medi%20classic%20Individual%20Revised%202022%22,%22policyStartDate%22:%222023-11-22T00:00:00.000Z%22,%22policyEndDate%22:%222024-11-21T23:59:59.000Z%22,%22isHospiCash%22:false,%22isAlreadyOnboarded%22:true,%22isPolicyAvailable%22:true%7D,%7B%22policyNumber%22:%2211220002133602%22,%22policyId%22:1573,%22userId%22:1005320,%22magicUserId%22:41548,%22userMagicCode%22:%22gXGJC5JY%22,%22policyName%22:%22Family%20Health%20Optima%20Insurance%20-%202022%22,%22policyStartDate%22:%222023-12-29T00:00:00.000Z%22,%22policyEndDate%22:%222024-12-28T23:59:59.000Z%22,%22isHospiCash%22:false,%22isAlreadyOnboarded%22:true,%22isPolicyAvailable%22:true%7D%5D',
+  );
+
+  const handlePress = () => {
+    setMagicLink(inputText);
+  };
+
   React.useEffect(() => {
     const listener = EventRegister.addEventListener(visitEvent, data => {
       if (data.message === 'unauthorized-wellness-access') {
@@ -57,6 +67,20 @@ function App() {
         onPress={() => Alert.alert('Button with adjusted color pressed')}
       /> */}
 
+      <TextInput
+        style={{
+          height: 40,
+          borderColor: 'gray',
+          borderWidth: 1,
+          paddingHorizontal: 10,
+        }}
+        placeholder="Type something"
+        value={inputText}
+        onChangeText={text => setInputText(text)}
+      />
+
+      <Button title="Update URL" onPress={handlePress} />
+
       <VisitRnSdkView
         baseUrl={visitBaseUrl}
         errorBaseUrl={errorBaseUrl}
@@ -65,7 +89,7 @@ function App() {
         moduleName={moduleName}
         environment={'sit'}
         isLoggingEnabled={true}
-        magicLink={'https://star-health.getvisitapp.net/?mluib7c=%5B%7B%22policyNumber%22:%2211240005416800%22,%22policyId%22:1480,%22userId%22:1004565,%22magicUserId%22:41213,%22userMagicCode%22:%22S7fFT4ci%22,%22policyName%22:%22Young%20Star%20Insurance%20Policy%22,%22policyStartDate%22:%222024-08-02T18:30:00.000Z%22,%22policyEndDate%22:%222025-07-03T18:29:59.000Z%22,%22isHospiCash%22:false,%22isAlreadyOnboarded%22:true%7D,%7B%22policyNumber%22:%2211240005434900%22,%22policyId%22:1481,%22userId%22:1004565,%22magicUserId%22:41213,%22userMagicCode%22:%22S7fFT4ci%22,%22policyName%22:%22Star%20Family%20Health%20Optima%22,%22policyStartDate%22:%222024-12-02T18:30:00.000Z%22,%22policyEndDate%22:%222025-11-03T18:29:59.000Z%22,%22isHospiCash%22:false,%22isAlreadyOnboarded%22:true%7D,%7B%22policyNumber%22:%2211240006100000%22,%22policyId%22:1503,%22userId%22:1004565,%22magicUserId%22:41213,%22userMagicCode%22:%22S7fFT4ci%22,%22policyName%22:%22Star%20Out%20Patient%20Care%20Insurance%20Policy%22,%22policyStartDate%22:%222024-03-28T18:30:00.000Z%22,%22policyEndDate%22:%222025-03-28T18:29:59.000Z%22,%22isHospiCash%22:false,%22isAlreadyOnboarded%22:true%7D,%7B%22policyNumber%22:%2211240006101300%22,%22policyId%22:1505,%22userId%22:1004565,%22magicUserId%22:41213,%22userMagicCode%22:%22S7fFT4ci%22,%22policyName%22:%22Star%20Women%20Care%20Insurance%20-%202021%22,%22policyStartDate%22:%222024-03-28T18:30:00.000Z%22,%22policyEndDate%22:%222025-03-28T18:29:59.000Z%22,%22isHospiCash%22:false,%22isAlreadyOnboarded%22:true%7D,%7B%22policyNumber%22:%2211250007707700%22,%22policyId%22:1563,%22userId%22:1004565,%22magicUserId%22:41213,%22userMagicCode%22:%22S7fFT4ci%22,%22policyName%22:%22Young%20Star%20Insurance%20Policy%22,%22policyStartDate%22:%222024-06-25T18:30:00.000Z%22,%22policyEndDate%22:%222024-12-22T18:29:59.000Z%22,%22isHospiCash%22:false,%22isAlreadyOnboarded%22:true%7D,%7B%22policyNumber%22:%2218250007708000%22,%22policyId%22:1564,%22userId%22:2083479,%22magicUserId%22:41652,%22userMagicCode%22:%22yS1PVPF6%22,%22policyName%22:%22Star%20Travel%20Protect%20Insurance%20Policy%22,%22policyStartDate%22:%222024-06-25T18:30:00.000Z%22,%22policyEndDate%22:%222024-12-22T18:29:59.000Z%22,%22isHospiCash%22:false,%22isAlreadyOnboarded%22:true%7D%5D'}
+        magicLink={magicLink}
       />
     </SafeAreaView>
   );
