@@ -7,7 +7,7 @@ import android.widget.RelativeLayout
 import androidx.appcompat.app.AppCompatActivity
 
 class HealthConnectPermissionUsageActivity : AppCompatActivity() {
-
+//
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_health_connect_permission_usage)
