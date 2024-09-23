@@ -40,6 +40,12 @@ const VisitRnSdkView = ({
   isLoggingEnabled,
 }) => {
   const [source, setSource] = useState('');
+
+  const [
+    showPermissionAlreadyDeniedDialog,
+    setShowPermissionAlreadyDeniedDialog,
+  ] = useState(false);
+
   useEffect(() => {
     if (isLoggingEnabled) {
       console.log('useEffect ran');
@@ -202,33 +208,77 @@ const VisitRnSdkView = ({
 
   const webviewRef = useRef(null);
 
+  const showLocationPermissionAlert = () => {
+    Alert.alert(
+      'Permission Required',
+      'Allow location permission from app settings',
+      [
+        {
+          text: 'Cancel',
+          onPress: () => {
+            console.log('Cancel clicked');
+          },
+        },
+        {
+          text: 'Go to Settings',
+          onPress: () => {
+            Linking.openSettings();
+          },
+        },
+      ]
+    );
+  };
+
   const requestLocationPermission = async () => {
     try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Need Location Permission',
-          message: 'Need access to location permission',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        }
+      console.log('requestLocationPermission called');
+
+      const isLocationPermissionPresent = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
       );
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        if (isLoggingEnabled) {
-          console.log('Location permission granted');
-        }
 
-        if (!enabled) {
-          requestResolution();
-        } else {
-          var finalString = `window.checkTheGpsPermission(true)`;
-          console.log('requestLocationPermission: ' + finalString);
+      console.log(
+        'isLocationPermissionPresent: ' +
+          isLocationPermissionPresent +
+          ' showPermissionAlreadyDeniedDialog: ' +
+          showPermissionAlreadyDeniedDialog
+      );
 
-          webviewRef.current?.injectJavaScript(finalString);
-        }
+      if (!isLocationPermissionPresent && showPermissionAlreadyDeniedDialog) {
+        console.log('showLocationPermissionAlert() called');
+
+        showLocationPermissionAlert();
       } else {
-        console.log('Location permission denied');
+        console.log('requesting location permission');
+
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Need Location Permission',
+            message: 'Need access to location permission',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          if (isLoggingEnabled) {
+            console.log('Location permission granted');
+          }
+          setShowPermissionAlreadyDeniedDialog(false);
+
+          if (!enabled) {
+            requestResolution();
+          } else {
+            var finalString = `window.checkTheGpsPermission(true)`;
+            console.log('requestLocationPermission: ' + finalString);
+
+            webviewRef.current?.injectJavaScript(finalString);
+          }
+        } else {
+          setShowPermissionAlreadyDeniedDialog(true);
+          console.log('Location permission denied');
+        }
       }
     } catch (e) {
       console.error(e);
@@ -419,6 +469,7 @@ const VisitRnSdkView = ({
               break;
             case 'GET_LOCATION_PERMISSIONS':
               {
+                console.log('GET_LOCATION_PERMISSIONS');
                 requestLocationPermission();
               }
               break;
@@ -458,13 +509,7 @@ const VisitRnSdkView = ({
   useEffect(() => {
     const gpsListener = addListener(({ locationEnabled }) => {
       if (locationEnabled) {
-        var finalString = `window.checkTheGpsPermission(true)`;
-
-        if (isLoggingEnabled) {
-          console.log('listener: ' + finalString);
-        }
-
-        webviewRef.current?.injectJavaScript(finalString);
+        checkLocationPermissionAndSendCallback();
       }
     });
 
@@ -474,6 +519,26 @@ const VisitRnSdkView = ({
       gpsListener.remove();
     };
   }, [handleBack]);
+
+  const checkLocationPermissionAndSendCallback = async () => {
+    const isLocationPermissionAvailable = await PermissionsAndroid.check(
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+    );
+
+    console.log(
+      'checkLocationPermissionAndSendCallback() isLocationPermissionAvailable: ' +
+        isLocationPermissionAvailable +
+        'isGPSPermissionAvailabe: true'
+    );
+
+    if (isLocationPermissionAvailable) {
+      var finalString = `window.checkTheGpsPermission(true)`;
+
+      console.log('listener: ' + finalString);
+
+      webviewRef.current?.injectJavaScript(finalString);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
