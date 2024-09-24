@@ -7,6 +7,7 @@ import {
   PermissionsAndroid,
   BackHandler,
   Linking,
+  Alert,
 } from 'react-native';
 
 import WebView from 'react-native-webview';
@@ -468,10 +469,8 @@ const VisitRnSdkView = ({
               }
               break;
             case 'GET_LOCATION_PERMISSIONS':
-              {
-                console.log('GET_LOCATION_PERMISSIONS');
-                requestLocationPermission();
-              }
+              console.log('GET_LOCATION_PERMISSIONS');
+              requestLocationPermission();
               break;
             case 'OPEN_PDF':
               {
@@ -482,8 +481,6 @@ const VisitRnSdkView = ({
               }
               break;
             case 'CLOSE_VIEW':
-              {
-              }
               break;
 
             default:
@@ -541,6 +538,7 @@ const VisitRnSdkView = ({
   };
 
   return (
+    // eslint-disable-next-line react-native/no-inline-styles
     <SafeAreaView style={{ flex: 1 }}>
       {source ? (
         <WebView
@@ -597,28 +595,28 @@ export const fetchHourlyFitnessData = (startTimeStamp, isLoggingEnabled) => {
 };
 
 // debounce, deferred
-function debounce(task, ms) {
-  let t = { promise: null, cancel: (_) => void 0 };
-  return async (...args) => {
-    try {
-      t.cancel();
-      t = deferred(ms);
-      await t.promise;
-      await task(...args);
-    } catch (_) {
-      console.log('cleaning up cancelled promise');
-    }
-  };
-}
+// function debounce(task, ms) {
+//   let t = { promise: null, cancel: (_) => void 0 };
+//   return async (...args) => {
+//     try {
+//       t.cancel();
+//       t = deferred(ms);
+//       await t.promise;
+//       await task(...args);
+//     } catch (_) {
+//       console.log('cleaning up cancelled promise');
+//     }
+//   };
+// }
 
-function deferred(ms) {
-  let cancel,
-    promise = new Promise((resolve, reject) => {
-      cancel = reject;
-      setTimeout(resolve, ms);
-    });
-  return { promise, cancel };
-}
+// function deferred(ms) {
+//   let cancel,
+//     promise = new Promise((resolve, reject) => {
+//       cancel = reject;
+//       setTimeout(resolve, ms);
+//     });
+//   return { promise, cancel };
+// }
 
 export default VisitRnSdkView;
 
