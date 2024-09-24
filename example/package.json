@@ -12,7 +12,7 @@
   "dependencies": {
     "react": "18.3.1",
     "react-native": "0.75.3",
-    "react-native-device-info": "^13.0.0",
+    "react-native-device-info": "13.0.0",
     "react-native-event-listeners": "^1.0.7",
     "react-native-location-enabler": "github:sashko9807/react-native-location-enabler",
     "react-native-visit-rn-sdk": "github:VisitApp/Visit-ReactNative#f-health-connect-migration",

@@ -166,7 +166,7 @@
   "dependencies": {
     "axios": "^1.5.0",
     "moment": "^2.29.4",
-    "react-native-device-info": "^11.1.0",
+    "react-native-device-info": "13.0.0",
     "react-native-event-listeners": "^1.0.7",
     "react-native-location-enabler": "git+https://github.com/sashko9807/react-native-location-enabler.git",
     "react-native-webview": "^13.12.1"
