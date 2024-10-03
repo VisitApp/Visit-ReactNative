@@ -120,7 +120,10 @@ const VisitRnSdkView = ({
                 finalUrl += `&tab=${moduleName}`;
               }
 
-              if ((responseReferenceId?.trim()?.length ?? 0) > 0) {
+              if (
+                typeof responseReferenceId === 'string' &&
+                responseReferenceId.trim().length > 0
+              ) {
                 finalUrl += `&responseReferenceId=${responseReferenceId}`;
               }
 
