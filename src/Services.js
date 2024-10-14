@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export const httpClient = axios.create({
-  timeout : 60000
+  timeout: 60000,
 });
 
 export const getWebViewLink = (

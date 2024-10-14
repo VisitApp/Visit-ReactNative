@@ -37,6 +37,7 @@ const escapeChars = {
 
 const unescapeHTML = (str) =>
   // modified from underscore.string and string.js
+  // eslint-disable-next-line no-useless-escape
   str.replace(/\&([^;]+);/g, (entity, entityCode) => {
     let match;
 
@@ -45,7 +46,7 @@ const unescapeHTML = (str) =>
     } else if ((match = entityCode.match(/^#x([\da-fA-F]+)$/))) {
       return String.fromCharCode(parseInt(match[1], 16));
     } else if ((match = entityCode.match(/^#(\d+)$/))) {
-      return String.fromCharCode(~~match[1]);
+      return String.fromCharCode(match[1]);
     } else {
       return entity;
     }
@@ -104,6 +105,7 @@ const VisitRnSdkView = ({
             }
           } else if (res.data.message === 'success') {
             const magicCode = res.data?.magicCode;
+            const responseReferenceId = res.data?.responseReferenceId;
             let finalBaseUrl = '';
             if (magicCode) {
               if (environment.toUpperCase() === 'PROD') {
@@ -117,6 +119,14 @@ const VisitRnSdkView = ({
               if (moduleName?.trim()) {
                 finalUrl += `&tab=${moduleName}`;
               }
+
+              if (
+                typeof responseReferenceId === 'string' &&
+                responseReferenceId.trim().length > 0
+              ) {
+                finalUrl += `&responseReferenceId=${responseReferenceId}`;
+              }
+
               setSource(finalUrl);
             }
           } else {
@@ -219,6 +229,7 @@ const VisitRnSdkView = ({
       type,
       frequency,
       timestamp,
+      // eslint-disable-next-line no-shadow
       apiBaseUrl,
       authtoken,
       googleFitLastSync,
@@ -297,6 +308,7 @@ const VisitRnSdkView = ({
 
   const { height, width } = Dimensions.get('screen');
   return (
+    // eslint-disable-next-line react-native/no-inline-styles
     <SafeAreaView style={{ flex: 1, backgroundColor: 'white', height, width }}>
       {loading ? (
         <LoadingIndicator />
@@ -347,6 +359,7 @@ const LoadingIndicator = () => {
     <ActivityIndicator
       color="#000"
       size="small"
+      // eslint-disable-next-line react-native/no-inline-styles
       style={{
         flex: 1,
         zIndex: 100,
