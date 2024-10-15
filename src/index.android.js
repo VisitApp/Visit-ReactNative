@@ -8,6 +8,7 @@ import {
   BackHandler,
   Linking,
   Alert,
+  AppState,
 } from 'react-native';
 
 import WebView from 'react-native-webview';
@@ -41,6 +42,7 @@ const VisitRnSdkView = ({
   isLoggingEnabled,
 }) => {
   const [source, setSource] = useState('');
+  const [appState, setAppState] = useState(AppState.currentState);
 
   const [
     showPermissionAlreadyDeniedDialog,
@@ -201,6 +203,34 @@ const VisitRnSdkView = ({
     isLoggingEnabled,
   ]);
 
+  useEffect(() => {
+    const subscription = AppState.addEventListener(
+      'change',
+      handleAppStateChange
+    );
+    console.log(`AppState.addEventListener added, current state: ${appState}`);
+
+    return () => {
+      subscription.remove();
+    };
+  }, [appState]); // Include appState in the dependency array to ensure it's up to date.
+
+  const handleAppStateChange = (nextAppState) => {
+    // console.log(
+    //   "nextAppState: " + nextAppState + ", previousState: " + appState
+    // );
+
+    // Instead of relying on the old appState, use the nextAppState directly
+    if (appState.match(/inactive|background/) && nextAppState === 'active') {
+      if (isLoggingEnabled) {
+        console.log('App has come to the foreground!');
+      }
+      getHealthConnectStatus();
+    }
+
+    setAppState(nextAppState); // Update the state with the new app state
+  };
+
   const [enabled, requestResolution] = useLocationSettings(
     {
       priority: HIGH_ACCURACY, // default BALANCED_POWER_ACCURACY
@@ -325,8 +355,17 @@ const VisitRnSdkView = ({
         webviewRef.current?.injectJavaScript(
           'window.healthConnectNotInstall()'
         );
+        webviewRef.current?.injectJavaScript(
+          'window.updateFitnessPermissions(false,0,0)'
+        );
       } else if (healthConnectStatus === 'INSTALLED') {
         webviewRef.current?.injectJavaScript('window.healthConnectAvailable()');
+
+        webviewRef.current?.injectJavaScript(
+          'window.updateFitnessPermissions(false,0,0)'
+        );
+      } else if (healthConnectStatus === 'CONNECTED') {
+        //don't do anything here because it is responsibility of askForHealthConnectPermission
       }
     } catch (e) {
       if (isLoggingEnabled) {
@@ -406,7 +445,7 @@ const VisitRnSdkView = ({
     if (event.nativeEvent.data != null) {
       try {
         if (isLoggingEnabled) {
-          console.log('Event :' + event.nativeEvent.data);
+          // console.log('Event :' + event.nativeEvent.data);
         }
         const parsedObject = JSON.parse(event.nativeEvent.data);
         if (parsedObject.method != null) {
@@ -525,11 +564,13 @@ const VisitRnSdkView = ({
       PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
     );
 
-    console.log(
-      'checkLocationPermissionAndSendCallback() isLocationPermissionAvailable: ' +
-        isLocationPermissionAvailable +
-        'isGPSPermissionAvailabe: true'
-    );
+    if (isLoggingEnabled) {
+      console.log(
+        'checkLocationPermissionAndSendCallback() isLocationPermissionAvailable: ' +
+          isLocationPermissionAvailable +
+          'isGPSPermissionAvailabe: true'
+      );
+    }
 
     if (isLocationPermissionAvailable) {
       var finalString = `window.checkTheGpsPermission(true)`;
