@@ -166,7 +166,8 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
     apiBaseUrl: String,
     authToken: String,
     googleFitLastSync: Double,
-    gfHourlyLastSync: Double
+    gfHourlyLastSync: Double,
+    promise: Promise?
   ) {
     if (isLoggingEnabled) {
       Log.d(
@@ -178,12 +179,17 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
 
     if (!syncDataWithServer) {
       Timber.d("mytag: syncDataWithServer() called")
-      visitStepSyncHelper!!.sendDataToVisitServer(
-        healthConnectUtil!!, Math.round(googleFitLastSync), Math.round(gfHourlyLastSync),
+      visitStepSyncHelper.sendDataToVisitServer(
+        healthConnectUtil, Math.round(googleFitLastSync), Math.round(gfHourlyLastSync),
         "$apiBaseUrl/", authToken
       )
       syncDataWithServer = true
+      promise?.resolve("Health Data Sync Started")
+    } else {
+      promise?.resolve("Health Data Already Synced")
     }
+
+
   }
 
   @ReactMethod

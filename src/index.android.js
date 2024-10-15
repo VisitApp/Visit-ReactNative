@@ -416,7 +416,7 @@ const VisitRnSdkView = ({
     }
   };
 
-  const updateApiBaseUrl = (
+  const updateApiBaseUrl = async (
     apiBaseUrl,
     authtoken,
     googleFitLastSync,
@@ -426,12 +426,22 @@ const VisitRnSdkView = ({
       console.log('updateApiBaseUrl() called.');
     }
 
-    NativeModules.VisitFitnessModule.updateApiBaseUrl(
-      apiBaseUrl,
-      authtoken,
-      googleFitLastSync,
-      gfHourlyLastSync
-    );
+    try {
+      const message = await NativeModules.VisitFitnessModule.updateApiBaseUrl(
+        apiBaseUrl,
+        authtoken,
+        googleFitLastSync,
+        gfHourlyLastSync
+      );
+
+      if (isLoggingEnabled) {
+        console.log(message);
+      }
+    } catch (error) {
+      if (isLoggingEnabled) {
+        console.log(error);
+      }
+    }
   };
 
   const runBeforeFirst = `
