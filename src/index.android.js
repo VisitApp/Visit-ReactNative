@@ -329,7 +329,8 @@ const VisitRnSdkView = ({
       }
 
       if (isPermissionGranted === 'GRANTED') {
-        getDailyFitnessData();
+        getHealthConnectStatus();
+        // getDailyFitnessData();
       }
     } catch (e) {
       if (isLoggingEnabled) {
@@ -365,7 +366,7 @@ const VisitRnSdkView = ({
           'window.updateFitnessPermissions(false,0,0)'
         );
       } else if (healthConnectStatus === 'CONNECTED') {
-        //don't do anything here because it is responsibility of askForHealthConnectPermission
+        getDailyFitnessData();
       }
     } catch (e) {
       if (isLoggingEnabled) {
@@ -455,7 +456,7 @@ const VisitRnSdkView = ({
     if (event.nativeEvent.data != null) {
       try {
         if (isLoggingEnabled) {
-          // console.log('Event :' + event.nativeEvent.data);
+          console.log('Event :' + event.nativeEvent.data);
         }
         const parsedObject = JSON.parse(event.nativeEvent.data);
         if (parsedObject.method != null) {
