@@ -319,6 +319,31 @@ const VisitRnSdkView = ({
     }
   };
 
+  const showHealthConnectPermissionDeniedDialog = () => {
+    Alert.alert(
+      'Permission Denied',
+      'Go to Health Connect App to allow app permission',
+      [
+        {
+          text: 'Cancel',
+          onPress: () => {
+            console.log('Cancel clicked');
+          },
+        },
+        {
+          text: 'Open Health Connect',
+          onPress: () => {
+            openHealthConnectApp();
+          },
+        },
+      ]
+    );
+  };
+
+  const openHealthConnectApp = async () => {
+    NativeModules.VisitFitnessModule.openHealthConnectApp();
+  };
+
   const askForHealthConnectPermission = async () => {
     try {
       const isPermissionGranted =
@@ -331,6 +356,8 @@ const VisitRnSdkView = ({
       if (isPermissionGranted === 'GRANTED') {
         getHealthConnectStatus();
         // getDailyFitnessData();
+      } else if (isPermissionGranted === 'CANCELLED') {
+        showHealthConnectPermissionDeniedDialog();
       }
     } catch (e) {
       if (isLoggingEnabled) {

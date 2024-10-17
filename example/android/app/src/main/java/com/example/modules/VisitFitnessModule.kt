@@ -137,7 +137,7 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
 
   override fun userDeniedHealthConnectPermission() {
     Timber.d("userDeniedHealthConnectPermission")
-    promise!!.reject("CANCELLED", "Google Permission was Denied")
+    promise!!.resolve("CANCELLED")
   }
 
   @ReactMethod
@@ -213,6 +213,12 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
   fun fetchHourlyFitnessData(timestamp: Double, promise: Promise?) {
     this.promise = promise
     // TODO: to be implemented in the future.
+  }
+
+  @ReactMethod
+  fun openHealthConnectApp(promise: Promise?) {
+    this.promise = promise
+    healthConnectUtil.openHealthConnectApp();
   }
 
   override fun getName(): String {
