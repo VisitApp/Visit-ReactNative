@@ -158,7 +158,13 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
   ) {
     this.dataRetrivalPromise = promise
     Timber.d("mytag: requestActivityData() called.")
-    healthConnectUtil!!.getActivityData(type, frequency, Math.round(timestamp))
+    if (healthConnectUtil.healthConnectConnectionState == HealthConnectConnectionState.CONNECTED) {
+      //Health Connect Implementation
+      healthConnectUtil.getActivityData(type, frequency, Math.round(timestamp))
+    } else {
+      Timber.d("mytag: permission not available healthConnectConnectionState: ${healthConnectUtil.healthConnectConnectionState}")
+      healthConnectUtil.requestPermission()
+    }
   }
 
   @ReactMethod
