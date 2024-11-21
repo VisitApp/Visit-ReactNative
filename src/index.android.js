@@ -9,6 +9,7 @@ import {
   Linking,
   Alert,
   AppState,
+  NativeEventEmitter,
 } from 'react-native';
 
 import WebView from 'react-native-webview';
@@ -24,6 +25,8 @@ import constants from './constants';
 export const httpClient = axios.create({
   timeout: 60000,
 });
+
+const messageEmitter = new NativeEventEmitter(NativeModules.VisitFitnessModule);
 
 const {
   PRIORITIES: { HIGH_ACCURACY },
@@ -202,6 +205,24 @@ const VisitRnSdkView = ({
     magicLink,
     isLoggingEnabled,
   ]);
+
+  useEffect(() => {
+    const subscription = messageEmitter.addListener('onMessage', (message) => {
+      console.log('Received message:', message);
+
+      //TODO: if message is a RemoteException then show a custom dialog to the user.
+
+      EventRegister.emitEvent('visit-event', {
+        message: 'health-connect-error-event',
+        errorMessage: message,
+      });
+    });
+
+    return () => {
+      // Clean up the subscription when the component unmounts
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const subscription = AppState.addEventListener(

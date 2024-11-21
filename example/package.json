@@ -15,7 +15,7 @@
     "react-native-device-info": "13.0.0",
     "react-native-event-listeners": "^1.0.7",
     "react-native-location-enabler": "github:sashko9807/react-native-location-enabler",
-    "react-native-visit-rn-sdk": "^2.0.6",
+    "react-native-visit-rn-sdk": "^2.0.7",
     "react-native-webview": "^13.12.2"
   },
   "devDependencies": {

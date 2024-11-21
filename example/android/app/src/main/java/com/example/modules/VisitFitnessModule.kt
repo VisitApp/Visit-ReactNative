@@ -12,13 +12,18 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.getvisitapp.google_fit.HealthConnectListener
 import com.getvisitapp.google_fit.data.VisitStepSyncHelper
 import com.getvisitapp.google_fit.healthConnect.OnActivityResultImplementation
 import com.getvisitapp.google_fit.healthConnect.activity.HealthConnectUtil
 import com.getvisitapp.google_fit.healthConnect.contants.Contants.previouslyRevoked
 import com.getvisitapp.google_fit.healthConnect.enums.HealthConnectConnectionState
-import com.getvisitapp.google_fit.healthConnect.enums.HealthConnectConnectionState.*
+import com.getvisitapp.google_fit.healthConnect.enums.HealthConnectConnectionState.CONNECTED
+import com.getvisitapp.google_fit.healthConnect.enums.HealthConnectConnectionState.INSTALLED
+import com.getvisitapp.google_fit.healthConnect.enums.HealthConnectConnectionState.NONE
+import com.getvisitapp.google_fit.healthConnect.enums.HealthConnectConnectionState.NOT_INSTALLED
+import com.getvisitapp.google_fit.healthConnect.enums.HealthConnectConnectionState.NOT_SUPPORTED
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -240,6 +245,7 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
     }
   }
 
+
   override fun requestPermission() {
     Timber.d("requestPermission called 218")
     mainActivity!!.requestPermissions.launch(healthConnectUtil.PERMISSIONS)
@@ -258,5 +264,22 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
       INSTALLED -> {}
       NONE -> {}
     }
+  }
+
+  override fun logHealthConnectError(throwable: Throwable) {
+    //pass it via a callback.
+    throwable.message?.let {
+      val formattedMessage = "${throwable.javaClass}: ${throwable.message}"
+      Timber.d("mytag: logHealthConnectError= $formattedMessage")
+
+      sendMessageToReactNative(formattedMessage)
+    }
+  }
+
+  private fun sendMessageToReactNative(message: String) {
+    Timber.d("mytag: sendMessageToReactNative called()")
+    reactContext
+      .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+      .emit("onMessage", message) // "onMessage" is the event name
   }
 }
