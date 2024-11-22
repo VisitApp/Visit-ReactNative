@@ -35,7 +35,6 @@ function App() {
       } else if (data.message === 'health-connect-error-event') {
         //when something goes wrong in health connect connection or data retrival.
         //log this your analytics or firebase console.
-        Alert.alert('Error', data.errorMessage);
         
       }
     });

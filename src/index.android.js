@@ -210,7 +210,13 @@ const VisitRnSdkView = ({
     const subscription = messageEmitter.addListener('onMessage', (message) => {
       console.log('Received message:', message);
 
-      //TODO: if message is a RemoteException then show a custom dialog to the user.
+      if (typeof message === 'string' && message.includes('RemoteException')) {
+        Alert.alert(
+          'Error!',
+          'Something went wrong while connecting to Health Connect. Please try again.',
+          []
+        );
+      }
 
       EventRegister.emitEvent('visit-event', {
         message: 'health-connect-error-event',
