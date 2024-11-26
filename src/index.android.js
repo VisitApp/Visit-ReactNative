@@ -111,6 +111,7 @@ const VisitRnSdkView = ({
               const errorMessage = data.errorMessage;
               const magicCode = data.magicCode;
               const responseReferenceId = data.responseReferenceId;
+              const otherValues = data.otherValues;
 
               let finalBaseUrl = '';
 
@@ -132,6 +133,13 @@ const VisitRnSdkView = ({
                   responseReferenceId.trim().length > 0
                 ) {
                   finalUrl += `&responseReferenceId=${responseReferenceId}`;
+                }
+
+                if (
+                  typeof otherValues === 'string' &&
+                  otherValues.trim().length > 0
+                ) {
+                  finalUrl += `&otherValues=${otherValues}`;
                 }
 
                 if (isLoggingEnabled) {

@@ -106,6 +106,8 @@ const VisitRnSdkView = ({
           } else if (res.data.message === 'success') {
             const magicCode = res.data?.magicCode;
             const responseReferenceId = res.data?.responseReferenceId;
+            const otherValues = res.data?.otherValues;
+
             let finalBaseUrl = '';
             if (magicCode) {
               if (environment.toUpperCase() === 'PROD') {
@@ -125,6 +127,13 @@ const VisitRnSdkView = ({
                 responseReferenceId.trim().length > 0
               ) {
                 finalUrl += `&responseReferenceId=${responseReferenceId}`;
+              }
+
+              if (
+                typeof otherValues === 'string' &&
+                otherValues.trim().length > 0
+              ) {
+                finalUrl += `&otherValues=${otherValues}`;
               }
 
               setSource(finalUrl);
