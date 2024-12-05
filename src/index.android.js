@@ -102,27 +102,25 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
   }, [handleBack]);
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      {source ? (
-        <WebView
-          ref={webviewRef}
-          source={{
-            uri: source,
-            headers: {
-              platform: 'ANDROID',
-            },
-          }}
-          onMessage={handleMessage}
-          injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
-          javaScriptEnabled={true}
-          onLoadProgress={(event) => setCanGoBack(event.nativeEvent.canGoBack)}
-          onError={(errorMessage) => {
-            if (isLoggingEnabled) {
-              console.warn('Webview error: ', errorMessage);
-            }
-          }}
-        />
-      ) : null}
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+      <WebView
+        ref={webviewRef}
+        source={{
+          uri: source,
+          headers: {
+            platform: 'ANDROID',
+          },
+        }}
+        onMessage={handleMessage}
+        injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
+        javaScriptEnabled={true}
+        onLoadProgress={(event) => setCanGoBack(event.nativeEvent.canGoBack)}
+        onError={(errorMessage) => {
+          if (isLoggingEnabled) {
+            console.warn('Webview error: ', errorMessage);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 };
