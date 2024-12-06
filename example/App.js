@@ -25,8 +25,8 @@ function App() {
     // eslint-disable-next-line react-native/no-inline-styles
     <SafeAreaView style={{flex: 1}}>
       <VisitRnSdkView
+        ssoUrl={'https://web.getvisitapp.com/'}
         isLoggingEnabled={true}
-        ssoURL={'https://web.getvisitapp.com/'}
       />
     </SafeAreaView>
   );
