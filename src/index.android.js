@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 
 import { SafeAreaView, BackHandler, Linking, Alert } from 'react-native';
+import { EventRegister } from 'react-native-event-listeners';
 
 import WebView from 'react-native-webview';
 
@@ -85,6 +86,7 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
   };
 
   const [canGoBack, setCanGoBack] = useState(false);
+  const visitEvent = 'visit-event';
 
   const handleBack = useCallback(() => {
     if (canGoBack && webviewRef.current) {
@@ -116,6 +118,10 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
         javaScriptEnabled={true}
         onLoadProgress={(event) => setCanGoBack(event.nativeEvent.canGoBack)}
         onError={(errorMessage) => {
+          EventRegister.emitEvent(visitEvent, {
+            message: 'web-view-error',
+            errorMessage: errorMessage,
+          });
           if (isLoggingEnabled) {
             console.warn('Webview error: ', errorMessage);
           }
