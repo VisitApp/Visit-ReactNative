@@ -132,8 +132,3 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
 };
 
 export default VisitRnSdkView;
-
-VisitRnSdkView.defaultProps = {
-  ssoURL: '',
-  isLoggingEnabled: false,
-};
