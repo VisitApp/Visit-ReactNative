@@ -14,6 +14,8 @@ function App() {
       if (data.message === 'web-view-error') {
         console.log('web-view-error', data.errorMessage);
         //when webview throws error.
+      } else if (data.message === 'closeView') {
+        console.log('close the app');
       }
     });
     return () => {
