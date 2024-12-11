@@ -72,7 +72,10 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
                 Linking.openURL(pdfUrl);
               }
               break;
-            case 'CLOSE_VIEW':
+            case 'closeView':
+              EventRegister.emitEvent(visitEvent, {
+                message: 'closeView',
+              });
               break;
 
             default:

@@ -61,7 +61,10 @@ const VisitRnSdkView = ({ ssoUrl, isLoggingEnabled }) => {
       case 'OPEN_PDF':
         Linking.openURL(url);
         break;
-      case 'CLOSE_VIEW':
+      case 'closeView':
+        EventRegister.emitEvent(visitEvent, {
+          message: 'closeView',
+        });
         break;
       case 'GET_LOCATION_PERMISSIONS':
         webviewRef.current?.injectJavaScript(
