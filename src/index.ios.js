@@ -40,12 +40,12 @@ const unescapeHTML = (str) =>
 
 const visitEvent = 'visit-event';
 
-const VisitRnSdkView = ({ ssoUrl, isLoggingEnabled }) => {
+const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
   const [source, setSource] = useState('');
 
   useEffect(() => {
-    setSource(ssoUrl);
-  }, [ssoUrl, isLoggingEnabled]);
+    setSource(ssoURL);
+  }, [ssoURL, isLoggingEnabled]);
 
   const webviewRef = useRef(null);
 

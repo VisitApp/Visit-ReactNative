@@ -25,7 +25,9 @@ function App() {
     // eslint-disable-next-line react-native/no-inline-styles
     <SafeAreaView style={{flex: 1}}>
       <VisitRnSdkView
-        ssoUrl={'https://web.getvisitapp.com/'}
+        ssoURL={
+          'https://web.getvisitapp.net/consultation/chat-only?authToken=Jwt%20eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6Ik51bmk5ODIzTUkiLCJjbGllbnRVc2VySWQiOiIxIiwiY2xpZW50U2VjcmV0IjoiMkNGOTQ4NVRAbiYmbiIsInBvbGljeU51bWJlciI6IkdNQzAwMDAwMDE0MDAxMDBURVNUIiwiaWF0IjoxNzMzODU4MDAxLCJleHAiOjE3MzM5NDQ0MDF9.4lZ4kLNUe4YW7BhQHyRI3Rqq09aVTyITsBeCk6UsK8w&consultationId=29175'
+        }
         isLoggingEnabled={true}
       />
     </SafeAreaView>
