@@ -32,6 +32,7 @@ import timber.log.Timber
 @Keep
 class VisitFitnessModule(reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext), HealthConnectListener {
+
   private val TAG = "mytag"
   private val reactContext: ReactContext = reactContext
 
@@ -41,10 +42,10 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
   private var dataRetrivalPromise: Promise? = null
   private var isLoggingEnabled = false
 
-  private lateinit var visitStepSyncHelper: VisitStepSyncHelper
-  private lateinit var healthConnectUtil: HealthConnectUtil
+  private var visitStepSyncHelper: VisitStepSyncHelper? = null
+  private var healthConnectUtil: HealthConnectUtil? = null
   private var syncDataWithServer = false
-  private lateinit var mainActivity: MainActivity
+  var mainActivity: MainActivity? = null
 
 
   init {
@@ -56,7 +57,12 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
     Timber.d("mytag: initiateSDK %b", isLoggingEnabled)
 
     this.isLoggingEnabled = isLoggingEnabled
-    mainActivity = reactContext.currentActivity as MainActivity
+    mainActivity = reactContext.currentActivity as? MainActivity
+
+    //don't initialise the native module if the mainActivity instance is null.
+    if (mainActivity == null) {
+      return
+    }
     visitStepSyncHelper = VisitStepSyncHelper(mainActivity!!)
     healthConnectUtil = HealthConnectUtil(mainActivity!!, this)
     healthConnectUtil!!.initialize()
@@ -69,7 +75,7 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
           Timber.d("onActivityResultImplementation execute: result: %s", granted)
 
           granted?.let {
-            if (granted.containsAll(healthConnectUtil.PERMISSIONS)) {
+            if (granted.containsAll(healthConnectUtil!!.PERMISSIONS)) {
               previouslyRevoked = false
 
 
@@ -94,8 +100,8 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
 
     Timber.d("mytag: getHealthConnectStatus called")
 
-    healthConnectUtil.scope.launch {
-      val status: HealthConnectConnectionState = healthConnectUtil.checkAvailability()
+    healthConnectUtil?.scope!!.launch {
+      val status: HealthConnectConnectionState = healthConnectUtil!!.checkAvailability()
 
       withContext(Dispatchers.Main) {
         when (status) {
@@ -126,13 +132,16 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun askForFitnessPermission(promise: Promise) {
     this.promise = promise
-    if (healthConnectUtil!!.healthConnectConnectionState == CONNECTED) {
-      Timber.d("askForFitnessPermission: already granted")
-      promise.resolve("GRANTED")
-    } else {
-      Timber.d("askForFitnessPermission: request permission")
-      healthConnectUtil!!.requestPermission()
+    healthConnectUtil?.let {
+      if (healthConnectUtil!!.healthConnectConnectionState == CONNECTED) {
+        Timber.d("askForFitnessPermission: already granted")
+        promise.resolve("GRANTED")
+      } else {
+        Timber.d("askForFitnessPermission: request permission")
+        healthConnectUtil!!.requestPermission()
+      }
     }
+
   }
 
   override fun userAcceptedHealthConnectPermission() {
@@ -163,13 +172,16 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
   ) {
     this.dataRetrivalPromise = promise
     Timber.d("mytag: requestActivityData() called.")
-    if (healthConnectUtil.healthConnectConnectionState == HealthConnectConnectionState.CONNECTED) {
-      //Health Connect Implementation
-      healthConnectUtil.getActivityData(type, frequency, Math.round(timestamp))
-    } else {
-      Timber.d("mytag: permission not available healthConnectConnectionState: ${healthConnectUtil.healthConnectConnectionState}")
-      healthConnectUtil.requestPermission()
+    healthConnectUtil?.let {
+      if (healthConnectUtil!!.healthConnectConnectionState == HealthConnectConnectionState.CONNECTED) {
+        //Health Connect Implementation
+        healthConnectUtil!!.getActivityData(type, frequency, Math.round(timestamp))
+      } else {
+        Timber.d("mytag: permission not available healthConnectConnectionState: ${healthConnectUtil!!.healthConnectConnectionState}")
+        healthConnectUtil!!.requestPermission()
+      }
     }
+
   }
 
   @ReactMethod
@@ -188,10 +200,10 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
       )
     }
 
-    if (!syncDataWithServer) {
+    if (!syncDataWithServer && healthConnectUtil != null) {
       Timber.d("mytag: syncDataWithServer() called")
-      visitStepSyncHelper.sendDataToVisitServer(
-        healthConnectUtil, Math.round(googleFitLastSync), Math.round(gfHourlyLastSync),
+      visitStepSyncHelper?.sendDataToVisitServer(
+        healthConnectUtil!!, Math.round(googleFitLastSync), Math.round(gfHourlyLastSync),
         "$apiBaseUrl/", authToken
       )
       syncDataWithServer = true
@@ -229,7 +241,7 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun openHealthConnectApp(promise: Promise?) {
     this.promise = promise
-    healthConnectUtil.openHealthConnectApp();
+    healthConnectUtil?.openHealthConnectApp();
   }
 
   override fun getName(): String {
@@ -248,7 +260,7 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
 
   override fun requestPermission() {
     Timber.d("requestPermission called 218")
-    mainActivity!!.requestPermissions.launch(healthConnectUtil.PERMISSIONS)
+    mainActivity?.requestPermissions?.launch(healthConnectUtil!!.PERMISSIONS)
   }
 
   override fun updateHealthConnectConnectionStatus(
