@@ -100,7 +100,7 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
 
     Timber.d("mytag: getHealthConnectStatus called")
 
-    healthConnectUtil?.scope!!.launch {
+    healthConnectUtil?.scope?.launch {
       val status: HealthConnectConnectionState = healthConnectUtil!!.checkAvailability()
 
       withContext(Dispatchers.Main) {
