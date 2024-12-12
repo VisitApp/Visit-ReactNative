@@ -84,6 +84,7 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
         ref={webviewRef}
         source={{ uri: source }}
         style={styles.webView}
+        startInLoadingState={true}
         javascriptEnabled
         onMessage={handleMessage}
         onError={(errorMessage) => {

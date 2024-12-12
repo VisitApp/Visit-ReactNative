@@ -117,6 +117,7 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
           },
         }}
         onMessage={handleMessage}
+        startInLoadingState={true}
         injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
         javaScriptEnabled={true}
         onLoadProgress={(event) => setCanGoBack(event.nativeEvent.canGoBack)}
