@@ -1209,7 +1209,9 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-visit-rn-sdk (0.4.10):
+  - react-native-safe-area-context (5.1.0):
+    - React-Core
+  - react-native-visit-rn-sdk (2.0.8):
     - DoubleConversion
     - glog
     - RCT-Folly (= 2024.01.01.00)
@@ -1230,7 +1232,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-webview (13.12.2):
+  - react-native-webview (13.12.3):
     - DoubleConversion
     - glog
     - RCT-Folly (= 2024.01.01.00)
@@ -1494,8 +1496,30 @@ PODS:
     - React-logger (= 0.75.3)
     - React-perflogger (= 0.75.3)
     - React-utils (= 0.75.3)
-  - RNDeviceInfo (10.0.2):
+  - RNDeviceInfo (13.0.0):
     - React-Core
+  - RNScreens (4.5.0):
+    - DoubleConversion
+    - glog
+    - RCT-Folly (= 2024.01.01.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-RCTImage
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - SocketRocket (0.7.0)
   - Yoga (0.0.0)
 
@@ -1536,6 +1560,7 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
+  - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - react-native-visit-rn-sdk (from `../node_modules/react-native-visit-rn-sdk`)
   - react-native-webview (from `../node_modules/react-native-webview`)
   - React-nativeconfig (from `../node_modules/react-native/ReactCommon`)
@@ -1564,6 +1589,7 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - RNDeviceInfo (from `../node_modules/react-native-device-info`)
+  - RNScreens (from `../node_modules/react-native-screens`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -1639,6 +1665,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   React-microtasksnativemodule:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
+  react-native-safe-area-context:
+    :path: "../node_modules/react-native-safe-area-context"
   react-native-visit-rn-sdk:
     :path: "../node_modules/react-native-visit-rn-sdk"
   react-native-webview:
@@ -1695,6 +1723,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   RNDeviceInfo:
     :path: "../node_modules/react-native-device-info"
+  RNScreens:
+    :path: "../node_modules/react-native-screens"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
@@ -1733,8 +1763,9 @@ SPEC CHECKSUMS:
   React-logger: 4072f39df335ca443932e0ccece41fbeb5ca8404
   React-Mapbuffer: 714f2fae68edcabfc332b754e9fbaa8cfc68fdd4
   React-microtasksnativemodule: 987cf7e0e0e7129250a48b807e70d3b906c726cf
-  react-native-visit-rn-sdk: 5d0ce2fe583bb9c421b8453036bbb5173a0eac7c
-  react-native-webview: 5850f8fdc5f06928286984ce7401c32be68442c2
+  react-native-safe-area-context: 04803a01f39f31cc6605a5531280b477b48f8a88
+  react-native-visit-rn-sdk: 702010d36eceb3e6cb1fe97d779c79189030bd76
+  react-native-webview: 29596927aad767cd15738f39ce9c93d68b75287b
   React-nativeconfig: 4a9543185905fe41014c06776bf126083795aed9
   React-NativeModulesApple: 651670a799672bd54469f2981d91493dda361ddf
   React-perflogger: 3bbb82f18e9ac29a1a6931568e99d6305ef4403b
@@ -1760,9 +1791,10 @@ SPEC CHECKSUMS:
   React-utils: b2baee839fb869f732d617b97dcfa384b4b4fdb3
   ReactCodegen: f177b8fd67788c5c6ff45a39c7482c5f8d77ace6
   ReactCommon: 627bd3192ef01a351e804e9709673d3741d38fec
-  RNDeviceInfo: 0a7c1d2532aa7691f9b9925a27e43af006db4dae
+  RNDeviceInfo: 55264dd7cc939dad6e9c231a7621311f5277f1dc
+  RNScreens: 9f6b694561133320d1ddf006a99a2f28d7e48817
   SocketRocket: abac6f5de4d4d62d24e11868d7a2f427e0ef940d
-  Yoga: 4ef80d96a5534f0e01b3055f17d1e19a9fc61b63
+  Yoga: 1354c027ab07c7736f99a3bef16172d6f1b12b47
 
 PODFILE CHECKSUM: 32a5a03a6617fcf06671a7cbaa2268c166868d01
 
