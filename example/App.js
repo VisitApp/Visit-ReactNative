@@ -121,7 +121,9 @@ function Home() {
 
   const initiateStepSync = useCallback(async () => {
     try {
-      await NativeModules.VisitFitnessModule.triggerManualSync();
+      if (Platform.OS == 'android') {
+        await NativeModules.VisitFitnessModule.triggerManualSync();
+      }
     } catch (e) {
       console.error(e);
     }
@@ -208,30 +210,6 @@ const styles = StyleSheet.create({
 
 function VisitPage({route, navigation}) {
   const {ssoUrl} = route.params;
-  React.useEffect(() => {
-    const listener = EventRegister.addEventListener(visitEvent, data => {
-      if (data.message === 'unauthorized-wellness-access') {
-        Alert.alert('Error', data.errorMessage);
-      } else if (data.message === 'generate-magic-link-failed') {
-        console.log('magic link failed. ', data);
-        //add analytics event to track for whom this is happening.
-      } else if (data.message === 'getDeviceInfo-failed') {
-        console.log('device Info library failed', data);
-        //add analytics event to track for whom this is happening.
-      } else if (data.message === 'web-view-error') {
-        console.log('web-view-error', data.errorMessage);
-        //when webview throws error.
-      } else if (data.message === 'external-server-error') {
-        Alert.alert('Error', data.errorMessage);
-      } else if (data.message === 'health-connect-error-event') {
-        //when something goes wrong in health connect connection or data retrival.
-        //log this your analytics or firebase console.
-      }
-    });
-    return () => {
-      EventRegister.removeEventListener(listener);
-    };
-  }, []);
 
   return (
     // eslint-disable-next-line react-native/no-inline-styles
