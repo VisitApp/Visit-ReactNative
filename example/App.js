@@ -68,27 +68,27 @@ function Home() {
     'https://kgi.getvisitapp.net/sso?userParams=wWroyW1yCr6MNoZ/udrhZPcY0dXIIJDUjIbl8XKyhkGP8b0754SP2INbMWLztcQnrm0pY1Awm5D3ZPmvP/itkJRVg/M1e5XPR3uA9TrqHBA=&clientId=kgi-zurich-101',
   );
 
-  const [healthConnectStatus, setHealthConnectStatus] = useState(null);
+  const [healthTrackerConnectionStatus, setHealthTrackerConnectionStatus] = useState(null);
   const [isAndroidSDKInitialized, setIsAndroidSDKInitialized] = useState(false);
   const [stepCount, setStepCount] = useState(0);
 
   const {VisitRnSdkViewManager} = NativeModules;
 
-  const checkHealthKitStatus = async () => {
+  const checkIosHealthKitStatus = async () => {
     try {
       const result = await VisitRnSdkViewManager.getHealthKitStatus();
       if (result) {
-        setHealthConnectStatus('CONNECTED');
+        setHealthTrackerConnectionStatus('CONNECTED');
         setStepCount(result?.steps[0]);
       } else {
-        setHealthConnectStatus('NOT CONNECTED');
+        setHealthTrackerConnectionStatus('NOT CONNECTED');
       }
     } catch (error) {
       console.error('Error checking HealthKit authorization:', error);
     }
   };
 
-  const fetchHealthConnectStatus = useCallback(async () => {
+  const checkAndroidHealthConnectStatus = useCallback(async () => {
     try {
       const status =
         await NativeModules.VisitFitnessModule.getHealthConnectStatus();
@@ -102,10 +102,10 @@ function Home() {
         fetchTodaysStepCount();
       }
 
-      setHealthConnectStatus(status);
+      setHealthTrackerConnectionStatus(status);
     } catch (e) {
       console.error(e);
-      setHealthConnectStatus('Error fetching health connect status');
+      setHealthTrackerConnectionStatus('Error fetching health connect status');
     }
   }, []);
 
@@ -138,14 +138,14 @@ function Home() {
     React.useCallback(() => {
       console.log('useFocusEffect triggered');
       if (isAndroidSDKInitialized) {
-        fetchHealthConnectStatus();
+        checkAndroidHealthConnectStatus();
       } else {
-        checkHealthKitStatus();
+        checkIosHealthKitStatus();
       }
     }, [
       isAndroidSDKInitialized,
-      fetchHealthConnectStatus,
-      healthConnectStatus,
+      checkAndroidHealthConnectStatus,
+      healthTrackerConnectionStatus,
     ]),
   );
 
@@ -186,7 +186,7 @@ function Home() {
         </Text>
 
         <Text style={styles.text}>
-          Health Connect Status: {healthConnectStatus}
+          Health Connect Status: {healthTrackerConnectionStatus}
         </Text>
 
         <Text style={styles.text}>Steps Count: {stepCount}</Text>
@@ -195,7 +195,7 @@ function Home() {
           title="Start Step Sync"
           color="#7e55fa"
           onPress={() => {
-            if (healthConnectStatus == 'CONNECTED') {
+            if (healthTrackerConnectionStatus == 'CONNECTED') {
               initiateStepSync();
             }
           }}
