@@ -1,4 +1,5 @@
 #import "VisitRnSdkViewManager.h"
+#import <HealthKit/HealthKit.h>
 
 @implementation VisitRnSdkViewManager
 
@@ -1137,7 +1138,6 @@ RCT_EXPORT_METHOD(renderGraph:(NSDictionary *)input callback:(RCTResponseSenderB
   }];
 }
 
-
 RCT_EXPORT_METHOD(updateApiUrl:(NSDictionary *)input)
 {
     NSTimeInterval gfHourlyLastSync = [[input objectForKey:@"gfHourlyLastSync"] doubleValue];
@@ -1235,6 +1235,75 @@ RCT_EXPORT_METHOD(fetchDailyData:(NSInteger)googleFitLastSync resolver:(RCTPromi
             reject(@"error", @"Error fetching daily data", error);
         }
     }];
+}
+
+// HealthKit Authorization Check
+RCT_REMAP_METHOD(getHealthKitStatus,
+                 checkHealthKitAuthorizationWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+    if (![HKHealthStore isHealthDataAvailable]) {
+        resolve(@(NO));
+        return;
+    }
+
+    HKObjectType *stepCountType = [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
+    HKAuthorizationStatus status = [[VisitRnSdkViewManager sharedManager] authorizationStatusForType:stepCountType];
+
+    if (status == HKAuthorizationStatusSharingAuthorized) {
+        NSInteger days = 1; // Example: Fetch data for the last 7 days
+        dispatch_group_t syncDataGroup = dispatch_group_create();
+        __block NSArray *stepsData;
+
+        // Enter dispatch group before fetching data
+        dispatch_group_enter(syncDataGroup);
+        [self fetchSteps:@"custom"
+                  endDate:[NSDate date]
+                     days:days
+                 callback:^(NSArray *data) {
+            NSLog(@"Fetched steps data: %@", data);
+            stepsData = [data objectAtIndex:0];
+            dispatch_group_leave(syncDataGroup);
+        }];
+
+        // Wait for the fetch to complete
+        dispatch_group_notify(syncDataGroup, dispatch_get_main_queue(), ^{
+            if (stepsData) {
+                NSDictionary *result = @{
+                    @"steps": stepsData,
+                };
+                resolve(result);
+            } else {
+                NSError *error = [NSError errorWithDomain:@"HealthKit"
+                                                     code:500
+                                                 userInfo:@{NSLocalizedDescriptionKey: @"Failed to fetch step data"}];
+                reject(@"fetch_error", @"Error fetching step data", error);
+            }
+        });
+    } else {
+        resolve(@(NO)); // HealthKit access not granted
+    }
+}
+
+RCT_EXPORT_METHOD(triggerManualSync)
+{
+    // Retrieve the stored values from NSUserDefaults
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    
+    NSTimeInterval gfHourlyLastSync = [defaults doubleForKey:@"gfHourlyLastSync"];
+    NSTimeInterval googleFitLastSync = [defaults doubleForKey:@"googleFitLastSync"];
+    
+    // Log the retrieved values for debugging
+    NSLog(@"Retrieved gfHourlyLastSync: %f and googleFitLastSync: %f from NSUserDefaults", gfHourlyLastSync, googleFitLastSync);
+    
+    // Create a dictionary to pass the values
+    NSDictionary *input = @{
+        @"gfHourlyLastSync": @(gfHourlyLastSync),
+        @"googleFitLastSync": @(googleFitLastSync)
+    };
+    
+    // Call the existing updateApiUrl method
+    [self updateApiUrl:input];
 }
 
 @end

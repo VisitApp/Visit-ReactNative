@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 
 import VisitRnSdkView from 'react-native-visit-rn-sdk';
 
@@ -72,6 +72,22 @@ function Home() {
   const [isAndroidSDKInitialized, setIsAndroidSDKInitialized] = useState(false);
   const [stepCount, setStepCount] = useState(0);
 
+  const {VisitRnSdkViewManager} = NativeModules;
+
+  const checkHealthKitStatus = async () => {
+    try {
+      const result = await VisitRnSdkViewManager.getHealthKitStatus();
+      if (result) {
+        setHealthConnectStatus('CONNECTED');
+        setStepCount(result?.steps[0]);
+      } else {
+        setHealthConnectStatus('NOT CONNECTED');
+      }
+    } catch (error) {
+      console.error('Error checking HealthKit authorization:', error);
+    }
+  };
+
   const fetchHealthConnectStatus = useCallback(async () => {
     try {
       const status =
@@ -110,6 +126,8 @@ function Home() {
     try {
       if (Platform.OS == 'android') {
         await NativeModules.VisitFitnessModule.triggerManualSync();
+      } else {
+        VisitRnSdkViewManager?.triggerManualSync();
       }
     } catch (e) {
       console.error(e);
@@ -121,13 +139,21 @@ function Home() {
       console.log('useFocusEffect triggered');
       if (isAndroidSDKInitialized) {
         fetchHealthConnectStatus();
+      } else {
+        checkHealthKitStatus();
       }
-    }, [isAndroidSDKInitialized, fetchHealthConnectStatus]),
+    }, [
+      isAndroidSDKInitialized,
+      fetchHealthConnectStatus,
+      healthConnectStatus,
+    ]),
   );
 
   useEffect(() => {
-    NativeModules.VisitFitnessModule.initiateSDK(true);
-    setIsAndroidSDKInitialized(true);
+    if (Platform.OS == 'android') {
+      NativeModules.VisitFitnessModule.initiateSDK(true);
+      setIsAndroidSDKInitialized(true);
+    }
   }, []);
 
   return (
