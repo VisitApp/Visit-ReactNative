@@ -68,7 +68,8 @@ function Home() {
     'https://kgi.getvisitapp.net/sso?userParams=wWroyW1yCr6MNoZ/udrhZPcY0dXIIJDUjIbl8XKyhkGP8b0754SP2INbMWLztcQnrm0pY1Awm5D3ZPmvP/itkJRVg/M1e5XPR3uA9TrqHBA=&clientId=kgi-zurich-101',
   );
 
-  const [healthTrackerConnectionStatus, setHealthTrackerConnectionStatus] = useState(null);
+  const [healthTrackerConnectionStatus, setHealthTrackerConnectionStatus] =
+    useState(null);
   const [isAndroidSDKInitialized, setIsAndroidSDKInitialized] = useState(false);
   const [stepCount, setStepCount] = useState(0);
 
@@ -124,7 +125,7 @@ function Home() {
 
   const initiateStepSync = useCallback(async () => {
     try {
-      if (Platform.OS == 'android') {
+      if (Platform.OS === 'android') {
         await NativeModules.VisitFitnessModule.triggerManualSync();
       } else {
         VisitRnSdkViewManager?.triggerManualSync();
@@ -139,22 +140,18 @@ function Home() {
       console.log('useFocusEffect triggered');
       if (isAndroidSDKInitialized) {
         checkAndroidHealthConnectStatus();
-      } else {
-        checkIosHealthKitStatus();
       }
-    }, [
-      isAndroidSDKInitialized,
-      checkAndroidHealthConnectStatus,
-      healthTrackerConnectionStatus,
-    ]),
+    }, [isAndroidSDKInitialized, checkAndroidHealthConnectStatus]),
   );
 
   useEffect(() => {
-    if (Platform.OS == 'android') {
+    if (Platform.OS === 'android') {
       NativeModules.VisitFitnessModule.initiateSDK(true);
       setIsAndroidSDKInitialized(true);
+    } else {
+      checkIosHealthKitStatus();
     }
-  }, []);
+  }, [healthTrackerConnectionStatus]);
 
   return (
     <View style={{flex: 1}}>
