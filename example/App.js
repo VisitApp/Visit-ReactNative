@@ -141,17 +141,22 @@ function Home() {
       if (isAndroidSDKInitialized) {
         checkAndroidHealthConnectStatus();
       }
-    }, [isAndroidSDKInitialized, checkAndroidHealthConnectStatus]),
+      if (Platform.OS === 'ios') {
+        checkIosHealthKitStatus();
+      }
+    }, [
+      isAndroidSDKInitialized,
+      checkAndroidHealthConnectStatus,
+      healthTrackerConnectionStatus,
+    ]),
   );
 
   useEffect(() => {
     if (Platform.OS === 'android') {
       NativeModules.VisitFitnessModule.initiateSDK(true);
       setIsAndroidSDKInitialized(true);
-    } else {
-      checkIosHealthKitStatus();
     }
-  }, [healthTrackerConnectionStatus]);
+  }, []);
 
   return (
     <View style={{flex: 1}}>
