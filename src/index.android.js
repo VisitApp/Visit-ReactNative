@@ -347,6 +347,11 @@ const VisitRnSdkView = ({
         } else {
           setShowPermissionAlreadyDeniedDialog(true);
           console.log('Location permission denied');
+
+          var finalString = `window.checkTheGpsPermission(false)`;
+          console.log('requestLocationPermission: ' + finalString);
+
+          webviewRef.current?.injectJavaScript(finalString);
         }
       }
     } catch (e) {
