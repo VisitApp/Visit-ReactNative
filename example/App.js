@@ -65,7 +65,7 @@ function Home() {
   const navigation = useNavigation();
 
   const [text, setText] = useState(
-    'https://kgi.getvisitapp.net/sso?userParams=wWroyW1yCr6MNoZ/udrhZPcY0dXIIJDUjIbl8XKyhkGP8b0754SP2INbMWLztcQnrm0pY1Awm5D3ZPmvP/itkJRVg/M1e5XPR3uA9TrqHBA=&clientId=kgi-zurich-101',
+    'https://kli.getvisitapp.net/kli/sso?userId=jvPDGgaJjN6QZ1DiSDEJ5vUeO/7CcE7MkDCWv/t4kTMpj94yZhL8klroqricvek86Tq6TD+Zoj6FZNFZoqbNBFWq44U14xA6yLam2eWhYAIGZPaXaPySyXrayMs2QfBtsXROoPNeujYiDb2E6kx8xwAIGcYruYh86rzBTqBseXk=',
   );
 
   const [healthTrackerConnectionStatus, setHealthTrackerConnectionStatus] =
