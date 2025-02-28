@@ -14,12 +14,14 @@ import {
   Platform,
   ActivityIndicator,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
 import DeviceInfo from 'react-native-device-info';
 import { getWebViewLink, httpClient } from './Services';
 import constants from './constants';
+import Geolocation from '@react-native-community/geolocation';
 
 const LINKING_ERROR =
   `The package 'react-native-visit-rn-sdk' doesn't seem to be linked. Make sure: \n\n` +
@@ -231,6 +233,37 @@ const VisitRnSdkView = ({
     };
   }, [VisitRnSdkViewManager, callEmbellishApi, callSyncApi]);
 
+  const requestLocationPermission = async () => {
+    try {
+      console.log('requestLocationPermission called for iOS');
+
+      Geolocation.requestAuthorization(); // Request location permission
+
+      Geolocation.getCurrentPosition(
+        (position) => {
+          console.log('Location permission granted:', position);
+          webviewRef.current?.injectJavaScript(
+            `window.checkTheGpsPermission(true)`
+          );
+        },
+        (error) => {
+          console.log('Location permission denied:', error.message);
+          Alert.alert(
+            'Permission Denied',
+            'Location permission is required for this feature to work properly.',
+            [{ text: 'OK' }]
+          );
+          webviewRef.current?.injectJavaScript(
+            `window.checkTheGpsPermission(false)`
+          );
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      );
+    } catch (error) {
+      console.error('Error requesting location permission:', error);
+    }
+  };
+
   const handleMessage = async (event) => {
     const data = JSON.parse(unescapeHTML(event.nativeEvent.data));
     const {
@@ -305,9 +338,7 @@ const VisitRnSdkView = ({
       case 'CLOSE_VIEW':
         break;
       case 'GET_LOCATION_PERMISSIONS':
-        webviewRef.current?.injectJavaScript(
-          'window.checkTheGpsPermission(true)'
-        );
+        requestLocationPermission();
         break;
 
       default:
