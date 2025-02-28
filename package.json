@@ -164,6 +164,7 @@
     ]
   },
   "dependencies": {
+    "@react-native-community/geolocation": "^3.4.0",
     "axios": "^1.5.0",
     "moment": "^2.29.4",
     "react-native-device-info": "13.0.0",
