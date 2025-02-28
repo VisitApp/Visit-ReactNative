@@ -233,6 +233,27 @@ const VisitRnSdkView = ({
     };
   }, [VisitRnSdkViewManager, callEmbellishApi, callSyncApi]);
 
+  const showLocationPermissionAlert = () => {
+    Alert.alert(
+      'Permission Required',
+      'Allow location permission from app settings',
+      [
+        {
+          text: 'Cancel',
+          onPress: () => {
+            console.log('Cancel clicked');
+          },
+        },
+        {
+          text: 'Go to Settings',
+          onPress: () => {
+            Linking.openSettings();
+          },
+        },
+      ]
+    );
+  };
+
   const requestLocationPermission = async () => {
     try {
       console.log('requestLocationPermission called for iOS');
@@ -248,11 +269,7 @@ const VisitRnSdkView = ({
         },
         (error) => {
           console.log('Location permission denied:', error.message);
-          Alert.alert(
-            'Permission Denied',
-            'Location permission is required for this feature to work properly.',
-            [{ text: 'OK' }]
-          );
+          showLocationPermissionAlert();
           webviewRef.current?.injectJavaScript(
             `window.checkTheGpsPermission(false)`
           );
