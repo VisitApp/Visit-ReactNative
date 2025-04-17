@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import androidx.annotation.Keep
 import com.example.MainActivity
 import com.facebook.react.bridge.Promise
@@ -192,10 +191,8 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
     promise: Promise?
   ) {
     if (isLoggingEnabled) {
-      Log.d(
-        "mytag",
-        "GoogleFitPermissionModule syncDataWithServer(): baseUrl: " + apiBaseUrl + " authToken: " + authToken + " googleFitLastSync: " + googleFitLastSync + "  gfHourlyLastSync:" + gfHourlyLastSync
-      )
+      Timber.tag(TAG)
+        .d("GoogleFitPermissionModule syncDataWithServer(): baseUrl: " + apiBaseUrl + " authToken: " + authToken + " googleFitLastSync: " + googleFitLastSync + "  gfHourlyLastSync:" + gfHourlyLastSync)
     }
 
     visitSessionStorage.saveBaseUrl("$apiBaseUrl/")
