@@ -50,7 +50,7 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
   private lateinit var visitSessionStorage: VisitSessionStorage
 
   init {
-    Log.d(TAG, "GoogleFitPermissionModule: inside constructor")
+    Timber.tag(TAG).d("GoogleFitPermissionModule: inside constructor")
   }
 
   @ReactMethod
@@ -255,11 +255,17 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
   }
 
   override fun loadVisitWebViewGraphData(webString: String) {
+
+    Timber.tag(TAG).d("loadVisitWebViewGraphData: webString: $webString")
+
     Handler(Looper.getMainLooper()).post {
+
+      val sanitizedWebString = webString.replace(Regex("[\\r\\n]"), "")
+
       if (isLoggingEnabled) {
-        Log.d("mytag", "loadVisitWebViewGraphData: $webString")
+        Timber.tag(TAG).d("loadVisitWebViewGraphData: sanitizedWebString: $sanitizedWebString")
       }
-      dataRetrivalPromise!!.resolve(webString)
+      dataRetrivalPromise!!.resolve(sanitizedWebString)
     }
   }
 
@@ -329,11 +335,7 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
       if (healthConnectUtil != null) {
         Timber.d("mytag: manual sync started")
         visitStepSyncHelper?.sendDataToVisitServer(
-          healthConnectUtil!!,
-          dailyLastSyncTimeStamp,
-          hourlyLastSyncTimestamp,
-          baseUrl,
-          authToken
+          healthConnectUtil!!, dailyLastSyncTimeStamp, hourlyLastSyncTimestamp, baseUrl, authToken
         )
       }
     }
