@@ -6,14 +6,7 @@ import { EventRegister } from 'react-native-event-listeners';
 import WebView from 'react-native-webview';
 
 const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
-  const [source, setSource] = useState('');
-
-  useEffect(() => {
-    if (isLoggingEnabled) {
-      console.log('useEffect ran: ' + ssoURL);
-    }
-    setSource(ssoURL);
-  }, [ssoURL, isLoggingEnabled]);
+  const [source, setSource] = useState(ssoURL);
 
   const webviewRef = useRef(null);
 
@@ -91,6 +84,10 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
   const visitEvent = 'visit-event';
 
   const handleBack = useCallback(() => {
+    if (isLoggingEnabled) {
+      console.log('handleBack called: ' + canGoBack + " webviewRef: " + webviewRef.current);
+    }
+    
     if (canGoBack && webviewRef.current) {
       webviewRef.current?.goBack();
       return true;
@@ -99,10 +96,11 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
   }, [canGoBack]);
 
   useEffect(() => {
-    BackHandler.addEventListener('hardwareBackPress', handleBack);
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBack);
     return () => {
-      BackHandler.removeEventListener('hardwareBackPress', handleBack);
+      backHandler.remove();
     };
+    
   }, [handleBack]);
 
   return (

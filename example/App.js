@@ -104,11 +104,7 @@ function Home() {
 function VisitPage({route, navigation}) {
   const {ssoUrl} = route.params;
 
-  return (
-    <SafeAreaView style={{flex: 1}}>
-      <VisitRnSdkView ssoURL={ssoUrl} isLoggingEnabled={true} />
-    </SafeAreaView>
-  );
+  return <VisitRnSdkView ssoURL={ssoUrl} isLoggingEnabled={true} />;
 }
 
 const styles = StyleSheet.create({
