@@ -4,13 +4,58 @@ import VisitRnSdkView from 'react-native-visit-rn-sdk';
 
 import {EventRegister} from 'react-native-event-listeners';
 
-import {SafeAreaView, StyleSheet, TextInput, View} from 'react-native';
+import {SafeAreaView, StyleSheet, TextInput, View, Button} from 'react-native';
+
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
+
+import {NavigationContainer, useNavigation} from '@react-navigation/native';
+
+const Stack = createNativeStackNavigator();
 
 const visitEvent = 'visit-event';
 
 function App() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator
+        initialRouteName="Home"
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#6a51ae',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          contentStyle: {
+            backgroundColor: '#e8e4f3',
+          },
+        }}>
+        <Stack.Screen
+          name="Home"
+          component={Home}
+          options={{
+            title: 'Visit SDK Demo App',
+            headerStyle: {
+              backgroundColor: '#6a51ae',
+            },
+            headerTintColor: '#fff',
+            headerTitleStyle: {
+              fontWeight: 'bold',
+            },
+          }}
+        />
+        <Stack.Screen name="VisitPage" component={VisitPage} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
+function Home() {
+  const navigation = useNavigation();
+
   const [text, setText] = useState(
-    'https://web.getvisitapp.net/consultation/chat-only?authToken=Jwt%20eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6Ik51bmk5ODIzTUkiLCJjbGllbnRVc2VySWQiOiIxIiwiY2xpZW50U2VjcmV0IjoiMkNGOTQ4NVRAbiYmbiIsInBvbGljeU51bWJlciI6IkdNQzAwMDAwMDE0MDAxMDBURVNUIiwiaWF0IjoxNzMzODU4MDAxLCJleHAiOjE3MzM5NDQ0MDF9.4lZ4kLNUe4YW7BhQHyRI3Rqq09aVTyITsBeCk6UsK8w&consultationId=29175',
+    'https://web.getvisitapp.com/consultation/chat-only?authToken=JWT%20eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6IlBCQDI0MjMxMiIsImNsaWVudFVzZXJJZCI6IjE4Mzc1NjA2IiwiY2xpZW50U2VjcmV0IjoiSEYyZTJAQCNjc3JkZjMiLCJwb2xpY3lOdW1iZXIiOiJERU1PX09QRF9ET0NQUklNRSIsImVjb2RlIjoiRFAwMDM5MSIsImlhdCI6MTc0NDgwNjQ3NSwiZXhwIjoxNzQ1NjcwNDc1fQ.fZu8uhx1uImoO2HllXMd97t2O0VclOfiNbmh_osCBOc&consultationId=1801172',
   );
 
   React.useEffect(() => {
@@ -19,17 +64,16 @@ function App() {
         console.log('web-view-error', data.errorMessage);
         //when webview throws error.
       } else if (data.message === 'closeView') {
-        console.log('close the app');
+        navigation.goBack();
       }
     });
     return () => {
       EventRegister.removeEventListener(listener);
     };
-  }, []);
+  }, [navigation]);
 
   return (
-    // eslint-disable-next-line react-native/no-inline-styles
-    <SafeAreaView style={{flex: 1}}>
+    <View style={{flex: 1}}>
       <View style={{padding: 16}}>
         <TextInput
           style={styles.input}
@@ -41,14 +85,35 @@ function App() {
           cursorColor="black"
         />
       </View>
-      <VisitRnSdkView ssoURL={text} isLoggingEnabled={true} />
+
+      <View style={{paddingHorizontal: 20}}>
+        <Button
+          title="Go to next page"
+          color="#7e55fa"
+          onPress={() => {
+            navigation.navigate('VisitPage', {
+              ssoUrl: text,
+            });
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+function VisitPage({route, navigation}) {
+  const {ssoUrl} = route.params;
+
+  return (
+    <SafeAreaView style={{flex: 1}}>
+      <VisitRnSdkView ssoURL={ssoUrl} isLoggingEnabled={true} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   input: {
-    height: 100, // Adjust height as needed
+    height: 120, // Adjust height as needed
     borderColor: '#ccc',
     borderWidth: 1,
     borderRadius: 8,
