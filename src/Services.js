@@ -35,3 +35,37 @@ export const getWebViewLink = (
       return err;
     });
 };
+
+
+
+export function parseDeepLink(deeplinkUrl) {
+  try {
+
+    //check if url is null or empty
+   if (!deeplinkUrl || deeplinkUrl.trim() === '') {
+    console.log('URL is null or empty');
+    return null;
+  }
+    
+    const parsedUrl = new URL(deeplinkUrl);
+
+    // Get the first path segment (e.g., "labs" from /labs)
+    const path = parsedUrl.pathname.split('/').filter(Boolean)[0] || null;
+
+    // Get query params as an object
+    const queryParams = {};
+    parsedUrl.searchParams.forEach((value, key) => {
+      queryParams[key] = value;
+    });
+
+    return {
+      host: parsedUrl.hostname,  // e.g., "star.test-app.link"
+      feature: path,                      // e.g., "labs"
+      queryParams,               // e.g., { dId: "123" }
+    };
+  } catch (error) {
+    console.error('Invalid URL:', error.message);
+    return null;
+  }
+}
+

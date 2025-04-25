@@ -21,6 +21,7 @@ import DeviceInfo from 'react-native-device-info';
 import axios from 'axios';
 
 import constants from './constants';
+import { parseDeepLink } from './Services';
 
 export const httpClient = axios.create({
   timeout: 60000,
@@ -43,10 +44,13 @@ const VisitRnSdkView = ({
   environment,
   magicLink,
   isLoggingEnabled,
+  deeplinkUrl,
 }) => {
   const [source, setSource] = useState('');
   const [appState, setAppState] = useState(AppState.currentState);
 
+
+  const deepLinkDetails= parseDeepLink(deeplinkUrl);
   const [
     showPermissionAlreadyDeniedDialog,
     setShowPermissionAlreadyDeniedDialog,
@@ -140,6 +144,21 @@ const VisitRnSdkView = ({
                   otherValues.trim().length > 0
                 ) {
                   finalUrl += `&otherValues=${otherValues}`;
+                }
+
+                if (deepLinkDetails && deepLinkDetails.feature) {
+                  const feature = deepLinkDetails.feature;
+                  const queryParams = deepLinkDetails.queryParams;
+                
+                  // Check if queryParams exists and is not an empty object
+                  const hasQueryParams = queryParams && Object.keys(queryParams).length > 0;
+                
+                  if (hasQueryParams) {
+                    const values = JSON.stringify([queryParams]);
+                    finalUrl += `&deeplinkFeature=${feature}&deeplinkFeatureValues=${values}`;
+                  } else {
+                    finalUrl += `&deeplinkFeature=${feature}`;
+                  }
                 }
 
                 if (isLoggingEnabled) {
@@ -347,11 +366,6 @@ const VisitRnSdkView = ({
         } else {
           setShowPermissionAlreadyDeniedDialog(true);
           console.log('Location permission denied');
-
-          var finalString = `window.checkTheGpsPermission(false)`;
-          console.log('requestLocationPermission: ' + finalString);
-
-          webviewRef.current?.injectJavaScript(finalString);
         }
       }
     } catch (e) {
@@ -751,4 +765,5 @@ VisitRnSdkView.defaultProps = {
   environment: '',
   magicLink: '',
   isLoggingEnabled: false,
+  deeplinkUrl:null,
 };

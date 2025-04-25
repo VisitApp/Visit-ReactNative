@@ -11,6 +11,7 @@ import {
   Button,
   Platform,
   NativeModules,
+  Linking,
 } from 'react-native';
 
 import {
@@ -21,11 +22,22 @@ import {
 
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
-const Stack = createNativeStackNavigator();
-
 function App() {
+  const Stack = createNativeStackNavigator();
+
+  const linking = {
+    prefixes: ['https://vsyt.me'],
+    config: {
+      screens: {
+        Home: {
+          path: 'o/:rest*',
+        },
+      },
+    },
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator
         initialRouteName="Home"
         screenOptions={{
@@ -61,7 +73,43 @@ function App() {
   );
 }
 
-function Home() {
+function Home({route}) {
+  const [deepLinkUrl, setDeepLinkUrl] = useState(null);
+
+  useEffect(() => {
+    // For cold start (app opened via deep link)
+    Linking.getInitialURL().then(url => {
+      if (url) {
+        console.log('App launched with deep link:', url);
+        setDeepLinkUrl(url);
+      }
+    });
+
+    // For already running app (deep link triggers screen)
+    const handleDeepLink = ({url}) => {
+      console.log('Deep link triggered while app is open:', url);
+      setDeepLinkUrl(url);
+    };
+
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  // Route params (query params parsed by React Navigation)
+  const params = route.params;
+
+  useEffect(() => {
+    if (params) {
+      console.log('Query Params:');
+      Object.entries(params).forEach(([key, value]) => {
+        console.log(`${key}:`, value);
+      });
+    }
+  }, [params]);
+
   const navigation = useNavigation();
 
   const [text, setText] = useState(
@@ -202,6 +250,8 @@ function Home() {
             }
           }}
         />
+
+        <>{deepLinkUrl && <Text>Deeplink: {deepLinkUrl}</Text>}</>
       </View>
     </View>
   );
@@ -233,5 +283,6 @@ function VisitPage({route, navigation}) {
     </SafeAreaView>
   );
 }
+
 
 export default App;
