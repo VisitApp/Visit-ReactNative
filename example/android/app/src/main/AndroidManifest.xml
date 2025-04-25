@@ -97,8 +97,8 @@ of Health Connect permissions once users click the privacy policy link. -->
         <!--        https://vsyt.me/o/consult-gp -->
 
         <data
-          android:host="vsyt.me"
-          android:pathPattern="/o/.*"
+          android:host="star.test-app.link"
+          android:pathPattern="/.*"
           android:scheme="https" />
       </intent-filter>
     </activity>

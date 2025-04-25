@@ -19,7 +19,7 @@
     "react-native-location-enabler": "github:sashko9807/react-native-location-enabler",
     "react-native-safe-area-context": "^5.1.0",
     "react-native-screens": "^4.5.0",
-    "react-native-visit-rn-sdk": "^2.0.9",
+    "react-native-visit-rn-sdk": "github:VisitApp/Visit-ReactNative#f-star-deeplink",
     "react-native-webview": "^13.12.2"
   },
   "devDependencies": {

@@ -44,13 +44,13 @@ const VisitRnSdkView = ({
   environment,
   magicLink,
   isLoggingEnabled,
-  deeplinkUrl,
+  deepLinkUrl,
 }) => {
   const [source, setSource] = useState('');
   const [appState, setAppState] = useState(AppState.currentState);
 
 
-  const deepLinkDetails= parseDeepLink(deeplinkUrl);
+  const deepLinkDetails= parseDeepLink(deepLinkUrl);
   const [
     showPermissionAlreadyDeniedDialog,
     setShowPermissionAlreadyDeniedDialog,
@@ -74,22 +74,24 @@ const VisitRnSdkView = ({
 
           if (isLoggingEnabled) {
             console.log(
-              ' baseUrl : ' +
+              '\nbaseUrl : ' +
                 baseUrl +
-                'token: ' +
+                '\ntoken: ' +
                 token +
-                ' cpsid: ' +
+                '\ncpsid: ' +
                 cpsid +
-                ' environment: ' +
+                '\nenvironment: ' +
                 environment +
-                'buildNumber:' +
+                '\nbuildNumber:' +
                 buildNumber +
-                ' systemVersion:' +
+                '\nsystemVersion:' +
                 systemVersion +
-                ' version : ' +
+                '\nversion : ' +
                 version +
-                ' deviceId',
-              deviceId
+                '\ndeviceId',
+                  deviceId + 
+              "\deepLinkUrl: "
+               + deepLinkUrl
             );
           }
 
@@ -765,5 +767,5 @@ VisitRnSdkView.defaultProps = {
   environment: '',
   magicLink: '',
   isLoggingEnabled: false,
-  deeplinkUrl:null,
+  deepLinkUrl:'',
 };
