@@ -50,7 +50,11 @@ const VisitRnSdkView = ({
   const [appState, setAppState] = useState(AppState.currentState);
 
 
-  const deepLinkDetails= parseDeepLink(deepLinkUrl);
+  const deepLinkDetails= parseDeepLink(deepLinkUrl,isLoggingEnabled);
+
+  if(isLoggingEnabled){
+    console.log('deepLinkUrl: '+deepLinkUrl+ '\n deepLinkDetails: ', deepLinkDetails);
+  }
   const [
     showPermissionAlreadyDeniedDialog,
     setShowPermissionAlreadyDeniedDialog,
@@ -90,7 +94,7 @@ const VisitRnSdkView = ({
                 version +
                 '\ndeviceId',
                   deviceId + 
-              "\deepLinkUrl: "
+              "\ndeepLinkUrl: "
                + deepLinkUrl
             );
           }
@@ -148,6 +152,13 @@ const VisitRnSdkView = ({
                   finalUrl += `&otherValues=${otherValues}`;
                 }
 
+                if (isLoggingEnabled) {
+                  console.log(
+                    'deepLinkDetails: ' +
+                      deepLinkDetails
+                  );
+                }
+
                 if (deepLinkDetails && deepLinkDetails.feature) {
                   const feature = deepLinkDetails.feature;
                   const queryParams = deepLinkDetails.queryParams;
@@ -164,7 +175,7 @@ const VisitRnSdkView = ({
                 }
 
                 if (isLoggingEnabled) {
-                  console.log('magicLink: ' + finalUrl);
+                  console.log('\n\n\n magicLink: ' + finalUrl);
                 }
 
                 setSource(finalUrl);

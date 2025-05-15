@@ -38,33 +38,58 @@ export const getWebViewLink = (
 
 
 
-export function parseDeepLink(deeplinkUrl) {
+export function parseDeepLink(deeplinkUrl,isLoggingEnabled = false) {
   try {
+    if (!deeplinkUrl || deeplinkUrl.trim() === '') {
+      console.log('URL is null or empty');
+      return null;
+    }
 
-    //check if url is null or empty
-   if (!deeplinkUrl || deeplinkUrl.trim() === '') {
-    console.log('URL is null or empty');
-    return null;
-  }
+    if(isLoggingEnabled){
+      console.log('====================================');  
+      console.log('Deeplink URL:', deeplinkUrl);
+      console.log('====================================');
+    }
     
-    const parsedUrl = new URL(deeplinkUrl);
 
-    // Get the first path segment (e.g., "labs" from /labs)
-    const path = parsedUrl.pathname.split('/').filter(Boolean)[0] || null;
+    // Remove any leading/trailing spaces
+    const trimmedUrl = deeplinkUrl.trim();
 
-    // Get query params as an object
+    // Extract protocol, host, and the rest
+    const urlMatch = trimmedUrl.match(/^(https?:\/\/)?([^\/?#]+)([\/]?[^?#]*)(\?[^#]*)?/);
+    if (!urlMatch) {
+      throw new Error("Invalid URL structure");
+    }
+
+    const [, , host, pathname = '', queryString = ''] = urlMatch;
+
+    const pathSegments = pathname.split('/').filter(Boolean);
+    const feature = pathSegments[0] || null;
+
     const queryParams = {};
-    parsedUrl.searchParams.forEach((value, key) => {
-      queryParams[key] = value;
-    });
+    if (queryString.startsWith('?')) {
+      const pairs = queryString.substring(1).split('&');
+      pairs.forEach(pair => {
+        const [key, value] = pair.split('=');
+        if (key) {
+          queryParams[decodeURIComponent(key)] = decodeURIComponent(value || '');
+        }
+      });
+    }
 
+     if(isLoggingEnabled){
+        console.log('parsed host:', host);
+        console.log('parsed feature (path):', feature);
+        console.log('parsed queryParams:', queryParams);
+     }
+    
     return {
-      host: parsedUrl.hostname,  // e.g., "star.test-app.link"
-      feature: path,                      // e.g., "labs"
-      queryParams,               // e.g., { dId: "123" }
+      host,
+      feature,
+      queryParams,
     };
   } catch (error) {
-    console.error('Invalid URL:', error.message);
+    console.error('Failed to parse URL:', error.message);
     return null;
   }
 }
