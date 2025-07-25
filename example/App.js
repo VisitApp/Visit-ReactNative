@@ -21,6 +21,15 @@ import {
 
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
+const visitBaseUrl = 'https://api.getvisitapp.com/v3';
+
+const errorBaseUrl = 'https://star-health.getvisitapp.net/';
+
+const token = '';
+
+const moduleName = '';
+const visitEvent = 'visit-event';
+
 const Stack = createNativeStackNavigator();
 
 function App() {
@@ -229,9 +238,36 @@ function VisitPage({route, navigation}) {
   return (
     // eslint-disable-next-line react-native/no-inline-styles
     <SafeAreaView style={{flex: 1}}>
-      <VisitRnSdkView isLoggingEnabled={true} magicLink={ssoUrl} />
+      {/* <VisitRnSdkView isLoggingEnabled={true} magicLink={ssoUrl} /> */}
+
+      <VisitRnSdkView
+        baseUrl={'https://api.getvisitapp.com/v3'}
+        errorBaseUrl={'https://star-health.getvisitapp.com/'}
+        token={''}
+        cpsid={'CPS1830380877849624013'}
+        moduleName={moduleName}
+        environment={'prod'}
+        isLoggingEnabled={true}
+        // magicLink={ssoUrl}
+      />
     </SafeAreaView>
   );
 }
+
+/**
+ * 
+ <VisitRnSdkView
+        baseUrl={'https://api.getvisitapp.com/v4'}
+        errorBaseUrl={'https://star-health.getvisitapp.com/'}
+        token={
+          ''
+        }
+        cpsid={'CPS1830380877849624013'}
+        moduleName={moduleName}
+        environment={'prod'}
+        isLoggingEnabled={true}
+        // magicLink={ssoUrl}
+      />
+ */
 
 export default App;
