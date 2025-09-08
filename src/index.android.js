@@ -34,16 +34,7 @@ const {
   addListener,
 } = LocationEnabler;
 
-const VisitRnSdkView = ({
-  cpsid,
-  baseUrl,
-  errorBaseUrl,
-  token,
-  moduleName,
-  environment,
-  magicLink,
-  isLoggingEnabled,
-}) => {
+const VisitRnSdkView = ({ magicLink, isLoggingEnabled }) => {
   const [source, setSource] = useState('');
   const [appState, setAppState] = useState(AppState.currentState);
 
@@ -61,158 +52,8 @@ const VisitRnSdkView = ({
 
     if ((magicLink?.trim()?.length || 0) > 0) {
       setSource(magicLink);
-    } else {
-      DeviceInfo.getAndroidId()
-        .then((deviceId) => {
-          var buildNumber = DeviceInfo.getBuildNumber();
-          let systemVersion = DeviceInfo.getSystemVersion();
-          let version = DeviceInfo.getVersion();
-
-          if (isLoggingEnabled) {
-            console.log(
-              ' baseUrl : ' +
-                baseUrl +
-                'token: ' +
-                token +
-                ' cpsid: ' +
-                cpsid +
-                ' environment: ' +
-                environment +
-                'buildNumber:' +
-                buildNumber +
-                ' systemVersion:' +
-                systemVersion +
-                ' version : ' +
-                version +
-                ' deviceId',
-              deviceId
-            );
-          }
-
-          var finalEndPoint = `${baseUrl}/partners/v3/generate-magic-link-star-health`;
-
-          if (isLoggingEnabled) {
-            console.log('finalEndPoint: ' + finalEndPoint);
-          }
-
-          httpClient
-            .post(finalEndPoint, {
-              cpsid: cpsid,
-              token: token,
-              srcClientId: 'Android',
-              deviceId: deviceId,
-              appVersion: version,
-              deviceVersion: systemVersion,
-              userEnv: environment,
-            })
-            .then((response) => {
-              let data = response.data;
-              // let visitMagicLink = data.result; //@Deprecated. Superseded by magic code usage.
-              const errorMessage = data.errorMessage;
-              const magicCode = data.magicCode;
-              const responseReferenceId = data.responseReferenceId;
-              const otherValues = data.otherValues;
-
-              let finalBaseUrl = '';
-
-              if (environment.toUpperCase() === 'PROD') {
-                finalBaseUrl = constants.PROD_BASE_URL;
-              } else {
-                finalBaseUrl = constants.STAGE_BASE_URL;
-              }
-
-              let finalUrl = `${finalBaseUrl}=${magicCode}`;
-
-              if (data.message === 'success') {
-                if ((moduleName?.trim()?.length || 0) > 0) {
-                  finalUrl += `&tab=${moduleName}`;
-                }
-
-                if (
-                  typeof responseReferenceId === 'string' &&
-                  responseReferenceId.trim().length > 0
-                ) {
-                  finalUrl += `&responseReferenceId=${responseReferenceId}`;
-                }
-
-                if (
-                  typeof otherValues === 'string' &&
-                  otherValues.trim().length > 0
-                ) {
-                  finalUrl += `&otherValues=${otherValues}`;
-                }
-
-                if (isLoggingEnabled) {
-                  console.log('magicLink: ' + finalUrl);
-                }
-
-                setSource(finalUrl);
-              } else {
-                var errorUrl = `${errorBaseUrl}/star-health?error=${errorMessage}`;
-                setSource(errorUrl);
-
-                if (errorMessage != null) {
-                  if (errorMessage === 'Please login again') {
-                    EventRegister.emitEvent('visit-event', {
-                      message: 'unauthorized-wellness-access',
-                      errorMessage: errorMessage,
-                    });
-                  } else if (errorMessage.includes('External Server Error')) {
-                    EventRegister.emitEvent('visit-event', {
-                      message: 'external-server-error',
-                      errorMessage: errorMessage,
-                    });
-                  }
-                }
-
-                if (isLoggingEnabled) {
-                  console.log(
-                    'erorMessage: ' +
-                      data.errorMessage +
-                      ' errorUrl: ' +
-                      errorUrl
-                  );
-                }
-              }
-            })
-            .catch((error) => {
-              var errorUrl = `${errorBaseUrl}/star-health?error=${error}`;
-              setSource(errorUrl);
-
-              EventRegister.emitEvent('visit-event', {
-                message: 'generate-magic-link-failed',
-                errorMessage: `${error}`,
-              });
-
-              if (isLoggingEnabled) {
-                console.log('error: ' + error);
-              }
-            });
-        })
-        .catch((err) => {
-          var errorUrl = `${errorBaseUrl}/star-health?error=${err}`;
-          setSource(errorUrl);
-
-          EventRegister.emitEvent('visit-event', {
-            message: 'getDeviceInfo-failed',
-            errorMessage: `${err}`,
-          });
-
-          if (isLoggingEnabled) {
-            console.log('getDeviceInfo err', err);
-          }
-        });
     }
-  }, [
-    cpsid,
-    token,
-    baseUrl,
-    errorBaseUrl,
-    moduleName,
-    environment,
-    magicLink,
-    isLoggingEnabled,
-  ]);
+  }, [magicLink, isLoggingEnabled]);
 
   useEffect(() => {
     const subscription = messageEmitter.addListener('onMessage', (message) => {
@@ -743,12 +584,6 @@ export const fetchHourlyFitnessData = (startTimeStamp, isLoggingEnabled) => {
 export default VisitRnSdkView;
 
 VisitRnSdkView.defaultProps = {
-  cpsid: '',
-  token: '',
-  baseUrl: '',
-  errorBaseUrl: '',
-  moduleName: '',
-  environment: '',
   magicLink: '',
   isLoggingEnabled: false,
 };

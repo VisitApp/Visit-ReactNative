@@ -23,6 +23,7 @@ import com.getvisitapp.google_fit.healthConnect.enums.HealthConnectConnectionSta
 import com.getvisitapp.google_fit.healthConnect.enums.HealthConnectConnectionState.NONE
 import com.getvisitapp.google_fit.healthConnect.enums.HealthConnectConnectionState.NOT_INSTALLED
 import com.getvisitapp.google_fit.healthConnect.enums.HealthConnectConnectionState.NOT_SUPPORTED
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -190,32 +191,45 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
     gfHourlyLastSync: Double,
     promise: Promise?
   ) {
-    if (isLoggingEnabled) {
-      Timber.tag(TAG)
-        .d("GoogleFitPermissionModule syncDataWithServer(): baseUrl: " + apiBaseUrl + " authToken: " + authToken + " googleFitLastSync: " + googleFitLastSync + "  gfHourlyLastSync:" + gfHourlyLastSync)
+    CoroutineScope(Dispatchers.IO).launch {
+
+      if (isLoggingEnabled) {
+        Timber.tag(TAG)
+          .d("GoogleFitPermissionModule syncDataWithServer(): baseUrl: " + apiBaseUrl + " authToken: " + authToken + " googleFitLastSync: " + googleFitLastSync + "  gfHourlyLastSync:" + gfHourlyLastSync)
+      }
+
+      visitSessionStorage.saveBaseUrl("$apiBaseUrl/")
+      visitSessionStorage.saveVisitAuthToken(authToken)
+      visitSessionStorage.saveDailyLastSyncTimeStamp(Math.round(googleFitLastSync))
+      visitSessionStorage.saveHourlyLastSyncTimeStamp(Math.round(gfHourlyLastSync))
+
+      if (!syncDataWithServer && healthConnectUtil != null) {
+        Timber.d("mytag: syncDataWithServer() called")
+        val syncResult: Boolean? = visitStepSyncHelper?.sendDataToVisitServer(
+          healthConnectUtil!!,
+          Math.round(googleFitLastSync),
+          Math.round(gfHourlyLastSync),
+          "$apiBaseUrl/",
+          authToken
+        )
+        if (syncResult == true) {
+          syncDataWithServer = true
+        }
+
+
+        withContext(Dispatchers.Main) {
+          if (syncResult == true) {
+            promise?.resolve("Health Data Sync Started")
+          } else {
+            promise?.resolve("Health Data Already Synced")
+          }
+        }
+      } else {
+        withContext(Dispatchers.Main) {
+          promise?.resolve("Health Data Already Synced")
+        }
+      }
     }
-
-    visitSessionStorage.saveBaseUrl("$apiBaseUrl/")
-    visitSessionStorage.saveVisitAuthToken(authToken)
-    visitSessionStorage.saveDailyLastSyncTimeStamp(Math.round(googleFitLastSync))
-    visitSessionStorage.saveHourlyLastSyncTimeStamp(Math.round(gfHourlyLastSync))
-
-    if (!syncDataWithServer && healthConnectUtil != null) {
-      Timber.d("mytag: syncDataWithServer() called")
-      visitStepSyncHelper?.sendDataToVisitServer(
-        healthConnectUtil!!,
-        Math.round(googleFitLastSync),
-        Math.round(gfHourlyLastSync),
-        "$apiBaseUrl/",
-        authToken
-      )
-      syncDataWithServer = true
-      promise?.resolve("Health Data Sync Started")
-    } else {
-      promise?.resolve("Health Data Already Synced")
-    }
-
-
   }
 
   @ReactMethod
@@ -321,19 +335,30 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun triggerManualSync(promise: Promise?) {
 
-    Timber.d("mytag: triggerManualSync() called")
+    CoroutineScope(Dispatchers.IO).launch {
+      Timber.d("mytag: triggerManualSync() called")
 
-    val baseUrl = visitSessionStorage.getBaseURL()
-    val authToken = visitSessionStorage.getVisitAuthToken()
-    val dailyLastSyncTimeStamp = visitSessionStorage.getDailyLastSyncTimestamp()
-    val hourlyLastSyncTimestamp = visitSessionStorage.getHourlyLastSyncTimeStamp()
+      val baseUrl = visitSessionStorage.getBaseURL()
+      val authToken = visitSessionStorage.getVisitAuthToken()
+      val dailyLastSyncTimeStamp = visitSessionStorage.getDailyLastSyncTimestamp()
+      val hourlyLastSyncTimestamp = visitSessionStorage.getHourlyLastSyncTimeStamp()
 
-    if (baseUrl != null && authToken != null) {
-      if (healthConnectUtil != null) {
-        Timber.d("mytag: manual sync started")
-        visitStepSyncHelper?.sendDataToVisitServer(
-          healthConnectUtil!!, dailyLastSyncTimeStamp, hourlyLastSyncTimestamp, baseUrl, authToken
-        )
+      if (baseUrl != null && authToken != null) {
+        if (healthConnectUtil != null) {
+          Timber.d("mytag: manual sync started")
+
+          val syncResult = visitStepSyncHelper?.sendDataToVisitServer(
+            healthConnectUtil!!, dailyLastSyncTimeStamp, hourlyLastSyncTimestamp, baseUrl, authToken
+          )
+
+          withContext(Dispatchers.Main) {
+            if (syncResult == true) {
+              promise?.resolve("Manual Syncing Successful")
+            } else {
+              promise?.resolve("Manual Syncing Failed")
+            }
+          }
+        }
       }
     }
   }
