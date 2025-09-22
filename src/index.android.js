@@ -624,16 +624,23 @@ const VisitRnSdkView = ({
   }, [canGoBack]);
 
   useEffect(() => {
-    const gpsListener = addListener(({ locationEnabled }) => {
+    // Subscribe to GPS/location setting changes
+    const locationSub = addListener(({ locationEnabled }) => {
       if (locationEnabled) {
         checkLocationPermissionAndSendCallback();
       }
     });
 
-    BackHandler.addEventListener('hardwareBackPress', handleBack);
+    // Subscribe to Android hardware back press
+    const backSub = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBack
+    );
+
+    // Cleanup subscriptions on unmount
     return () => {
-      BackHandler.removeEventListener('hardwareBackPress', handleBack);
-      gpsListener.remove();
+      backSub?.remove();
+      locationSub?.remove();
     };
   }, [handleBack]);
 
