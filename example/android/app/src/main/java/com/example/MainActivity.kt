@@ -1,13 +1,12 @@
 package com.example
 
-import android.os.Bundle
-import androidx.activity.result.ActivityResultLauncher
-import androidx.health.connect.client.PermissionController
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
+import androidx.activity.result.ActivityResultLauncher
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 import com.getvisitapp.google_fit.healthConnect.OnActivityResultImplementation
+import androidx.health.connect.client.PermissionController
 import timber.log.Timber
 
 class MainActivity : ReactActivity() {
@@ -28,20 +27,15 @@ class MainActivity : ReactActivity() {
     }
 
     /**
-   * Returns the name of the main component registered from JavaScript. This is used to schedule
-   * rendering of the component.
-   */
-  override fun getMainComponentName(): String = "example"
+     * Returns the name of the main component registered from JavaScript. This is used to schedule
+     * rendering of the component.
+     */
+    override fun getMainComponentName(): String = "example"
 
-  /**
-   * Returns the instance of the [ReactActivityDelegate]. We use [DefaultReactActivityDelegate]
-   * which allows you to enable New Architecture with a single boolean flags [fabricEnabled]
-   */
-  override fun createReactActivityDelegate(): ReactActivityDelegate =
-      DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
-
-  // ...
-  override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(null)
-  }
+    /**
+     * Returns the instance of the [ReactActivityDelegate]. We use [DefaultReactActivityDelegate]
+     * which allows you to enable New Architecture with a single boolean flags [fabricEnabled]
+     */
+    override fun createReactActivityDelegate(): ReactActivityDelegate =
+        DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
 }
