@@ -11,7 +11,13 @@
   },
   "dependencies": {
     "react": "18.3.1",
-    "react-native": "0.75.5"
+    "react-native": "0.75.5",
+    "react-native-device-info": "^14.1.1",
+    "react-native-event-listeners": "^1.0.7",
+    "react-native-location-enabler": "github:sashko9807/react-native-location-enabler",
+    "react-native-safe-area-context": "^5.6.1",
+    "react-native-visit-rn-sdk": "^2.0.12",
+    "react-native-webview": "^13.16.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
