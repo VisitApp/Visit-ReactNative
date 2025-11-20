@@ -1,4 +1,4 @@
-package com.example.modules
+package com.mchiexample.modules
 
 import android.content.Context
 import android.content.SharedPreferences

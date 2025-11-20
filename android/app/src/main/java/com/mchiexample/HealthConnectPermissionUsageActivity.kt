@@ -1,4 +1,4 @@
-package com.example
+package com.mchiexample
 
 import android.os.Bundle
 import android.view.ViewGroup

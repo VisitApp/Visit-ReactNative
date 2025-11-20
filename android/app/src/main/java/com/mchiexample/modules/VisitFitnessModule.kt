@@ -1,4 +1,4 @@
-package com.example.modules
+package com.mchiexample.modules
 
 import android.content.Intent
 import android.net.Uri
@@ -6,7 +6,6 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.annotation.Keep
-import com.example.MainActivity
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContext
@@ -24,6 +23,7 @@ import com.getvisitapp.google_fit.healthConnect.enums.HealthConnectConnectionSta
 import com.getvisitapp.google_fit.healthConnect.enums.HealthConnectConnectionState.NONE
 import com.getvisitapp.google_fit.healthConnect.enums.HealthConnectConnectionState.NOT_INSTALLED
 import com.getvisitapp.google_fit.healthConnect.enums.HealthConnectConnectionState.NOT_SUPPORTED
+import com.mchiexample.MainActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
