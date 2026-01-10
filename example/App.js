@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 
-import VisitRnSdkView from 'react-native-visit-rn-sdk';
+import VisitRnSdkView from 'react-native-visit-rn-web-sdk';
 
 import {EventRegister} from 'react-native-event-listeners';
 
