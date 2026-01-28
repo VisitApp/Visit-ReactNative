@@ -12,6 +12,7 @@ import {
   NativeEventEmitter,
 } from 'react-native';
 
+
 import WebView from 'react-native-webview';
 
 import LocationEnabler from 'react-native-location-enabler';
@@ -599,6 +600,12 @@ const VisitRnSdkView = ({
 
                 Linking.openURL(pdfUrl);
               }
+              break;
+            case 'OPEN_FACE_SCAN_FLOW':
+              console.log('OPEN_FACE_SCAN_FLOW');
+              EventRegister.emitEvent('visit-event', {
+                message: 'OPEN_FACE_SCAN_FLOW',
+              });
               break;
             case 'CLOSE_VIEW':
               break;

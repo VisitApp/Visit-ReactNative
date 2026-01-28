@@ -11,6 +11,7 @@ import {
   Button,
   Platform,
   NativeModules,
+  Alert,
 } from 'react-native';
 
 import {
@@ -18,6 +19,8 @@ import {
   useFocusEffect,
   useNavigation,
 } from '@react-navigation/native';
+
+import {EventRegister} from 'react-native-event-listeners';
 
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
@@ -165,6 +168,36 @@ function Home() {
       NativeModules.VisitFitnessModule.initiateSDK(true);
       setIsAndroidSDKInitialized(true);
     }
+  }, []);
+
+  useEffect(() => {
+    const unauthorizedListener = EventRegister.addEventListener(
+      'unauthorized-wellness-access',
+      () => {
+        Alert.alert('unauthorized-wellness-access');
+      },
+    );
+
+    const visitEventListener = EventRegister.addEventListener(
+      'visit-event',
+      data => {
+        if (data.message == 'OPEN_FACE_SCAN_FLOW') {
+          Alert.alert('Open Face Scan Feature');
+        } else {
+          console.log(
+            'visit-event: message:' +
+              data.message +
+              ' errorMessage:' +
+              data.errorMessage,
+          );
+        }
+      },
+    );
+
+    return () => {
+      EventRegister.removeEventListener(unauthorizedListener);
+      EventRegister.removeEventListener(visitEventListener);
+    };
   }, []);
 
   return (
