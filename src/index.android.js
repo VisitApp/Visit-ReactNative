@@ -602,7 +602,6 @@ const VisitRnSdkView = ({
               }
               break;
             case 'OPEN_FACE_SCAN_FLOW':
-              console.log('OPEN_FACE_SCAN_FLOW');
               EventRegister.emitEvent('visit-event', {
                 message: 'OPEN_FACE_SCAN_FLOW',
               });

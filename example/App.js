@@ -181,15 +181,15 @@ function Home() {
     const visitEventListener = EventRegister.addEventListener(
       'visit-event',
       data => {
-        if (data.message == 'OPEN_FACE_SCAN_FLOW') {
-          Alert.alert('Open Face Scan Feature');
-        } else {
-          console.log(
-            'visit-event: message:' +
-              data.message +
-              ' errorMessage:' +
-              data.errorMessage,
-          );
+        console.log(
+          'visit-event: message:' +
+            data.message +
+            ' errorMessage:' +
+            data.errorMessage,
+        );
+
+        if (data.message === 'OPEN_FACE_SCAN_FLOW') {
+          Alert.alert('Navigate to Face Scan Feature');
         }
       },
     );

@@ -302,6 +302,11 @@ const VisitRnSdkView = ({
       case 'OPEN_PDF':
         Linking.openURL(url);
         break;
+      case 'OPEN_FACE_SCAN_FLOW':
+        EventRegister.emitEvent('visit-event', {
+          message: 'OPEN_FACE_SCAN_FLOW',
+        });
+        break;
       case 'CLOSE_VIEW':
         break;
       case 'GET_LOCATION_PERMISSIONS':
