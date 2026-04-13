@@ -1,6 +1,6 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 
-import VisitRnSdkView from 'react-native-visit-rn-sdk';
+import VisitRnSdkView, {VideoCallComponent} from '../src/index.android';
 
 import {
   SafeAreaView,
@@ -68,6 +68,11 @@ function App() {
         />
 
         <Stack.Screen name="VisitPage" component={VisitPage} />
+        <Stack.Screen
+          name="VideoCall"
+          component={VideoCallScreen}
+          options={{title: 'Video Call'}}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -224,6 +229,14 @@ function Home() {
             });
           }}
         />
+        <View style={{height: 10}} />
+        <Button
+          title="Video Call Screen"
+          color="#7e55fa"
+          onPress={() => {
+            navigation.navigate('VideoCall');
+          }}
+        />
 
         <Text style={styles.text}>
           {Platform.OS === 'ios' ? 'Running on iOS' : 'Running on Android'}
@@ -263,6 +276,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'black',
   },
+  videoActionsContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: '#ffffff',
+    zIndex: 5,
+  },
 });
 
 function VisitPage({route, navigation}) {
@@ -284,6 +304,54 @@ function VisitPage({route, navigation}) {
         environment={'prod'}
         isLoggingEnabled={true}
         magicLink={ssoUrl}
+      />
+    </SafeAreaView>
+  );
+}
+
+function VideoCallScreen() {
+  const videoCallRef = useRef(null);
+
+  const twilioRoomName = 'replace-with-room-name';
+  const twilioAccessToken = 'replace-with-access-token';
+
+  const handleStartVideoCall = () => {
+    if (
+      twilioRoomName.includes('replace-with') ||
+      twilioAccessToken.includes('replace-with')
+    ) {
+      Alert.alert(
+        'Update Twilio values',
+        'Set a valid room name and access token in example/App.js before starting a video call.',
+      );
+      return;
+    }
+
+    videoCallRef.current?.startVideoCall({
+      roomName: twilioRoomName,
+      accessToken: twilioAccessToken,
+      doctorName: 'Doctor',
+      userName: 'You',
+      enableAudio: true,
+      enableVideo: true,
+      enableNetworkQualityReporting: true,
+    });
+  };
+
+  return (
+    <SafeAreaView style={{flex: 1}}>
+      <View style={styles.videoActionsContainer}>
+        <Button
+          title="Start Video Call"
+          color="#7e55fa"
+          onPress={handleStartVideoCall}
+        />
+      </View>
+      <VideoCallComponent
+        ref={videoCallRef}
+        onCallConnected={info => console.log('Video connected', info)}
+        onCallEnded={info => console.log('Video ended', info)}
+        onError={error => console.log('Video error', error)}
       />
     </SafeAreaView>
   );

@@ -729,6 +729,8 @@ export const fetchHourlyFitnessData = (startTimeStamp, isLoggingEnabled) => {
   });
 };
 
+export { default as VideoCallComponent } from './VideoCallComponent';
+
 // debounce, deferred
 // function debounce(task, ms) {
 //   let t = { promise: null, cancel: (_) => void 0 };

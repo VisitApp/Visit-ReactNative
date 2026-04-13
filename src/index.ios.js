@@ -368,6 +368,8 @@ VisitRnSdkView.defaultProps = {
 
 export default VisitRnSdkView;
 
+export { default as VideoCallComponent } from './VideoCallComponent';
+
 const LoadingIndicator = () => {
   return (
     <ActivityIndicator

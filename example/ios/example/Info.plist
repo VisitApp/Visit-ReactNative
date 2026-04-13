@@ -41,6 +41,10 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
+	<key>NSCameraUsageDescription</key>
+	<string>Visit needs camera access for video consultations.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Visit needs microphone access for video consultations.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

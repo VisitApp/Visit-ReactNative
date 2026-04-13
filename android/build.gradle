@@ -56,6 +56,19 @@ android {
     sourceSets {
       main {
         manifest.srcFile "src/main/AndroidManifestNew.xml"
+        java.srcDirs += [
+          "../../@twilio/video-react-native-sdk/android/src/main/java",
+          "../node_modules/@twilio/video-react-native-sdk/android/src/main/java"
+        ]
+      }
+    }
+  } else {
+    sourceSets {
+      main {
+        java.srcDirs += [
+          "../../@twilio/video-react-native-sdk/android/src/main/java",
+          "../node_modules/@twilio/video-react-native-sdk/android/src/main/java"
+        ]
       }
     }
   }
@@ -101,6 +114,8 @@ dependencies {
   //noinspection GradleDynamicVersion
   implementation "com.facebook.react:react-native:+"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+  implementation "androidx.appcompat:appcompat:1.7.1"
+  implementation "com.twilio:video-android:7.10.0"
 }
 
 if (isNewArchitectureEnabled()) {

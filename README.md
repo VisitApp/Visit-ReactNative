@@ -18,6 +18,57 @@ import VisitRnSdkView from "react-native-visit-rn-sdk";
 <VisitRnSdkView magicLink="magic-link" />
 ```
 
+### Video Calling
+
+```js
+import React, { useRef } from 'react';
+import { Button, View } from 'react-native';
+import { VideoCallComponent } from 'react-native-visit-rn-sdk';
+
+export default function VideoScreen() {
+  const videoRef = useRef(null);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Button
+        title="Start Video Call"
+        onPress={() =>
+          videoRef.current?.startVideoCall({
+            roomName: 'room-name',
+            accessToken: 'twilio-access-token',
+            doctorName: 'Dr. Smith',
+            userName: 'John',
+          })
+        }
+      />
+      <VideoCallComponent
+        ref={videoRef}
+        onCallConnected={(info) => console.log('connected', info)}
+        onCallEnded={(info) => console.log('ended', info)}
+        onError={(error) => console.log('video error', error)}
+      />
+    </View>
+  );
+}
+```
+
+Video component API:
+- `startVideoCall({ roomName, accessToken, doctorName?, userName? })`
+- `endCall()`
+- `isConnected()`
+
+Required native permissions in the host app:
+- Android
+  <uses-permission android:name="android.permission.CAMERA" />
+  <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+- iOS (`Info.plist`): `NSCameraUsageDescription`, `NSMicrophoneUsageDescription`
+
+  <key>NSCameraUsageDescription</key>
+  <string>Visit needs camera access for video consultations.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Visit needs microphone access for video consultations.</string>
+
 ## Contributing
 
 See the [contributing guide](CONTRIBUTING.md) to learn how to contribute to the repository and the development workflow.

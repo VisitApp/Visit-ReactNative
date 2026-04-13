@@ -89,7 +89,7 @@
   "engines": {
     "node": ">= 16.0.0"
   },
-  "packageManager": "^yarn@1.22.15",
+  "packageManager": "yarn@1.22.22",
   "jest": {
     "preset": "react-native",
     "modulePathIgnorePatterns": [
@@ -169,7 +169,8 @@
     "react-native-device-info": "13.0.0",
     "react-native-event-listeners": "^1.0.7",
     "react-native-location-enabler": "git+https://github.com/sashko9807/react-native-location-enabler.git",
-    "react-native-webview": "^13.12.1"
+    "react-native-webview": "^13.12.1",
+    "@twilio/video-react-native-sdk": "3.5.0"
   },
   "directories": {
     "example": "example"
