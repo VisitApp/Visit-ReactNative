@@ -35,6 +35,8 @@ const ICONS = {
   end: require('./assets/video-call/end-call.png'),
   connecting: require('./assets/video-call/connecting-lottie.gif'),
   reconnecting: require('./assets/video-call/reconnecting.gif'),
+  toggleUp: require('./assets/video-call/toggle-up.png'),
+  toggleDown: require('./assets/video-call/toggle-down.png'),
 };
 
 const initialCallState = {
@@ -78,10 +80,13 @@ const VideoCallComponent = forwardRef(
     const durationTimerRef = useRef(null);
     const timerRunningRef = useRef(false);
     const reconnectingTimerRef = useRef(null);
+    const localPreviewRefreshTimeoutRef = useRef(null);
+    const localPreviewSecondRefreshTimeoutRef = useRef(null);
     const retriedWithoutVideoRef = useRef(false);
     const retriedWithBackCameraRef = useRef(false);
     const cameraTypeRef = useRef('front');
     const [state, setState] = useState(initialCallState);
+    const [localPreviewRefreshKey, setLocalPreviewRefreshKey] = useState(0);
 
     useEffect(() => {
       if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -102,6 +107,21 @@ const VideoCallComponent = forwardRef(
         clearInterval(reconnectingTimerRef.current);
         reconnectingTimerRef.current = null;
       }
+    }, []);
+
+    const clearLocalPreviewRefreshTimers = useCallback(() => {
+      if (localPreviewRefreshTimeoutRef.current) {
+        clearTimeout(localPreviewRefreshTimeoutRef.current);
+        localPreviewRefreshTimeoutRef.current = null;
+      }
+      if (localPreviewSecondRefreshTimeoutRef.current) {
+        clearTimeout(localPreviewSecondRefreshTimeoutRef.current);
+        localPreviewSecondRefreshTimeoutRef.current = null;
+      }
+    }, []);
+
+    const refreshLocalPreview = useCallback(() => {
+      setLocalPreviewRefreshKey((prev) => prev + 1);
     }, []);
 
     const emitState = useCallback(
@@ -128,15 +148,17 @@ const VideoCallComponent = forwardRef(
     const resetToInitial = useCallback(() => {
       clearDurationTimer();
       clearReconnectTimer();
+      clearLocalPreviewRefreshTimers();
       setState(initialCallState);
       emitState(initialCallState);
-    }, [clearDurationTimer, clearReconnectTimer, emitState]);
+    }, [clearDurationTimer, clearReconnectTimer, clearLocalPreviewRefreshTimers, emitState]);
 
     const leaveVideo = useCallback(
       (reason, error) => {
         retriedWithoutVideoRef.current = false;
         clearDurationTimer();
         clearReconnectTimer();
+        clearLocalPreviewRefreshTimers();
         setState((prev) => {
           const finalState = { ...initialCallState };
           emitState(finalState);
@@ -146,7 +168,13 @@ const VideoCallComponent = forwardRef(
           onCallEnded({ reason, error });
         }
       },
-      [clearDurationTimer, clearReconnectTimer, emitState, onCallEnded]
+      [
+        clearDurationTimer,
+        clearReconnectTimer,
+        clearLocalPreviewRefreshTimers,
+        emitState,
+        onCallEnded,
+      ]
     );
 
     const startDurationTimer = useCallback(() => {
@@ -238,6 +266,7 @@ const VideoCallComponent = forwardRef(
         retriedWithoutVideoRef.current = false;
         retriedWithBackCameraRef.current = false;
         cameraTypeRef.current = 'front';
+        refreshLocalPreview();
         updateState((prev) => ({
           ...prev,
           isVisible: true,
@@ -261,7 +290,7 @@ const VideoCallComponent = forwardRef(
           });
         }, 600);
       },
-      [onError, requestAndroidVideoPermissions, updateState]
+      [onError, refreshLocalPreview, requestAndroidVideoPermissions, updateState]
     );
 
     const endCall = useCallback(() => {
@@ -284,8 +313,9 @@ const VideoCallComponent = forwardRef(
       return () => {
         clearDurationTimer();
         clearReconnectTimer();
+        clearLocalPreviewRefreshTimers();
       };
-    }, [clearDurationTimer, clearReconnectTimer]);
+    }, [clearDurationTimer, clearReconnectTimer, clearLocalPreviewRefreshTimers]);
 
     const onRoomDidConnect = ({ roomName }) => {
       console.log('onRoomDidConnect', roomName);
@@ -299,6 +329,18 @@ const VideoCallComponent = forwardRef(
       if (onCallConnected) {
         onCallConnected({ roomName });
       }
+
+      // Twilio local preview can miss the first bind on some Android devices.
+      // Force a couple of refresh passes right after connect.
+      clearLocalPreviewRefreshTimers();
+      refreshLocalPreview();
+      localPreviewRefreshTimeoutRef.current = setTimeout(() => {
+        twilioVideoRef.current?.setLocalVideoEnabled(true);
+        refreshLocalPreview();
+      }, 220);
+      localPreviewSecondRefreshTimeoutRef.current = setTimeout(() => {
+        refreshLocalPreview();
+      }, 700);
     };
 
     const onRoomDidDisconnect = ({ error }) => {
@@ -429,7 +471,7 @@ const VideoCallComponent = forwardRef(
         updateState((prev) => ({
           ...prev,
           signalStrength: payload.quality,
-          // showLowSignalStrengthMessage: isLow,
+          showLowSignalStrengthMessage: isLow,
           showUserReconnectingScreen: false,
         }));
         if (isLow && onLowNetworkQuality) {
@@ -526,7 +568,8 @@ const VideoCallComponent = forwardRef(
     const isReconnecting =
       state.showParticipantReconnectingScreen || state.showUserReconnectingScreen;
     const isConnecting = state.loading || state.status === 'connecting';
-    const showDoctorInitial = !isReconnecting && !isConnecting;
+    const showDoctorInitial =
+      state.status === 'participantDisconnected' || (!isReconnecting && !isConnecting);
 
     return (
       <View style={[styles.container, style]}>
@@ -566,6 +609,7 @@ const VideoCallComponent = forwardRef(
         !state.showUserReconnectingScreen ? (
           <TwilioVideoParticipantView
             style={styles.remoteVideo}
+            key={state?.remoteTrackSid}
             trackIdentifier={state.remoteTrackIdentifier}
           />
         ) : (
@@ -613,11 +657,15 @@ const VideoCallComponent = forwardRef(
           >
             <View style={styles.localPreviewInner}>
               {state.isVideoEnabled ? (
-                <TwilioVideoLocalView enabled style={styles.localVideo} />
+          <TwilioVideoLocalView
+            key={`local-preview-${localPreviewRefreshKey}`}
+            enabled
+            style={styles.localVideo}
+          />
               ) : (
                 <View style={[styles.localVideo, styles.localVideoOff]}>
                   <Text style={styles.localVideoOffText}>
-                    {(state.userName || 'You').charAt(0).toUpperCase()}
+                    {(state.userName || 'Patient').charAt(0).toUpperCase()}
                   </Text>
                 </View>
               )}
@@ -625,7 +673,7 @@ const VideoCallComponent = forwardRef(
           </View>
         ) : null}
 
-        {!state.participantAudioEnabled ? (
+        {!state.participantAudioEnabled && !state.showLowSignalStrengthMessage ? (
           <View
             style={[
               styles.participantMicOffBadge,
@@ -678,7 +726,13 @@ const VideoCallComponent = forwardRef(
                 }));
               }}
             >
-              <View style={styles.controlsTopLine} />
+              <View style={styles.controlsTogglePill}>
+                <Image
+                  source={state.showBottomBar ? ICONS.toggleDown : ICONS.toggleUp}
+                  style={styles.controlsToggleIcon}
+                  resizeMode="contain"
+                />
+              </View>
             </TouchableOpacity>
 
             {state.showBottomBar ? (
@@ -1004,7 +1058,7 @@ const styles = StyleSheet.create({
   },
   controlsCollapsed: {
     paddingTop: 16,
-    paddingBottom: 12,
+    paddingBottom: 24,
   },
   bottomBarContainer: {
     position: 'absolute',
@@ -1026,11 +1080,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 5,
   },
-  controlsTopLine: {
-    width: 56,
-    height: 6,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.55)',
+  controlsTogglePill: {
+    width: 40,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  controlsToggleIcon: {
+    width: 20,
+    height: 20,
+    tintColor: '#fff',
   },
   controlButton: {
     alignItems: 'center',
