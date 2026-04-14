@@ -8,9 +8,11 @@ import React, {
 } from 'react';
 import {
   Alert,
+  Animated,
   Dimensions,
   Image,
   LayoutAnimation,
+  PanResponder,
   PermissionsAndroid,
   Platform,
   Pressable,
@@ -28,6 +30,11 @@ import {
 } from '@twilio/video-react-native-sdk';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('screen');
+const LOCAL_PREVIEW_WIDTH = 120;
+const LOCAL_PREVIEW_HEIGHT = 180;
+const LOCAL_PREVIEW_SIDE_MARGIN = 16;
+const LOCAL_PREVIEW_MAX_BOTTOM_OFFSET = 224;
+const LOCAL_PREVIEW_BOTTOM_DRAG_ALLOWANCE = 56;
 const ICONS = {
   mute: require('./assets/video-call/mic-off.png'),
   videoOff: require('./assets/video-call/video-off.png'),
@@ -85,8 +92,52 @@ const VideoCallComponent = forwardRef(
     const retriedWithoutVideoRef = useRef(false);
     const retriedWithBackCameraRef = useRef(false);
     const cameraTypeRef = useRef('front');
+    const localPreviewDrag = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+    const localPreviewDragOffsetRef = useRef({ x: 0, y: 0 });
     const [state, setState] = useState(initialCallState);
     const [localPreviewRefreshKey, setLocalPreviewRefreshKey] = useState(0);
+
+    const maxHorizontalDrag = SCREEN_WIDTH - LOCAL_PREVIEW_WIDTH - LOCAL_PREVIEW_SIDE_MARGIN * 2;
+    const maxUpwardDrag = Math.max(
+      0,
+      SCREEN_HEIGHT - LOCAL_PREVIEW_HEIGHT - LOCAL_PREVIEW_MAX_BOTTOM_OFFSET
+    );
+    const maxDownwardDrag = LOCAL_PREVIEW_BOTTOM_DRAG_ALLOWANCE;
+    const clampDrag = useCallback((value, min, max) => Math.min(Math.max(value, min), max), []);
+
+    const localPreviewPanResponder = useRef(
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dx) > 2 || Math.abs(gestureState.dy) > 2,
+        onPanResponderMove: (_, gestureState) => {
+          const nextX = clampDrag(
+            localPreviewDragOffsetRef.current.x + gestureState.dx,
+            -maxHorizontalDrag,
+            0
+          );
+          const nextY = clampDrag(
+            localPreviewDragOffsetRef.current.y + gestureState.dy,
+            -maxUpwardDrag,
+            maxDownwardDrag
+          );
+          localPreviewDrag.setValue({ x: nextX, y: nextY });
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          const nextX = clampDrag(
+            localPreviewDragOffsetRef.current.x + gestureState.dx,
+            -maxHorizontalDrag,
+            0
+          );
+          const nextY = clampDrag(
+            localPreviewDragOffsetRef.current.y + gestureState.dy,
+            -maxUpwardDrag,
+            maxDownwardDrag
+          );
+          localPreviewDragOffsetRef.current = { x: nextX, y: nextY };
+          localPreviewDrag.setValue(localPreviewDragOffsetRef.current);
+        },
+      })
+    ).current;
 
     useEffect(() => {
       if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -266,6 +317,8 @@ const VideoCallComponent = forwardRef(
         retriedWithoutVideoRef.current = false;
         retriedWithBackCameraRef.current = false;
         cameraTypeRef.current = 'front';
+        localPreviewDragOffsetRef.current = { x: 0, y: 0 };
+        localPreviewDrag.setValue({ x: 0, y: 0 });
         refreshLocalPreview();
         updateState((prev) => ({
           ...prev,
@@ -290,7 +343,13 @@ const VideoCallComponent = forwardRef(
           });
         }, 600);
       },
-      [onError, refreshLocalPreview, requestAndroidVideoPermissions, updateState]
+      [
+        localPreviewDrag,
+        onError,
+        refreshLocalPreview,
+        requestAndroidVideoPermissions,
+        updateState,
+      ]
     );
 
     const endCall = useCallback(() => {
@@ -642,8 +701,8 @@ const VideoCallComponent = forwardRef(
           </View>
         )}
 
-        {!isConnecting ? (
-          <View
+        {true ? (
+          <Animated.View
             style={[
               styles.localPreview,
               state.showLowSignalStrengthMessage
@@ -653,15 +712,17 @@ const VideoCallComponent = forwardRef(
                 : state.showBottomBar
                 ? styles.localPreviewAboveControls
                 : styles.localPreviewAboveCollapsedControls,
+              { transform: localPreviewDrag.getTranslateTransform() },
             ]}
+            {...localPreviewPanResponder.panHandlers}
           >
             <View style={styles.localPreviewInner}>
               {state.isVideoEnabled ? (
-          <TwilioVideoLocalView
-            key={`local-preview-${localPreviewRefreshKey}`}
-            enabled
-            style={styles.localVideo}
-          />
+                <TwilioVideoLocalView
+                  key={`local-preview-${localPreviewRefreshKey}`}
+                  enabled
+                  style={styles.localVideo}
+                />
               ) : (
                 <View style={[styles.localVideo, styles.localVideoOff]}>
                   <Text style={styles.localVideoOffText}>
@@ -670,7 +731,7 @@ const VideoCallComponent = forwardRef(
                 </View>
               )}
             </View>
-          </View>
+          </Animated.View>
         ) : null}
 
         {!state.participantAudioEnabled && !state.showLowSignalStrengthMessage ? (
@@ -997,9 +1058,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 'auto',
     right: 16,
-    width: 112,
-    height: 164,
-    zIndex: 15,
+    width: LOCAL_PREVIEW_WIDTH,
+    height: LOCAL_PREVIEW_HEIGHT,
+    zIndex: 999,
   },
   localPreviewInner: {
     flex: 1,
