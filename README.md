@@ -57,6 +57,13 @@ Video component API:
 - `endCall()`
 - `isConnected()`
 
+-  VIDEO CALL ERROR STATUSES
+   - 'MISSING_ROOM_NAME_OR_ACCESS_TOKEN'
+   - 'PERMISSIONS_REQUIRED'
+   - 'PERMISSION_CHECK_FAILED'
+   - 'INVALID_OR_EXPIRED_TOKEN'
+   - 'CONNECT_FAILED'
+
 Required native permissions in the host app:
 - Android
   <uses-permission android:name="android.permission.CAMERA" />

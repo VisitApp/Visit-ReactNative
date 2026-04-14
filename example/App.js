@@ -1,6 +1,6 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 
-import VisitRnSdkView, {VideoCallComponent} from '../src/index.android';
+import VisitRnSdkView, { VideoCallComponent } from 'react-native-visit-rn-sdk';
 
 import {
   SafeAreaView,
@@ -330,11 +330,8 @@ function VideoCallScreen() {
     videoCallRef.current?.startVideoCall({
       roomName: twilioRoomName,
       accessToken: twilioAccessToken,
-      doctorName: 'Doctor',
-      userName: 'You',
-      enableAudio: true,
-      enableVideo: true,
-      enableNetworkQualityReporting: true,
+      doctorName: 'Jasper',
+      userName: 'John Doe',
     });
   };
 

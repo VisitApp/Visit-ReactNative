@@ -7,7 +7,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  Alert,
   Animated,
   Dimensions,
   Image,
@@ -35,6 +34,13 @@ const LOCAL_PREVIEW_HEIGHT = 180;
 const LOCAL_PREVIEW_SIDE_MARGIN = 16;
 const LOCAL_PREVIEW_MAX_BOTTOM_OFFSET = 224;
 const LOCAL_PREVIEW_BOTTOM_DRAG_ALLOWANCE = 56;
+const VIDEO_CALL_ERROR_STATUS = Object.freeze({
+  MISSING_ROOM_NAME_OR_ACCESS_TOKEN: 'MISSING_ROOM_NAME_OR_ACCESS_TOKEN',
+  PERMISSIONS_REQUIRED: 'PERMISSIONS_REQUIRED',
+  PERMISSION_CHECK_FAILED: 'PERMISSION_CHECK_FAILED',
+  INVALID_OR_EXPIRED_TOKEN: 'INVALID_OR_EXPIRED_TOKEN',
+  CONNECT_FAILED: 'CONNECT_FAILED',
+});
 const ICONS = {
   mute: require('./assets/video-call/mic-off.png'),
   videoOff: require('./assets/video-call/video-off.png'),
@@ -89,9 +95,6 @@ const VideoCallComponent = forwardRef(
     const reconnectingTimerRef = useRef(null);
     const localPreviewRefreshTimeoutRef = useRef(null);
     const localPreviewSecondRefreshTimeoutRef = useRef(null);
-    const retriedWithoutVideoRef = useRef(false);
-    const retriedWithBackCameraRef = useRef(false);
-    const cameraTypeRef = useRef('front');
     const localPreviewDrag = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
     const localPreviewDragOffsetRef = useRef({ x: 0, y: 0 });
     const [state, setState] = useState(initialCallState);
@@ -184,6 +187,20 @@ const VideoCallComponent = forwardRef(
       [onStateChange]
     );
 
+    const emitErrorStatus = useCallback(
+      (status, error, metadata = {}) => {
+        if (!onError) {
+          return;
+        }
+        onError({
+          status,
+          error,
+          metadata,
+        });
+      },
+      [onError]
+    );
+
     const updateState = useCallback(
       (updater) => {
         setState((prev) => {
@@ -206,12 +223,11 @@ const VideoCallComponent = forwardRef(
 
     const leaveVideo = useCallback(
       (reason, error) => {
-        retriedWithoutVideoRef.current = false;
         clearDurationTimer();
         clearReconnectTimer();
         clearLocalPreviewRefreshTimers();
         setState((prev) => {
-          const finalState = { ...initialCallState };
+          const finalState = JSON.parse(JSON.stringify(initialCallState));
           emitState(finalState);
           return finalState;
         });
@@ -253,7 +269,7 @@ const VideoCallComponent = forwardRef(
       }, 1000);
     }, [updateState]);
 
-    const requestAndroidVideoPermissions = useCallback(async () => {
+    const checkAndroidVideoPermissions = useCallback(async () => {
       if (Platform.OS !== 'android') {
         return true;
       }
@@ -268,55 +284,36 @@ const VideoCallComponent = forwardRef(
           return true;
         }
 
-        const permissionResult = await PermissionsAndroid.requestMultiple([
-          cameraPermission,
-          micPermission,
-        ]);
-
-        const cameraGranted =
-          permissionResult[cameraPermission] === PermissionsAndroid.RESULTS.GRANTED;
-        const micGranted =
-          permissionResult[micPermission] === PermissionsAndroid.RESULTS.GRANTED;
-        const granted = cameraGranted && micGranted;
-
-        if (!granted) {
-          Alert.alert(
-            'Permissions required',
-            'Camera and microphone permissions are required to start a video call.'
-          );
-        }
-        return granted;
+        emitErrorStatus(
+          VIDEO_CALL_ERROR_STATUS.PERMISSIONS_REQUIRED,
+          new Error('Camera and microphone permissions are required to start a video call.')
+        );
+        return false;
       } catch (error) {
-        // if (onError) {
-        //   onError(error);
-        // }
-        Alert.alert(
-          'Permission error',
-          'Unable to request camera and microphone permissions.'
+        emitErrorStatus(
+          VIDEO_CALL_ERROR_STATUS.PERMISSION_CHECK_FAILED,
+          error,
+          {
+            message: 'Unable to check camera and microphone permissions.',
+          }
         );
         return false;
       }
-    }, [onError]);
+    }, [emitErrorStatus]);
 
     const connectToRoom = useCallback(
       async ({ roomName, accessToken, doctorName, userName }) => {
         if (!roomName || !accessToken) {
           const err = new Error('roomName and accessToken are required');
-          if (onError) {
-            onError(err);
-          }
-          Alert.alert('Missing call details', 'roomName and accessToken are required');
+          emitErrorStatus(VIDEO_CALL_ERROR_STATUS.MISSING_ROOM_NAME_OR_ACCESS_TOKEN, err);
           return;
         }
 
-        const canStartCall = await requestAndroidVideoPermissions();
+        const canStartCall = await checkAndroidVideoPermissions();
         if (!canStartCall) {
           return;
         }
 
-        retriedWithoutVideoRef.current = false;
-        retriedWithBackCameraRef.current = false;
-        cameraTypeRef.current = 'front';
         localPreviewDragOffsetRef.current = { x: 0, y: 0 };
         localPreviewDrag.setValue({ x: 0, y: 0 });
         refreshLocalPreview();
@@ -336,19 +333,17 @@ const VideoCallComponent = forwardRef(
           twilioVideoRef.current?.connect({
             accessToken,
             roomName,
-            cameraType: cameraTypeRef.current,
-            enableAudio: true,
-            enableVideo: true,
+            cameraType: 'front',
             enableNetworkQualityReporting: true,
           });
         }, 600);
       },
       [
         localPreviewDrag,
-        onError,
         refreshLocalPreview,
-        requestAndroidVideoPermissions,
+        checkAndroidVideoPermissions,
         updateState,
+        emitErrorStatus,
       ]
     );
 
@@ -408,64 +403,15 @@ const VideoCallComponent = forwardRef(
 
     const onRoomDidFailToConnect = (error) => {
       const errorMessage = String(error?.error || error?.message || '');
-      const noCameraAvailable = errorMessage
-        .toLowerCase()
-        .includes('no camera is supported on this device');
 
-      if (noCameraAvailable && !retriedWithBackCameraRef.current) {
-        retriedWithBackCameraRef.current = true;
-        cameraTypeRef.current = 'back';
-        updateState((prev) => ({
-          ...prev,
-          loading: true,
-          status: 'connecting',
-        }));
-        setTimeout(() => {
-          twilioVideoRef.current?.connect({
-            accessToken: state.accessToken,
-            roomName: state.roomName,
-            cameraType: cameraTypeRef.current,
-            enableAudio: true,
-            enableVideo: true,
-            enableNetworkQualityReporting: true,
-          });
-        }, 300);
-        return;
-      }
-
-      if (noCameraAvailable && !retriedWithoutVideoRef.current) {
-        retriedWithoutVideoRef.current = true;
-        updateState((prev) => ({
-          ...prev,
-          isVideoEnabled: false,
-          loading: true,
-          status: 'connecting',
-        }));
-        Alert.alert(
-          'Camera unavailable',
-          'Starting audio-only call because no camera is available on this device.'
-        );
-        setTimeout(() => {
-          twilioVideoRef.current?.connect({
-            accessToken: state.accessToken,
-            roomName: state.roomName,
-            cameraType: cameraTypeRef.current,
-            enableAudio: true,
-            enableVideo: false,
-            enableNetworkQualityReporting: true,
-          });
-        }, 200);
-        return;
-      }
-
-      if (onError) {
-        onError(error);
-      }
-      const hasTokenError = errorMessage.toLowerCase().includes('token');
+      const hasTokenError = errorMessage?.toLowerCase()?.includes('token');
       if (hasTokenError) {
-        Alert.alert('Unable to connect', 'The video room token is invalid or expired.');
+        emitErrorStatus(VIDEO_CALL_ERROR_STATUS.INVALID_OR_EXPIRED_TOKEN, error);
+        leaveVideo('connect-failed', error);
+        return;
       }
-      // leaveVideo('connect-failed', error);
+      emitErrorStatus(VIDEO_CALL_ERROR_STATUS.CONNECT_FAILED, error);
+      leaveVideo('connect-failed', error);
     };
 
     const onParticipantAddedVideoTrack = ({ participant, track }) => {
@@ -701,7 +647,7 @@ const VideoCallComponent = forwardRef(
           </View>
         )}
 
-        {true ? (
+        {!isConnecting ? (
           <Animated.View
             style={[
               styles.localPreview,
