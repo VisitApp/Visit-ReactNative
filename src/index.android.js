@@ -522,7 +522,7 @@ const VisitRnSdkView = ({
         true; // note: this is required, or you'll sometimes get silent failures
     `;
 
-  const startVideoCall = useCallback(
+  const startVideoConsultation = useCallback(
     (parsedObject) => {
       const roomName = parsedObject?.roomName;
       const accessToken = parsedObject?.accessToken;
@@ -565,7 +565,7 @@ const VisitRnSdkView = ({
 
               break;
             case 'INITIATE_VIDEO_CALL':
-              startVideoCall(parsedObject);
+              startVideoConsultation(parsedObject);
               break;
             case 'UPDATE_PLATFORM':
               webviewRef.current?.injectJavaScript(

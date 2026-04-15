@@ -189,7 +189,15 @@ const VisitRnSdkView = ({
   const [authToken, setAuthToken] = useState('');
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
-  const startVideoCall = useCallback(
+
+const runBeforeFirst = `
+  window.isNativeApp = true;
+  window.platform = "IOS";
+  window.setSdkPlatform('IOS');
+  true; // note: this is required, or you'll sometimes get silent failures
+  `;
+
+  const startVideoConsultation = useCallback(
     (payload) => {
       const roomName = payload?.roomName;
       const accessToken = payload?.accessToken;
@@ -277,7 +285,7 @@ const VisitRnSdkView = ({
     console.log(unescapeHTML(event.nativeEvent.data));
     switch (method) {
       case 'INITIATE_VIDEO_CALL':
-        startVideoCall(data);
+        startVideoConsultation(data);
         break;
       case 'UPDATE_PLATFORM':
         webviewRef.current?.injectJavaScript('window.setSdkPlatform("IOS")');
@@ -364,6 +372,7 @@ const VisitRnSdkView = ({
           style={styles.webView}
           javascriptEnabled
           onMessage={handleMessage}
+          injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
           onError={(errorMessage) => {
             EventRegister.emitEvent(visitEvent, {
               message: 'web-view-error',
