@@ -99,6 +99,8 @@ const VideoCallComponent = forwardRef(
     const localPreviewSecondRefreshTimeoutRef = useRef(null);
     const localPreviewDrag = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
     const localPreviewDragOffsetRef = useRef({ x: 0, y: 0 });
+    const callRef = useRef({ roomJoined: false, unmounted: false });
+    callRef.current.onCallEnded = onCallEnded;
     const [state, setState] = useState(initialCallState);
     const [localPreviewRefreshKey, setLocalPreviewRefreshKey] = useState(0);
 
@@ -228,6 +230,10 @@ const VideoCallComponent = forwardRef(
         clearDurationTimer();
         clearReconnectTimer();
         clearLocalPreviewRefreshTimers();
+        if (callRef.current.unmounted) {
+          return;
+        }
+        callRef.current.roomJoined = false;
         setState((prev) => {
           const finalState = JSON.parse(JSON.stringify(initialCallState));
           emitState(finalState);
@@ -353,6 +359,8 @@ const VideoCallComponent = forwardRef(
           return;
         }
 
+        callRef.current.roomJoined = false;
+        callRef.current.unmounted = false;
         localPreviewDragOffsetRef.current = { x: 0, y: 0 };
         localPreviewDrag.setValue({ x: 0, y: 0 });
         refreshLocalPreview();
@@ -403,15 +411,24 @@ const VideoCallComponent = forwardRef(
     );
 
     useEffect(() => {
+      callRef.current.unmounted = false;
       return () => {
+        const wasJoined = callRef.current.roomJoined;
+        callRef.current.unmounted = true;
+        callRef.current.roomJoined = false;
         clearDurationTimer();
         clearReconnectTimer();
         clearLocalPreviewRefreshTimers();
+        twilioVideoRef.current?.disconnect();
+        if (wasJoined) {
+          callRef.current.onCallEnded?.({ reason: 'component-unmount' });
+        }
       };
     }, [clearDurationTimer, clearReconnectTimer, clearLocalPreviewRefreshTimers]);
 
     const onRoomDidConnect = ({ roomName }) => {
       console.log('onRoomDidConnect', roomName);
+      callRef.current.roomJoined = true;
       updateState((prev) => ({
         ...prev,
         loading: false,
