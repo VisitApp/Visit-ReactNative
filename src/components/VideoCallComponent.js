@@ -7,10 +7,12 @@ import React, {
   useState,
 } from 'react';
 import {
+  Alert,
   Animated,
   Dimensions,
   Image,
   LayoutAnimation,
+  Linking,
   PanResponder,
   PermissionsAndroid,
   Platform,
@@ -42,14 +44,14 @@ const VIDEO_CALL_ERROR_STATUS = Object.freeze({
   CONNECT_FAILED: 'CONNECT_FAILED',
 });
 const ICONS = {
-  mute: require('./assets/video-call/mic-off.png'),
-  videoOff: require('./assets/video-call/video-off.png'),
-  flip: require('./assets/video-call/switch-camera.png'),
-  end: require('./assets/video-call/end-call.png'),
-  connecting: require('./assets/video-call/connecting-lottie.gif'),
-  reconnecting: require('./assets/video-call/reconnecting.gif'),
-  toggleUp: require('./assets/video-call/toggle-up.png'),
-  toggleDown: require('./assets/video-call/toggle-down.png'),
+  mute: require('../assets/video-call/mic-off.png'),
+  videoOff: require('../assets/video-call/video-off.png'),
+  flip: require('../assets/video-call/switch-camera.png'),
+  end: require('../assets/video-call/end-call.png'),
+  connecting: require('../assets/video-call/connecting-lottie.gif'),
+  reconnecting: require('../assets/video-call/reconnecting.gif'),
+  toggleUp: require('../assets/video-call/toggle-up.png'),
+  toggleDown: require('../assets/video-call/toggle-down.png'),
 };
 
 const initialCallState = {
@@ -284,12 +286,49 @@ const VideoCallComponent = forwardRef(
           return true;
         }
 
+        const permissionResults = await PermissionsAndroid.requestMultiple([
+          cameraPermission,
+          micPermission,
+        ]);
+        const isCameraGranted =
+          permissionResults[cameraPermission] === PermissionsAndroid.RESULTS.GRANTED;
+        const isMicGranted =
+          permissionResults[micPermission] === PermissionsAndroid.RESULTS.GRANTED;
+        if (isCameraGranted && isMicGranted) {
+          return true;
+        }
+
+        const missing = [];
+        if (!isCameraGranted) {
+          missing.push('camera');
+        }
+        if (!isMicGranted) {
+          missing.push('microphone');
+        }
+
+        Alert.alert(
+          'Permissions required',
+          `Please allow ${missing.join(' and ')} access to start a video call. You can enable this in Settings.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ]
+        );
+
         emitErrorStatus(
           VIDEO_CALL_ERROR_STATUS.PERMISSIONS_REQUIRED,
           new Error('Camera and microphone permissions are required to start a video call.')
         );
         return false;
       } catch (error) {
+        Alert.alert(
+          'Permission error',
+          'Unable to check camera and microphone permissions. Please try again or open Settings to grant access.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ]
+        );
         emitErrorStatus(
           VIDEO_CALL_ERROR_STATUS.PERMISSION_CHECK_FAILED,
           error,
@@ -406,6 +445,11 @@ const VideoCallComponent = forwardRef(
 
       const hasTokenError = errorMessage?.toLowerCase()?.includes('token');
       if (hasTokenError) {
+        Alert.alert(
+          'Unable to join call',
+          'Your video session token is invalid or has expired.',
+          [{ text: 'OK' }]
+        );
         emitErrorStatus(VIDEO_CALL_ERROR_STATUS.INVALID_OR_EXPIRED_TOKEN, error);
         leaveVideo('connect-failed', error);
         return;
@@ -582,7 +626,7 @@ const VideoCallComponent = forwardRef(
         <View style={styles.topHeader}>
           <View style={styles.headerTitleWrap}>
             <Text style={styles.nameText}>
-              {state.doctorName || 'Video consultation'}
+              {state.doctorName || 'Doctor'}
             </Text>
             <Text style={styles.timerText}>
               {state.durationMins}:{state.durationSecs}
