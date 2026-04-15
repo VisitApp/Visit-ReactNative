@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 
 import VisitRnSdkView from 'react-native-visit-rn-sdk';
 
@@ -262,13 +262,6 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     fontSize: 16,
     color: 'black',
-  },
-  videoActionsContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    backgroundColor: '#ffffff',
-    zIndex: 5,
   },
 });
 

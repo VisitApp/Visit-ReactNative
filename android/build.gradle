@@ -115,7 +115,6 @@ dependencies {
   implementation "com.facebook.react:react-native:+"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
   implementation "androidx.appcompat:appcompat:1.7.1"
-  implementation "com.twilio:video-android:7.10.0"
 }
 
 if (isNewArchitectureEnabled()) {

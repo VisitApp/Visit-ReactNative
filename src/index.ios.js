@@ -199,7 +199,7 @@ const VisitRnSdkView = ({
       if (!roomName || !accessToken) {
         if (isLoggingEnabled) {
           console.warn(
-            'Video call payload missing roomName/accessToken. Expected them in WebView message payload.'
+            'Video call payload missing roomName/accessToken.'
           );
         }
         return;
