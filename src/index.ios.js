@@ -200,7 +200,7 @@ const runBeforeFirst = `
   const startVideoConsultation = useCallback(
     (payload) => {
       const roomName = payload?.roomName;
-      const accessToken = payload?.accessToken;
+      const accessToken = payload?.token;
       const doctorName = payload?.doctorName;
       const userName = payload?.userName;
 
@@ -284,7 +284,7 @@ const runBeforeFirst = `
     console.log('handleMessage data is', data);
     console.log(unescapeHTML(event.nativeEvent.data));
     switch (method) {
-      case 'INITIATE_VIDEO_CALL':
+      case 'startVideoCall':
         startVideoConsultation(data);
         break;
       case 'UPDATE_PLATFORM':

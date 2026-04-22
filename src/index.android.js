@@ -525,7 +525,7 @@ const VisitRnSdkView = ({
   const startVideoConsultation = useCallback(
     (parsedObject) => {
       const roomName = parsedObject?.roomName;
-      const accessToken = parsedObject?.accessToken;
+      const accessToken = parsedObject?.token;
       const doctorName = parsedObject?.doctorName;
       const userName = parsedObject?.userName;
 
@@ -564,7 +564,7 @@ const VisitRnSdkView = ({
               askForHealthConnectPermission();
 
               break;
-            case 'INITIATE_VIDEO_CALL':
+            case 'startVideoCall':
               startVideoConsultation(parsedObject);
               break;
             case 'UPDATE_PLATFORM':
