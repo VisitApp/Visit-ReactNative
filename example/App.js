@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import {Linking} from 'react-native';
 
 import VisitRnSdkView from 'react-native-visit-rn-sdk';
 
@@ -244,8 +245,42 @@ function Home() {
             }
           }}
         />
+
+        <Button
+          title="Invoke Hive Deeplink"
+          color="#7e55fa"
+          onPress={() => {
+            let payload =
+              'XIbignZBwVDU2oaj72TitXj1pyr9LL5/PgExD8d62Bqza6oHHWa0/EE2UvYphxRKOu/XYCl5f4f6yAXe5Xh1rPEjdp/MtNsMEne/ibkoTxnaXxnNY+wWd0Qx1wRQ77ScNECAXwtY+auzq3Ra6IBSRbV4iWsxDoNDlSnZPs5wG9iglA+TToFTCHQY7guYif4JBb3UDQKsUiwPOqWslOMeVMyc6pcnoc2EsQvZjGh0QfUVbeqnpgB1htwpGFvgw5Y5RrLHBv99Jnk6RJKjOGiOXWB26BxSeuoHlNGOk0i2waT7evAds+YAivC6xKYmGFZSYJjLgSi7gsd9ZCpaPNYq6jcCRkyz1mHlHVMmkMpk8rtQ1u7dLeraTWU8RBODP2oJbs69K68y73AA0oXXB5X5F8aopE8SXipsGuidQknmjgiTXFqozcyR4kxWk0Vef8+9lH3ObLTActVwZ3pEX4ylWkXlum85v1vP2qhZv51roGxWRCEXuYrr9enK9/G+7WPpLmcyvJJNsYUhtNgCg8FYvErArfB4SO7lK7eKga9O/dmjl9/vmrfh0T3oWmOVI1XVCdWX5PZYiW3GmoAXydcoE0zgUJueMqbAeoe1DXTLyjMnUU/sP77cQTd4e9LLg8/n+iwTBtZeCIHIsXHk5DvWxWYKn6p9QHAbc6gIth+viehPtIwzOdtr7ujAfPM6GBtdv7ylswk7hxBETpdzdfhCwldI9aQcWH+gGVBn4xZfco4bRgipulnq9VSJuzrs+bYCKSIxq2vTn9QV7fC3lTogpvqopPwNRr238zsYJZCi1v3W8qHxz3rFUtuCS7walK3N7ezmRd1Mbi8Bebh6HoH6Wvjd92eIdoG8x9zf+tAMsEiIGLEu5PWk2HmjOCQsuLxz+Sk1RGDyTmc5Y5EHOGqjxw==';
+            let key =
+              'bhyJy9gCNHz+6rN9PeM+jnybN3PdVb2+FNBOWNRXpHmtdMEmQwqpH2SiLYj13+zLVwIybppQ6VvMF9kGV5OhURV6FmswR4SG96So2oeBXTqqq7ajZWBygLhMqYnTm/URlgLt+rKnKOE08Lp+C9afTOJ0lxQxxvt1Didk2trD6h5UiaVJwpdTYxu5t8bCzE24x90sl1D2qh4T2P2YoFNo95ApFRl1nb+GydyrVfRzr+CRGczT72uN7cCOQhnYyJrgGk3w7O6jA6kU6raAA4SY38SnSsBgyNksYwJiMHK5mofmVEV9K7lpCXLTvW/bmXDOTlO8F3VVSk+iYOhX5p+kOg==';
+
+            const url = buildHiveDeepLink(payload, key);
+            // const url =
+            //   'airtel_visithealth_app://auth/airtel_hive_auth?data=XIbignZBwVDU2oaj72TitXj1pyr9LL5/PgExD8d62Bqza6oHHWa0/EE2UvYphxRKOu/XYCl5f4f6yAXe5Xh1rPEjdp/MtNsMEne/ibkoTxnaXxnNY+wWd0Qx1wRQ77ScNECAXwtY+auzq3Ra6IBSRbV4iWsxDoNDlSnZPs5wG9iglA+TToFTCHQY7guYif4JBb3UDQKsUiwPOqWslOMeVMyc6pcnoc2EsQvZjGh0QfUVbeqnpgB1htwpGFvgw5Y5RrLHBv99Jnk6RJKjOGiOXWB26BxSeuoHlNGOk0i2waT7evAds+YAivC6xKYmGFZSYJjLgSi7gsd9ZCpaPNYq6jcCRkyz1mHlHVMmkMpk8rtQ1u7dLeraTWU8RBODP2oJbs69K68y73AA0oXXB5X5F8aopE8SXipsGuidQknmjgiTXFqozcyR4kxWk0Vef8+9lH3ObLTActVwZ3pEX4ylWkXlum85v1vP2qhZv51roGxWRCEXuYrr9enK9/G+7WPpLmcyvJJNsYUhtNgCg8FYvErArfB4SO7lK7eKga9O/dmjl9/vmrfh0T3oWmOVI1XVCdWX5PZYiW3GmoAXydcoE0zgUJueMqbAeoe1DXTLyjMnUU/sP77cQTd4e9LLg8/n+iwTBtZeCIHIsXHk5DvWxWYKn6p9QHAbc6gIth+viehPtIwzOdtr7ujAfPM6GBtdv7ylswk7hxBETpdzdfhCwldI9aQcWH+gGVBn4xZfco4bRgipulnq9VSJuzrs+bYCKSIxq2vTn9QV7fC3lTogpvqopPwNRr238zsYJZCi1v3W8qHxz3rFUtuCS7walK3N7ezmRd1Mbi8Bebh6HoH6Wvjd92eIdoG8x9zf+tAMsEiIGLEu5PWk2HmjOCQsuLxz+Sk1RGDyTmc5Y5EHOGqjxw==&key=bhyJy9gCNHz+6rN9PeM+jnybN3PdVb2+FNBOWNRXpHmtdMEmQwqpH2SiLYj13+zLVwIybppQ6VvMF9kGV5OhURV6FmswR4SG96So2oeBXTqqq7ajZWBygLhMqYnTm/URlgLt+rKnKOE08Lp+C9afTOJ0lxQxxvt1Didk2trD6h5UiaVJwpdTYxu5t8bCzE24x90sl1D2qh4T2P2YoFNo95ApFRl1nb+GydyrVfRzr+CRGczT72uN7cCOQhnYyJrgGk3w7O6jA6kU6raAA4SY38SnSsBgyNksYwJiMHK5mofmVEV9K7lpCXLTvW/bmXDOTlO8F3VVSk+iYOhX5p+kOg==';
+
+            console.log('Hive deeplink:', url);
+
+            Linking.openURL(url);
+
+            if (healthTrackerConnectionStatus == 'CONNECTED') {
+              initiateStepSync();
+            }
+          }}
+        />
       </View>
     </View>
+  );
+}
+
+encodeURIComponent(...)
+
+
+function buildHiveDeepLink(payload, key) {
+  return (
+    'airtel_visithealth_app://auth/airtel_hive_auth' +
+    `?data=${encodeURIComponent(payload)}` +
+    `&key=${encodeURIComponent(key)}`
   );
 }
 
