@@ -526,7 +526,13 @@ const VisitRnSdkView = ({
     (parsedObject) => {
       const roomName = parsedObject?.roomName;
       const accessToken = parsedObject?.token;
-      const doctorName = parsedObject?.doctorName;
+      const rawDoctorName = parsedObject?.doctorName;
+      const visibleDoctorName =
+        rawDoctorName && rawDoctorName.indexOf('Dr.') > -1
+          ? rawDoctorName.replace('Dr. ', '')
+          : rawDoctorName && rawDoctorName.indexOf('Dr') > -1
+            ? rawDoctorName.replace('Dr ', '')
+            : null;
       const userName = parsedObject?.userName;
 
       if (!roomName || !accessToken) {
@@ -541,7 +547,8 @@ const VisitRnSdkView = ({
       videoCallRef.current?.startVideoCall({
         roomName,
         accessToken,
-        doctorName,
+        doctorName: rawDoctorName ?? '',
+        visibleDoctorName: visibleDoctorName ?? '',
         userName,
       });
     },
