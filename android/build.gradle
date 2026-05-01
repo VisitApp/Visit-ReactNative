@@ -49,6 +49,21 @@ def supportsNamespace() {
   return major >= 8
 }
 
+// Twilio RN Java sources are merged here; @twilio is often hoisted to the host app's node_modules.
+// rootProject.projectDir is the RN Android root (example/android), so ../node_modules is example/node_modules.
+def resolveTwilioJavaSrcDirs() {
+  def candidates = [
+    file("../../@twilio/video-react-native-sdk/android/src/main/java"),
+    file("../node_modules/@twilio/video-react-native-sdk/android/src/main/java"),
+    file("${rootProject.projectDir}/../node_modules/@twilio/video-react-native-sdk/android/src/main/java"),
+  ]
+  def dirs = []
+  candidates.each { f ->
+    if (f.exists()) dirs += f
+  }
+  return dirs.unique()
+}
+
 android {
   if (supportsNamespace()) {
     namespace "com.visitrnsdk"
@@ -56,19 +71,13 @@ android {
     sourceSets {
       main {
         manifest.srcFile "src/main/AndroidManifestNew.xml"
-        java.srcDirs += [
-          "../../@twilio/video-react-native-sdk/android/src/main/java",
-          "../node_modules/@twilio/video-react-native-sdk/android/src/main/java"
-        ]
+        java.srcDirs += resolveTwilioJavaSrcDirs()
       }
     }
   } else {
     sourceSets {
       main {
-        java.srcDirs += [
-          "../../@twilio/video-react-native-sdk/android/src/main/java",
-          "../node_modules/@twilio/video-react-native-sdk/android/src/main/java"
-        ]
+        java.srcDirs += resolveTwilioJavaSrcDirs()
       }
     }
   }
@@ -115,6 +124,7 @@ dependencies {
   implementation "com.facebook.react:react-native:+"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
   implementation "androidx.appcompat:appcompat:1.7.1"
+  implementation "com.twilio:video-android:7.10.0"
 }
 
 if (isNewArchitectureEnabled()) {
