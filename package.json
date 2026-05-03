@@ -83,6 +83,7 @@
     "@types/react": "17.0.21"
   },
   "peerDependencies": {
+    "@twilio/video-react-native-sdk": "3.5.0",
     "react": "*",
     "react-native": "*"
   },
@@ -169,8 +170,7 @@
     "react-native-device-info": "13.0.0",
     "react-native-event-listeners": "^1.0.7",
     "react-native-location-enabler": "git+https://github.com/sashko9807/react-native-location-enabler.git",
-    "react-native-webview": "^13.12.1",
-    "@twilio/video-react-native-sdk": "3.5.0"
+    "react-native-webview": "^13.12.1"
   },
   "directories": {
     "example": "example"
