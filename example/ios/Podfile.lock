@@ -1407,7 +1407,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-visit-rn-sdk (2.0.13):
+  - react-native-visit-rn-sdk (3.0.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1430,7 +1430,6 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - TwilioVideo (~> 5.11.0)
     - Yoga
   - react-native-webview (13.16.1):
     - DoubleConversion
@@ -1832,6 +1831,9 @@ PODS:
     - ReactCommon/turbomodule/core
     - Yoga
   - SocketRocket (0.7.1)
+  - twilio-video-react-native-sdk (3.5.0):
+    - React
+    - TwilioVideo (~> 5.11.0)
   - TwilioVideo (5.11.2)
   - Yoga (0.0.0)
 
@@ -1912,6 +1914,7 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - RNDeviceInfo (from `../node_modules/react-native-device-info`)
   - RNScreens (from `../node_modules/react-native-screens`)
+  - "twilio-video-react-native-sdk (from `../node_modules/@twilio/video-react-native-sdk`)"
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -2069,6 +2072,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-device-info"
   RNScreens:
     :path: "../node_modules/react-native-screens"
+  twilio-video-react-native-sdk:
+    :path: "../node_modules/@twilio/video-react-native-sdk"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
@@ -2112,7 +2117,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 70a29536f84ddffca4a91097651d2b8f194f7c67
   React-microtasksnativemodule: ff05e894231c44c21135d1d23a82b87656d98eeb
   react-native-safe-area-context: 26634d9b636a98ceee20cb6fa5dc946922f1e90f
-  react-native-visit-rn-sdk: 6d7b7854830dff49eb5e003f0292a7cfcb526be1
+  react-native-visit-rn-sdk: 769c61dc0821b406c357f007a724d29788888d4d
   react-native-webview: d74ca5d9a0f33757e0d6df40c9392ed6b3592980
   React-NativeModulesApple: d94850b316446b0c39a82eb278d6efaa1a634055
   React-oscompat: 56b4766e96b06843a3af49a6763ef40992e720aa
@@ -2148,6 +2153,7 @@ SPEC CHECKSUMS:
   RNDeviceInfo: bcce8752b5043a623fe3c26789679b473f705d3c
   RNScreens: f38464ec1e83bda5820c3b05ccf4908e3841c5cc
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
+  twilio-video-react-native-sdk: 54402e985f91823d1c4bf6aad251a20f7616a478
   TwilioVideo: 3120ef3bb32558f5354437c98c24af6294b075e5
   Yoga: dc7c21200195acacb62fa920c588e7c2106de45e
 
