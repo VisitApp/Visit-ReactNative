@@ -20,6 +20,7 @@ import LocationEnabler from 'react-native-location-enabler';
 import DeviceInfo from 'react-native-device-info';
 
 import axios from 'axios';
+import VideoCallComponent from './components/VideoCallComponent';
 
 import constants from './constants';
 
@@ -277,6 +278,7 @@ const VisitRnSdkView = ({
   );
 
   const webviewRef = useRef(null);
+  const videoCallRef = useRef(null);
 
   const showLocationPermissionAlert = () => {
     Alert.alert(
@@ -520,6 +522,39 @@ const VisitRnSdkView = ({
         true; // note: this is required, or you'll sometimes get silent failures
     `;
 
+  const startVideoConsultation = useCallback(
+    (parsedObject) => {
+      const roomName = parsedObject?.roomName;
+      const accessToken = parsedObject?.token;
+      const rawDoctorName = parsedObject?.doctorName;
+      const visibleDoctorName =
+        rawDoctorName && rawDoctorName.indexOf('Dr.') > -1
+          ? rawDoctorName.replace('Dr. ', '')
+          : rawDoctorName && rawDoctorName.indexOf('Dr') > -1
+            ? rawDoctorName.replace('Dr ', '')
+            : null;
+      const userName = parsedObject?.userName;
+
+      if (!roomName || !accessToken) {
+        if (isLoggingEnabled) {
+          console.warn(
+            'Video call payload missing roomName/accessToken.'
+          );
+        }
+        return;
+      }
+
+      videoCallRef.current?.startVideoCall({
+        roomName,
+        accessToken,
+        doctorName: rawDoctorName ?? '',
+        visibleDoctorName: visibleDoctorName ?? '',
+        userName,
+      });
+    },
+    [isLoggingEnabled]
+  );
+
   const handleMessage = (event) => {
     if (event.nativeEvent.data != null) {
       try {
@@ -534,6 +569,10 @@ const VisitRnSdkView = ({
               break;
             case 'CONNECT_TO_GOOGLE_FIT':
               askForHealthConnectPermission();
+
+              break;
+            case 'startVideoCall':
+              startVideoConsultation(parsedObject);
               break;
             case 'UPDATE_PLATFORM':
               webviewRef.current?.injectJavaScript(
@@ -699,6 +738,24 @@ const VisitRnSdkView = ({
           }}
         />
       ) : null}
+      <VideoCallComponent
+        ref={videoCallRef}
+        onCallConnected={(info) => {
+          if (isLoggingEnabled) {
+            console.log('Video call connected:', info);
+          }
+        }}
+        onCallEnded={(info) => {
+          if (isLoggingEnabled) {
+            console.log('Video call ended:', info);
+          }
+        }}
+        onError={(error) => {
+          if (isLoggingEnabled) {
+            console.error('Video call error:', error);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -728,6 +785,7 @@ export const fetchHourlyFitnessData = (startTimeStamp, isLoggingEnabled) => {
       .catch((err) => reject(err));
   });
 };
+
 
 // debounce, deferred
 // function debounce(task, ms) {

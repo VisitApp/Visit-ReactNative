@@ -20,6 +20,7 @@ import { WebView } from 'react-native-webview';
 import DeviceInfo from 'react-native-device-info';
 import { getWebViewLink, httpClient } from './Services';
 import constants from './constants';
+import VideoCallComponent from './components/VideoCallComponent';
 
 const LINKING_ERROR =
   `The package 'react-native-visit-rn-sdk' doesn't seem to be linked. Make sure: \n\n` +
@@ -183,9 +184,51 @@ const VisitRnSdkView = ({
   );
 
   const webviewRef = useRef(null);
+  const videoCallRef = useRef(null);
   const [apiBaseUrl, setApiBaseUrl] = useState('');
   const [authToken, setAuthToken] = useState('');
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
+
+const runBeforeFirst = `
+  window.isNativeApp = true;
+  window.platform = "IOS";
+  window.setSdkPlatform('IOS');
+  true; // note: this is required, or you'll sometimes get silent failures
+  `;
+
+  const startVideoConsultation = useCallback(
+    (payload) => {
+      const roomName = payload?.roomName;
+      const accessToken = payload?.token;
+      const rawDoctorName = payload?.doctorName;
+      const visibleDoctorName =
+        rawDoctorName && rawDoctorName.indexOf('Dr.') > -1
+          ? rawDoctorName.replace('Dr. ', '')
+          : rawDoctorName && rawDoctorName.indexOf('Dr') > -1
+            ? rawDoctorName.replace('Dr ', '')
+            : null;
+      const userName = payload?.userName;
+
+      if (!roomName || !accessToken) {
+        if (isLoggingEnabled) {
+          console.warn(
+            'Video call payload missing roomName/accessToken.'
+          );
+        }
+        return;
+      }
+
+      videoCallRef.current?.startVideoCall({
+        roomName,
+        accessToken,
+        doctorName: rawDoctorName ?? '',
+        visibleDoctorName: visibleDoctorName ?? '',
+        userName,
+      });
+    },
+    [isLoggingEnabled]
+  );
 
   const callSyncApi = useCallback(
     (data) =>
@@ -248,6 +291,9 @@ const VisitRnSdkView = ({
     console.log('handleMessage data is', data);
     console.log(unescapeHTML(event.nativeEvent.data));
     switch (method) {
+      case 'startVideoCall':
+        startVideoConsultation(data);
+        break;
       case 'UPDATE_PLATFORM':
         webviewRef.current?.injectJavaScript('window.setSdkPlatform("IOS")');
         break;
@@ -324,26 +370,45 @@ const VisitRnSdkView = ({
   return (
     // eslint-disable-next-line react-native/no-inline-styles
     <SafeAreaView style={{ flex: 1, backgroundColor: 'white', height, width }}>
-      {loading ? (
-        <LoadingIndicator />
-      ) : (
-        <WebView
-          ref={webviewRef}
-          source={{ uri: source }}
-          style={styles.webView}
-          javascriptEnabled
-          onMessage={handleMessage}
-          onError={(errorMessage) => {
-            EventRegister.emitEvent(visitEvent, {
-              message: 'web-view-error',
-              errorMessage: errorMessage,
-            });
-            if (isLoggingEnabled) {
-              console.warn('Webview error: ', errorMessage);
-            }
-          }}
-        />
-      )}
+        {loading ? (
+          <LoadingIndicator />
+        ) : (
+          <WebView
+            ref={webviewRef}
+            source={{ uri: source }}
+            style={styles.webView}
+            javascriptEnabled
+            onMessage={handleMessage}
+            injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
+            onError={(errorMessage) => {
+              EventRegister.emitEvent(visitEvent, {
+                message: 'web-view-error',
+                errorMessage: errorMessage,
+              });
+              if (isLoggingEnabled) {
+                console.warn('Webview error: ', errorMessage);
+              }
+            }}
+          />
+        )}
+      <VideoCallComponent
+        ref={videoCallRef}
+        onCallConnected={(info) => {
+          if (isLoggingEnabled) {
+            console.log('Video call connected:', info);
+          }
+        }}
+        onCallEnded={(info) => {
+          if (isLoggingEnabled) {
+            console.log('Video call ended:', info);
+          }
+        }}
+        onError={(error) => {
+          if (isLoggingEnabled) {
+            console.error('Video call error:', error);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 };
