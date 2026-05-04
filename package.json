@@ -1,6 +1,6 @@
 {
   "name": "react-native-visit-rn-sdk",
-  "version": "2.0.13",
+  "version": "3.0.0",
   "description": "a package to inject data into visit health pwa",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -83,13 +83,14 @@
     "@types/react": "17.0.21"
   },
   "peerDependencies": {
+    "@twilio/video-react-native-sdk": "3.5.0",
     "react": "*",
     "react-native": "*"
   },
   "engines": {
     "node": ">= 16.0.0"
   },
-  "packageManager": "^yarn@1.22.15",
+  "packageManager": "yarn@1.22.22",
   "jest": {
     "preset": "react-native",
     "modulePathIgnorePatterns": [
