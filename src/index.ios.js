@@ -201,7 +201,13 @@ const runBeforeFirst = `
     (payload) => {
       const roomName = payload?.roomName;
       const accessToken = payload?.token;
-      const doctorName = payload?.doctorName;
+      const rawDoctorName = payload?.doctorName;
+      const visibleDoctorName =
+        rawDoctorName && rawDoctorName.indexOf('Dr.') > -1
+          ? rawDoctorName.replace('Dr. ', '')
+          : rawDoctorName && rawDoctorName.indexOf('Dr') > -1
+            ? rawDoctorName.replace('Dr ', '')
+            : null;
       const userName = payload?.userName;
 
       if (!roomName || !accessToken) {
@@ -216,7 +222,8 @@ const runBeforeFirst = `
       videoCallRef.current?.startVideoCall({
         roomName,
         accessToken,
-        doctorName,
+        doctorName: rawDoctorName ?? '',
+        visibleDoctorName: visibleDoctorName ?? '',
         userName,
       });
     },
@@ -363,27 +370,27 @@ const runBeforeFirst = `
   return (
     // eslint-disable-next-line react-native/no-inline-styles
     <SafeAreaView style={{ flex: 1, backgroundColor: 'white', height, width }}>
-      {loading ? (
-        <LoadingIndicator />
-      ) : (
-        <WebView
-          ref={webviewRef}
-          source={{ uri: source }}
-          style={styles.webView}
-          javascriptEnabled
-          onMessage={handleMessage}
-          injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
-          onError={(errorMessage) => {
-            EventRegister.emitEvent(visitEvent, {
-              message: 'web-view-error',
-              errorMessage: errorMessage,
-            });
-            if (isLoggingEnabled) {
-              console.warn('Webview error: ', errorMessage);
-            }
-          }}
-        />
-      )}
+        {loading ? (
+          <LoadingIndicator />
+        ) : (
+          <WebView
+            ref={webviewRef}
+            source={{ uri: source }}
+            style={styles.webView}
+            javascriptEnabled
+            onMessage={handleMessage}
+            injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
+            onError={(errorMessage) => {
+              EventRegister.emitEvent(visitEvent, {
+                message: 'web-view-error',
+                errorMessage: errorMessage,
+              });
+              if (isLoggingEnabled) {
+                console.warn('Webview error: ', errorMessage);
+              }
+            }}
+          />
+        )}
       <VideoCallComponent
         ref={videoCallRef}
         onCallConnected={(info) => {

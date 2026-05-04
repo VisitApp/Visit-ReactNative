@@ -76,6 +76,7 @@ const initialCallState = {
   durationMins: '00',
   durationSecs: '00',
   doctorName: '',
+  visibleDoctorName: '',
   userName: '',
 };
 
@@ -347,7 +348,13 @@ const VideoCallComponent = forwardRef(
     }, [emitErrorStatus]);
 
     const connectToRoom = useCallback(
-      async ({ roomName, accessToken, doctorName, userName }) => {
+      async ({
+        roomName,
+        accessToken,
+        doctorName,
+        visibleDoctorName,
+        userName,
+      }) => {
         if (!roomName || !accessToken) {
           const err = new Error('roomName and accessToken are required');
           emitErrorStatus(VIDEO_CALL_ERROR_STATUS.MISSING_ROOM_NAME_OR_ACCESS_TOKEN, err);
@@ -364,6 +371,10 @@ const VideoCallComponent = forwardRef(
         localPreviewDragOffsetRef.current = { x: 0, y: 0 };
         localPreviewDrag.setValue({ x: 0, y: 0 });
         refreshLocalPreview();
+        const visible =
+          visibleDoctorName != null && visibleDoctorName !== ''
+            ? visibleDoctorName
+            : doctorName || '';
         updateState((prev) => ({
           ...prev,
           isVisible: true,
@@ -372,6 +383,7 @@ const VideoCallComponent = forwardRef(
           roomName,
           accessToken,
           doctorName: doctorName || '',
+          visibleDoctorName: visible,
           userName: userName || '',
           durationMins: '00',
           durationSecs: '00',
@@ -402,8 +414,20 @@ const VideoCallComponent = forwardRef(
     useImperativeHandle(
       ref,
       () => ({
-        startVideoCall: ({ roomName, accessToken, doctorName, userName }) =>
-          connectToRoom({ roomName, accessToken, doctorName, userName }),
+        startVideoCall: ({
+          roomName,
+          accessToken,
+          doctorName,
+          visibleDoctorName,
+          userName,
+        }) =>
+          connectToRoom({
+            roomName,
+            accessToken,
+            doctorName,
+            visibleDoctorName,
+            userName,
+          }),
         endCall,
         isConnected: () => state.isVisible,
       }),
@@ -702,7 +726,10 @@ const VideoCallComponent = forwardRef(
                   showDoctorInitial ? styles.placeholderInitialText : null,
                 ]}
               >
-                {(state.doctorName || 'Doctor').trim().charAt(0).toUpperCase()}
+                {(state.visibleDoctorName || state.doctorName || 'Doctor')
+                  .trim()
+                  .charAt(0)
+                  .toUpperCase()}
               </Text>
             )}
           </View>

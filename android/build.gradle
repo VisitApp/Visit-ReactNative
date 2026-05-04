@@ -56,19 +56,6 @@ android {
     sourceSets {
       main {
         manifest.srcFile "src/main/AndroidManifestNew.xml"
-        java.srcDirs += [
-          "../../@twilio/video-react-native-sdk/android/src/main/java",
-          "../node_modules/@twilio/video-react-native-sdk/android/src/main/java"
-        ]
-      }
-    }
-  } else {
-    sourceSets {
-      main {
-        java.srcDirs += [
-          "../../@twilio/video-react-native-sdk/android/src/main/java",
-          "../node_modules/@twilio/video-react-native-sdk/android/src/main/java"
-        ]
       }
     }
   }
