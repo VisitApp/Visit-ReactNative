@@ -20,6 +20,18 @@ import VisitRnSdkView from "react-native-visit-rn-sdk";
 
 ### Video Calling
 
+`react-native-visit-rn-sdk` declares [`@twilio/video-react-native-sdk`](https://www.npmjs.com/package/@twilio/video-react-native-sdk) as a **peer dependency**. Install the matching version in your app:
+
+```sh
+npm install @twilio/video-react-native-sdk@3.5.0
+```
+
+Or with Yarn:
+
+```sh
+yarn add @twilio/video-react-native-sdk@3.5.0
+```
+
 Required native permissions in the host app:
 - Android (`AndroidManifest.xml`)
 ```xml
