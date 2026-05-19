@@ -41,11 +41,13 @@ const unescapeHTML = (str) =>
 const visitEvent = 'visit-event';
 
 const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
-  const [source, setSource] = useState('');
+  const [source, setSource] = useState(ssoURL);
 
   useEffect(() => {
-    setSource(ssoURL);
-  }, [ssoURL, isLoggingEnabled]);
+    if (ssoURL && ssoURL !== source) {
+      setSource(ssoURL);
+    }
+  }, [ssoURL, source]);
 
   const webviewRef = useRef(null);
 
@@ -78,6 +80,11 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
   };
 
   const { height, width } = Dimensions.get('screen');
+
+  if (!source) {
+    return null;
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'white', height, width }}>
       <WebView
@@ -85,7 +92,7 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
         source={{ uri: source }}
         style={styles.webView}
         startInLoadingState={true}
-        javascriptEnabled
+        javaScriptEnabled={true}
         onMessage={handleMessage}
         onError={(errorMessage) => {
           EventRegister.emitEvent(visitEvent, {

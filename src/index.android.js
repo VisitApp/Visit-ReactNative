@@ -5,8 +5,16 @@ import { EventRegister } from 'react-native-event-listeners';
 
 import WebView from 'react-native-webview';
 
+const visitEvent = 'visit-event';
+
 const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
   const [source, setSource] = useState(ssoURL);
+
+  useEffect(() => {
+    if (ssoURL && ssoURL !== source) {
+      setSource(ssoURL);
+    }
+  }, [ssoURL, source]);
 
   const webviewRef = useRef(null);
 
@@ -81,7 +89,6 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
   };
 
   const [canGoBack, setCanGoBack] = useState(false);
-  const visitEvent = 'visit-event';
 
   const handleBack = useCallback(() => {
     if (isLoggingEnabled) {
@@ -102,6 +109,10 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
     };
     
   }, [handleBack]);
+
+  if (!source) {
+    return null;
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
