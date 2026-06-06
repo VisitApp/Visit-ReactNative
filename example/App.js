@@ -55,7 +55,7 @@ function Home() {
   const navigation = useNavigation();
 
   const [text, setText] = useState(
-    'https://web.getvisitapp.com/consultation/chat-only?authToken=JWT%20eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6IlBCQDI0MjMxMiIsImNsaWVudFVzZXJJZCI6IjE4Mzc1NjA2IiwiY2xpZW50U2VjcmV0IjoiSEYyZTJAQCNjc3JkZjMiLCJwb2xpY3lOdW1iZXIiOiJERU1PX09QRF9ET0NQUklNRSIsImVjb2RlIjoiRFAwMDM5MSIsImlhdCI6MTc0NDgwNjQ3NSwiZXhwIjoxNzQ1NjcwNDc1fQ.fZu8uhx1uImoO2HllXMd97t2O0VclOfiNbmh_osCBOc&consultationId=1801172',
+    '',
   );
 
   React.useEffect(() => {

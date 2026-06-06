@@ -1,7 +1,16 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 
-import { SafeAreaView, BackHandler, Linking, Alert } from 'react-native';
+import {
+  SafeAreaView,
+  BackHandler,
+  Linking,
+  PermissionsAndroid,
+} from 'react-native';
 import { EventRegister } from 'react-native-event-listeners';
+import {
+  isLocationEnabled,
+  promptForEnableLocationIfNeeded,
+} from 'react-native-android-location-enabler';
 
 import WebView from 'react-native-webview';
 
@@ -18,32 +27,63 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
 
   const webviewRef = useRef(null);
 
-  const showLocationPermissionAlert = () => {
-    Alert.alert(
-      'Permission Required',
-      'Allow location permission from app settings',
-      [
-        {
-          text: 'Cancel',
-          onPress: () => {
-            console.log('Cancel clicked');
-          },
-        },
-        {
-          text: 'Go to Settings',
-          onPress: () => {
-            Linking.openSettings();
-          },
-        },
-      ]
-    );
-  };
-
   const runBeforeFirst = `
         window.isNativeApp = true;
         window.platform = "ANDROID";
         true; // note: this is required, or you'll sometimes get silent failures
     `;
+
+  const sendLocationPermissionStatus = useCallback((isAllowed) => {
+    webviewRef.current?.injectJavaScript(
+      `window.checkTheGpsPermission(${isAllowed ? 'true' : 'false'}); true;`
+    );
+  }, []);
+
+  const requestLocationPermission = useCallback(async () => {
+    try {
+      const isLocationPermissionPresent = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+      );
+
+      let isPermissionGranted = isLocationPermissionPresent;
+
+      if (!isPermissionGranted) {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Need Location Permission',
+            message: 'Need access to location permission',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+
+        isPermissionGranted = granted === PermissionsAndroid.RESULTS.GRANTED;
+      }
+
+      if (!isPermissionGranted) {
+        if (isLoggingEnabled) {
+          console.log('Location permission denied');
+        }
+        sendLocationPermissionStatus(false);
+        return;
+      }
+
+      const locationEnabled = await isLocationEnabled();
+
+      if (!locationEnabled) {
+        await promptForEnableLocationIfNeeded();
+      }
+
+      sendLocationPermissionStatus(true);
+    } catch (error) {
+      if (isLoggingEnabled) {
+        console.warn('Location permission failed: ', error);
+      }
+      sendLocationPermissionStatus(false);
+    }
+  }, [isLoggingEnabled, sendLocationPermissionStatus]);
 
   const handleMessage = (event) => {
     if (event.nativeEvent.data != null) {
@@ -62,7 +102,7 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
 
             case 'GET_LOCATION_PERMISSIONS':
               console.log('GET_LOCATION_PERMISSIONS');
-              showLocationPermissionAlert();
+              requestLocationPermission();
               break;
             case 'OPEN_PDF':
               {
@@ -92,22 +132,26 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
 
   const handleBack = useCallback(() => {
     if (isLoggingEnabled) {
-      console.log('handleBack called: ' + canGoBack + " webviewRef: " + webviewRef.current);
+      console.log(
+        'handleBack called: ' + canGoBack + ' webviewRef: ' + webviewRef.current
+      );
     }
-    
+
     if (canGoBack && webviewRef.current) {
       webviewRef.current?.goBack();
       return true;
     }
     return false;
-  }, [canGoBack]);
+  }, [canGoBack, isLoggingEnabled]);
 
   useEffect(() => {
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBack);
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBack
+    );
     return () => {
       backHandler.remove();
     };
-    
   }, [handleBack]);
 
   if (!source) {
