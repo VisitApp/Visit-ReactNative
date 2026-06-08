@@ -1,10 +1,12 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   StyleSheet,
   SafeAreaView,
   Linking,
   Platform,
   Dimensions,
+  NativeModules,
+  Alert,
 } from 'react-native';
 import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
@@ -39,6 +41,7 @@ const unescapeHTML = (str) =>
   });
 
 const visitEvent = 'visit-event';
+const { VisitRnSdkViewManager } = NativeModules;
 
 const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
   const [source, setSource] = useState(ssoURL);
@@ -50,6 +53,92 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
   }, [ssoURL, source]);
 
   const webviewRef = useRef(null);
+
+  const sendLocationPermissionStatus = useCallback((isAllowed) => {
+    webviewRef.current?.injectJavaScript(
+      `window.checkTheGpsPermission(${isAllowed ? 'true' : 'false'}); true;`
+    );
+  }, []);
+
+  const showLocationPermissionAlert = useCallback(() => {
+    Alert.alert(
+      'Need Location Permission',
+      'Need access to location permission',
+      [
+        {
+          text: 'Cancel',
+          onPress: () => {
+            sendLocationPermissionStatus(false);
+          },
+        },
+        {
+          text: 'Go to Settings',
+          onPress: () => {
+            Linking.openSettings();
+            sendLocationPermissionStatus(false);
+          },
+        },
+      ]
+    );
+  }, [sendLocationPermissionStatus]);
+
+  const requestLocationPermission = useCallback(async () => {
+    try {
+      if (
+        !VisitRnSdkViewManager?.getLocationPermissionStatus ||
+        !VisitRnSdkViewManager?.requestLocationPermission
+      ) {
+        sendLocationPermissionStatus(false);
+        return;
+      }
+
+      const status = await VisitRnSdkViewManager.getLocationPermissionStatus();
+
+      if (status === 'authorized') {
+        sendLocationPermissionStatus(true);
+        return;
+      }
+
+      if (
+        status === 'denied' ||
+        status === 'restricted' ||
+        status === 'services_disabled'
+      ) {
+        showLocationPermissionAlert();
+        return;
+      }
+
+      const isGranted = await VisitRnSdkViewManager.requestLocationPermission();
+
+      if (isGranted) {
+        sendLocationPermissionStatus(true);
+        return;
+      }
+
+      const updatedStatus =
+        await VisitRnSdkViewManager.getLocationPermissionStatus();
+
+      if (
+        updatedStatus === 'denied' ||
+        updatedStatus === 'restricted' ||
+        updatedStatus === 'services_disabled'
+      ) {
+        showLocationPermissionAlert();
+        return;
+      }
+
+      sendLocationPermissionStatus(false);
+    } catch (error) {
+      if (isLoggingEnabled) {
+        console.warn('Location permission failed: ', error);
+      }
+      sendLocationPermissionStatus(false);
+    }
+  }, [
+    isLoggingEnabled,
+    sendLocationPermissionStatus,
+    showLocationPermissionAlert,
+  ]);
 
   const handleMessage = async (event) => {
     const data = JSON.parse(unescapeHTML(event.nativeEvent.data));
@@ -69,9 +158,7 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled }) => {
         });
         break;
       case 'GET_LOCATION_PERMISSIONS':
-        webviewRef.current?.injectJavaScript(
-          'window.checkTheGpsPermission(true)'
-        );
+        requestLocationPermission();
         break;
 
       default:
