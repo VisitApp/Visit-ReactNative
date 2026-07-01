@@ -687,6 +687,7 @@ const VisitRnSdkView = ({
           onMessage={handleMessage}
           injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
           javaScriptEnabled={true}
+          mediaPlaybackRequiresUserAction={false}
           onLoadProgress={(event) => setCanGoBack(event.nativeEvent.canGoBack)}
           onError={(errorMessage) => {
             EventRegister.emitEvent('visit-event', {
