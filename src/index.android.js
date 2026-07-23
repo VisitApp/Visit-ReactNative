@@ -15,7 +15,7 @@ import {
 
 import WebView from 'react-native-webview';
 
-import LocationEnabler from 'react-native-location-enabler';
+import LocationEnabler from '@visit-health/react-native-location-enabler';
 
 import DeviceInfo from 'react-native-device-info';
 
