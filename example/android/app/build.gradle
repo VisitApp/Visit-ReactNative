@@ -63,14 +63,14 @@ def enableProguardInReleaseBuilds = false
  * The preferred build flavor of JavaScriptCore (JSC)
  *
  * For example, to use the international variant, you can use:
- * `def jscFlavor = io.github.react-native-community:jsc-android-intl:2026004.+`
+ * `def jscFlavor = 'org.webkit:android-jsc-intl:+'`
  *
  * The international variant includes ICU i18n library and necessary data
  * allowing to use e.g. `Date.toLocaleString` and `String.localeCompare` that
  * give correct results when using with locales other than en-US. Note that
  * this variant is about 6MiB larger per architecture than default.
  */
-def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
+def jscFlavor = 'org.webkit:android-jsc:+'
 
 android {
     ndkVersion rootProject.ext.ndkVersion
@@ -124,31 +124,6 @@ dependencies {
         implementation jscFlavor
     }
 
-    implementation files('google_fit-debug.aar')
-
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.24"
-    implementation 'androidx.core:core-ktx:1.13.1'
-
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.4.2'
-
-    def retrofit_version = "2.9.0"
-    implementation "com.squareup.retrofit2:retrofit:$retrofit_version"
-    implementation "com.squareup.retrofit2:converter-gson:$retrofit_version"
-    implementation 'de.hdodenhof:circleimageview:3.1.0'
-    implementation 'com.squareup.okhttp3:okhttp:3.8.1'
-
-    implementation("com.squareup.okhttp3:logging-interceptor:4.9.0")
-
-    //Chucker
-    debugApi "com.github.chuckerteam.chucker:library:3.5.2"
-    releaseApi "com.github.chuckerteam.chucker:library-no-op:3.5.2"
-
-    implementation "androidx.health.connect:connect-client:1.1.0-alpha10"
-    implementation "com.jakewharton.timber:timber:5.0.1"
-    implementation "androidx.activity:activity-ktx:1.6.0"
-
-
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 
 }

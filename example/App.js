@@ -77,17 +77,33 @@ function Home() {
   const navigation = useNavigation();
 
   const [text, setText] = useState(
-    'https://star-health.getvisitapp.net/?mluib7c=%5B%0A%20%20%7B%0A%20%20%20%20%22userId%22%3A%202306609%2C%0A%20%20%20%20%22policyId%22%3A%201774%2C%0A%20%20%20%20%22agentCode%22%3A%20null%2C%0A%20%20%20%20%22policyName%22%3A%20%22Family%20Health%20Optima%20Insurance%20-%202022%22%2C%0A%20%20%20%20%22isHospiCash%22%3A%20false%2C%0A%20%20%20%20%22magicUserId%22%3A%2041685%2C%0A%20%20%20%20%22policyNumber%22%3A%20%2211251091557200%22%2C%0A%20%20%20%20%22policyEndDate%22%3A%20%222025-11-21T23%3A59%3A59.000Z%22%2C%0A%20%20%20%20%22userMagicCode%22%3A%20%22rP4fFTfr%22%2C%0A%20%20%20%20%22policyStartDate%22%3A%20%222024-11-22T00%3A00%3A00.000Z%22%2C%0A%20%20%20%20%22isPolicyAvailable%22%3A%20true%2C%0A%20%20%20%20%22isAlreadyOnboarded%22%3A%20true%2C%0A%20%20%20%20%22platform%22%3A%20%22TEST%22%0A%20%20%7D%0A%5D%0A',
+    'https://mchi.getvisitapp.net/sso?userParams=Wbu8XTldnlYz5TIeRwd-G8IpTToVDQer6HQYDD9jesef8BAlfF7NapDJ-ocgYEhaAUF6FNghSQlypxsg_Kz5spY7EqG_atHdQHlqCvuj17GkthdYWBG1x3u43YZoSuEaxB0nx8wvqbPptFyjLbasQJltJXgqWs7CNUcXSHJxwxY8b7_-_En_tUv5VZgXaA3i&clientId=mchi-ds-we-09',
   );
 
   const [healthTrackerConnectionStatus, setHealthTrackerConnectionStatus] =
     useState(null);
   const [isAndroidSDKInitialized, setIsAndroidSDKInitialized] = useState(false);
   const [stepCount, setStepCount] = useState(0);
+  const [sleepMinutes, setSleepMinutes] = useState(0);
+  const [calorieCount, setCalorieCount] = useState(0);
+  const [syncStatus, setSyncStatus] = useState('idle');
+  const [syncMessage, setSyncMessage] = useState('');
 
   const {VisitRnSdkViewManager} = NativeModules;
 
-  const checkIosHealthKitStatus = async () => {
+  const syncStatusStyle = useMemo(() => {
+    if (syncStatus === 'success') {
+      return styles.syncSuccessText;
+    }
+
+    if (syncStatus === 'error') {
+      return styles.syncErrorText;
+    }
+
+    return styles.syncProgressText;
+  }, [syncStatus]);
+
+  const checkIosHealthKitStatus = useCallback(async () => {
     try {
       const result = await VisitRnSdkViewManager.getHealthKitStatus();
       if (result) {
@@ -99,7 +115,38 @@ function Home() {
     } catch (error) {
       console.error('Error checking HealthKit authorization:', error);
     }
-  };
+  }, [VisitRnSdkViewManager]);
+
+  const fetchTodayHealthMetrics = useCallback(async () => {
+    const [stepsResult, sleepResult, caloriesResult] = await Promise.allSettled(
+      [
+        NativeModules.VisitFitnessModule.getTodayStepCount(),
+        NativeModules.VisitFitnessModule.getTodaySleepMinutes(),
+        NativeModules.VisitFitnessModule.getTodayCalorieCount(),
+      ],
+    );
+
+    if (stepsResult.status === 'fulfilled') {
+      console.log('fetchTodayStepCount: ' + stepsResult.value);
+      setStepCount(Number(stepsResult.value) || 0);
+    } else {
+      console.error(stepsResult.reason);
+    }
+
+    if (sleepResult.status === 'fulfilled') {
+      console.log('fetchTodaySleepMinutes: ' + sleepResult.value);
+      setSleepMinutes(Number(sleepResult.value) || 0);
+    } else {
+      console.error(sleepResult.reason);
+    }
+
+    if (caloriesResult.status === 'fulfilled') {
+      console.log('fetchTodayCalorieCount: ' + caloriesResult.value);
+      setCalorieCount(Number(caloriesResult.value) || 0);
+    } else {
+      console.error(caloriesResult.reason);
+    }
+  }, []);
 
   const checkAndroidHealthConnectStatus = useCallback(async () => {
     try {
@@ -112,7 +159,7 @@ function Home() {
       } else if (status === 'NOT_INSTALLED') {
       } else if (status === 'INSTALLED') {
       } else if (status === 'CONNECTED') {
-        fetchTodaysStepCount();
+        fetchTodayHealthMetrics();
       }
 
       setHealthTrackerConnectionStatus(status);
@@ -120,32 +167,72 @@ function Home() {
       console.error(e);
       setHealthTrackerConnectionStatus('Error fetching health connect status');
     }
-  }, []);
-
-  const fetchTodaysStepCount = useCallback(async () => {
-    try {
-      const stepCount =
-        await NativeModules.VisitFitnessModule.getTodayStepCount();
-
-      console.log('fetchTodaysStepCount: ' + stepCount);
-
-      setStepCount(stepCount);
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
+  }, [fetchTodayHealthMetrics]);
 
   const initiateStepSync = useCallback(async () => {
+    const manualSyncStartedAt = Date.now();
+    const manualSyncTraceId = new Date(manualSyncStartedAt).toISOString();
+    const manualSyncLogPrefix = `[Visit Manual Sync ${manualSyncTraceId}]`;
+    const nativeSyncModuleName =
+      Platform.OS === 'android'
+        ? 'VisitFitnessModule'
+        : 'VisitRnSdkViewManager';
+
+    console.log(`${manualSyncLogPrefix} triggerManualSync requested`, {
+      platform: Platform.OS,
+      nativeSyncModuleName,
+      healthTrackerConnectionStatus,
+      isAndroidSDKInitialized,
+    });
+
+    setSyncStatus('syncing');
+    setSyncMessage('Syncing in progress...');
+
     try {
+      console.log(`${manualSyncLogPrefix} invoking native triggerManualSync`, {
+        hasVisitFitnessModule: Boolean(NativeModules.VisitFitnessModule),
+        hasVisitRnSdkViewManager: Boolean(VisitRnSdkViewManager),
+        hasNativeTriggerManualSync:
+          Platform.OS === 'android'
+            ? typeof NativeModules.VisitFitnessModule?.triggerManualSync ===
+              'function'
+            : typeof VisitRnSdkViewManager?.triggerManualSync === 'function',
+      });
+
+      let syncResult;
       if (Platform.OS === 'android') {
-        await NativeModules.VisitFitnessModule.triggerManualSync();
+        syncResult = await NativeModules.VisitFitnessModule.triggerManualSync();
       } else {
-        VisitRnSdkViewManager?.triggerManualSync();
+        syncResult = await VisitRnSdkViewManager?.triggerManualSync();
       }
+
+      console.log(`${manualSyncLogPrefix} triggerManualSync resolved`, {
+        result: syncResult,
+        elapsedMs: Date.now() - manualSyncStartedAt,
+      });
+
+      setSyncStatus('success');
+      setSyncMessage('Syncing has been done successfully');
     } catch (e) {
-      console.error(e);
+      console.error(`${manualSyncLogPrefix} triggerManualSync failed`, {
+        code: e?.code,
+        message: e?.message,
+        stack: e?.stack,
+        elapsedMs: Date.now() - manualSyncStartedAt,
+        rawError: e,
+      });
+      setSyncStatus('error');
+      setSyncMessage(e?.message || 'Syncing failed');
+    } finally {
+      console.log(`${manualSyncLogPrefix} triggerManualSync completed`, {
+        elapsedMs: Date.now() - manualSyncStartedAt,
+      });
     }
-  }, []);
+  }, [
+    VisitRnSdkViewManager,
+    healthTrackerConnectionStatus,
+    isAndroidSDKInitialized,
+  ]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -159,7 +246,7 @@ function Home() {
     }, [
       isAndroidSDKInitialized,
       checkAndroidHealthConnectStatus,
-      healthTrackerConnectionStatus,
+      checkIosHealthKitStatus,
     ]),
   );
 
@@ -233,17 +320,45 @@ function Home() {
           Health Connect Status: {healthTrackerConnectionStatus}
         </Text>
 
-        <Text style={styles.text}>Steps Count: {stepCount}</Text>
+        <View style={styles.metricGrid}>
+          <View style={styles.metricCard}>
+            <Text style={styles.metricLabel}>Steps</Text>
+            <Text style={styles.metricValue}>{stepCount}</Text>
+            <Text style={styles.metricUnit}>steps</Text>
+          </View>
+
+          <View style={styles.metricCard}>
+            <Text style={styles.metricLabel}>Sleep</Text>
+            <Text style={styles.metricValue}>{sleepMinutes}</Text>
+            <Text style={styles.metricUnit}>min</Text>
+          </View>
+
+          <View style={styles.metricCard}>
+            <Text style={styles.metricLabel}>Calories</Text>
+            <Text style={styles.metricValue}>{calorieCount}</Text>
+            <Text style={styles.metricUnit}>kcal</Text>
+          </View>
+        </View>
 
         <Button
-          title="Start Step Sync"
+          title={syncStatus === 'syncing' ? 'Syncing...' : 'Start Step Sync'}
           color="#7e55fa"
+          disabled={
+            syncStatus === 'syncing' ||
+            healthTrackerConnectionStatus !== 'CONNECTED'
+          }
           onPress={() => {
-            if (healthTrackerConnectionStatus == 'CONNECTED') {
+            if (healthTrackerConnectionStatus === 'CONNECTED') {
               initiateStepSync();
             }
           }}
         />
+
+        {syncStatus !== 'idle' ? (
+          <Text style={[styles.syncStatusText, syncStatusStyle]}>
+            {syncMessage}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -262,6 +377,48 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     fontSize: 16,
     color: 'black',
+  },
+  metricGrid: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+    marginBottom: 14,
+  },
+  metricCard: {
+    flex: 1,
+    minHeight: 96,
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#ddd8ec',
+    padding: 10,
+    justifyContent: 'space-between',
+  },
+  metricLabel: {
+    fontSize: 13,
+    color: '#4c4663',
+  },
+  metricValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1f1a2e',
+  },
+  metricUnit: {
+    fontSize: 12,
+    color: '#6d6684',
+  },
+  syncStatusText: {
+    paddingTop: 12,
+    fontSize: 15,
+  },
+  syncProgressText: {
+    color: '#6a51ae',
+  },
+  syncSuccessText: {
+    color: '#1f7a3a',
+  },
+  syncErrorText: {
+    color: '#b42318',
   },
 });
 
@@ -290,7 +447,7 @@ function VisitPage({route, navigation}) {
 }
 
 /**
- * 
+ *
  <VisitRnSdkView
         baseUrl={'https://api.getvisitapp.com/v4'}
         errorBaseUrl={'https://star-health.getvisitapp.com/'}
