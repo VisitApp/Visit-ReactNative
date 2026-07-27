@@ -103,26 +103,21 @@ function Home() {
     return styles.syncProgressText;
   }, [syncStatus]);
 
-  const checkIosHealthKitStatus = useCallback(async () => {
-    try {
-      const result = await VisitRnSdkViewManager.getHealthKitStatus();
-      if (result) {
-        setHealthTrackerConnectionStatus('CONNECTED');
-        setStepCount(result?.steps[0]);
-      } else {
-        setHealthTrackerConnectionStatus('NOT CONNECTED');
-      }
-    } catch (error) {
-      console.error('Error checking HealthKit authorization:', error);
-    }
-  }, [VisitRnSdkViewManager]);
-
   const fetchTodayHealthMetrics = useCallback(async () => {
+    const nativeMetricsModule =
+      Platform.OS === 'android'
+        ? NativeModules.VisitFitnessModule
+        : VisitRnSdkViewManager;
+
+    if (!nativeMetricsModule) {
+      return;
+    }
+
     const [stepsResult, sleepResult, caloriesResult] = await Promise.allSettled(
       [
-        NativeModules.VisitFitnessModule.getTodayStepCount(),
-        NativeModules.VisitFitnessModule.getTodaySleepMinutes(),
-        NativeModules.VisitFitnessModule.getTodayCalorieCount(),
+        nativeMetricsModule.getTodayStepCount(),
+        nativeMetricsModule.getTodaySleepMinutes(),
+        nativeMetricsModule.getTodayCalorieCount(),
       ],
     );
 
@@ -146,7 +141,16 @@ function Home() {
     } else {
       console.error(caloriesResult.reason);
     }
-  }, []);
+  }, [VisitRnSdkViewManager]);
+
+  const refreshIosHealthMetrics = useCallback(async () => {
+    // HealthKit permission is requested inside the Visit WebView (via
+    // CONNECT_TO_GOOGLE_FIT). Don't prompt here — just read whatever the OS
+    // will give us and refresh the cards. Reads silently return 0 when
+    // permission has not been granted yet.
+    setHealthTrackerConnectionStatus('CONNECTED');
+    await fetchTodayHealthMetrics();
+  }, [fetchTodayHealthMetrics]);
 
   const checkAndroidHealthConnectStatus = useCallback(async () => {
     try {
@@ -170,83 +174,37 @@ function Home() {
   }, [fetchTodayHealthMetrics]);
 
   const initiateStepSync = useCallback(async () => {
-    const manualSyncStartedAt = Date.now();
-    const manualSyncTraceId = new Date(manualSyncStartedAt).toISOString();
-    const manualSyncLogPrefix = `[Visit Manual Sync ${manualSyncTraceId}]`;
-    const nativeSyncModuleName =
-      Platform.OS === 'android'
-        ? 'VisitFitnessModule'
-        : 'VisitRnSdkViewManager';
-
-    console.log(`${manualSyncLogPrefix} triggerManualSync requested`, {
-      platform: Platform.OS,
-      nativeSyncModuleName,
-      healthTrackerConnectionStatus,
-      isAndroidSDKInitialized,
-    });
-
     setSyncStatus('syncing');
     setSyncMessage('Syncing in progress...');
 
     try {
-      console.log(`${manualSyncLogPrefix} invoking native triggerManualSync`, {
-        hasVisitFitnessModule: Boolean(NativeModules.VisitFitnessModule),
-        hasVisitRnSdkViewManager: Boolean(VisitRnSdkViewManager),
-        hasNativeTriggerManualSync:
-          Platform.OS === 'android'
-            ? typeof NativeModules.VisitFitnessModule?.triggerManualSync ===
-              'function'
-            : typeof VisitRnSdkViewManager?.triggerManualSync === 'function',
-      });
+      const syncResult =
+        Platform.OS === 'android'
+          ? await NativeModules.VisitFitnessModule.triggerManualSync()
+          : await VisitRnSdkViewManager?.triggerManualSync();
 
-      let syncResult;
-      if (Platform.OS === 'android') {
-        syncResult = await NativeModules.VisitFitnessModule.triggerManualSync();
-      } else {
-        syncResult = await VisitRnSdkViewManager?.triggerManualSync();
-      }
-
-      console.log(`${manualSyncLogPrefix} triggerManualSync resolved`, {
-        result: syncResult,
-        elapsedMs: Date.now() - manualSyncStartedAt,
-      });
-
+      console.log('triggerManualSync resolved:', syncResult);
       setSyncStatus('success');
       setSyncMessage('Syncing has been done successfully');
     } catch (e) {
-      console.error(`${manualSyncLogPrefix} triggerManualSync failed`, {
-        code: e?.code,
-        message: e?.message,
-        stack: e?.stack,
-        elapsedMs: Date.now() - manualSyncStartedAt,
-        rawError: e,
-      });
+      console.error('triggerManualSync failed:', e?.code, e?.message);
       setSyncStatus('error');
       setSyncMessage(e?.message || 'Syncing failed');
-    } finally {
-      console.log(`${manualSyncLogPrefix} triggerManualSync completed`, {
-        elapsedMs: Date.now() - manualSyncStartedAt,
-      });
     }
-  }, [
-    VisitRnSdkViewManager,
-    healthTrackerConnectionStatus,
-    isAndroidSDKInitialized,
-  ]);
+  }, [VisitRnSdkViewManager]);
 
   useFocusEffect(
     React.useCallback(() => {
-      console.log('useFocusEffect triggered');
       if (isAndroidSDKInitialized) {
         checkAndroidHealthConnectStatus();
       }
       if (Platform.OS === 'ios') {
-        checkIosHealthKitStatus();
+        refreshIosHealthMetrics();
       }
     }, [
       isAndroidSDKInitialized,
       checkAndroidHealthConnectStatus,
-      checkIosHealthKitStatus,
+      refreshIosHealthMetrics,
     ]),
   );
 

@@ -2,23 +2,22 @@ import React, {
   useRef,
   useEffect,
   useState,
-  useCallback,
   useMemo,
 } from 'react';
 import {
   StyleSheet,
   SafeAreaView,
   NativeModules,
-  NativeEventEmitter,
   Linking,
   Platform,
   ActivityIndicator,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
 import DeviceInfo from 'react-native-device-info';
-import { getWebViewLink, httpClient } from './Services';
+import { getWebViewLink } from './Services';
 import constants from './constants';
 
 const LINKING_ERROR =
@@ -183,53 +182,7 @@ const VisitRnSdkView = ({
   );
 
   const webviewRef = useRef(null);
-  const [apiBaseUrl, setApiBaseUrl] = useState('');
-  const [authToken, setAuthToken] = useState('');
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-
-  const callSyncApi = useCallback(
-    (data) =>
-      httpClient
-        .post(`${apiBaseUrl}/users/data-sync`, data, {
-          headers: {
-            Authorization: authToken,
-          },
-        })
-        .then((res) => console.log('callSyncData response,', res))
-        .catch((err) => console.log('callSyncData err,', { err })),
-    [apiBaseUrl, authToken]
-  );
-
-  const callEmbellishApi = useCallback(
-    (data) =>
-      httpClient
-        .post(`${apiBaseUrl}/users/embellish-sync`, data, {
-          headers: {
-            Authorization: authToken,
-          },
-        })
-        .then((res) => console.log('callEmbellishApi response,', res))
-        .catch((err) => console.log('callEmbellishApi err,', { err })),
-    [apiBaseUrl, authToken]
-  );
-
-  useEffect(() => {
-    const apiManagerEmitter = new NativeEventEmitter(VisitRnSdkViewManager);
-    const subscription = apiManagerEmitter.addListener(
-      'EventReminder',
-      (reminder) => {
-        if (reminder?.callSyncData && reminder?.callSyncData?.length) {
-          callSyncApi(reminder?.callSyncData[0]);
-        }
-        if (reminder?.callEmbellishApi && reminder?.callEmbellishApi?.length) {
-          callEmbellishApi(reminder?.callEmbellishApi[0]);
-        }
-      }
-    );
-    return () => {
-      subscription.remove();
-    };
-  }, [VisitRnSdkViewManager, callEmbellishApi, callSyncApi]);
 
   const handleMessage = async (event) => {
     const data = JSON.parse(unescapeHTML(event.nativeEvent.data));
@@ -238,7 +191,6 @@ const VisitRnSdkView = ({
       type,
       frequency,
       timestamp,
-      // eslint-disable-next-line no-shadow
       apiBaseUrl,
       authtoken,
       googleFitLastSync,
@@ -259,13 +211,44 @@ const VisitRnSdkView = ({
           );
         } else {
           VisitRnSdkViewManager?.connectToAppleHealth((res) => {
-            if (res?.sleepTime || res?.numberOfSteps) {
+            const authStatus = res?.authStatus;
+            const steps = res?.numberOfSteps || 0;
+            const sleep = res?.sleepTime || 0;
+
+            if (authStatus === 'GRANTED') {
               webviewRef.current?.injectJavaScript(
-                `window.updateFitnessPermissions(true,${res?.numberOfSteps},${res?.sleepTime})`
+                `window.updateFitnessPermissions(true,${steps},${sleep})`
               );
-            } else {
-              webviewRef.current?.injectJavaScript(
-                'window.updateFitnessPermissions(true,0,0)'
+              return;
+            }
+
+            // Denied / unavailable: tell the WebView permission isn't granted
+            // and offer to open the Apple Health app so the user can toggle
+            // it manually (mirrors Android's Health Connect flow).
+            webviewRef.current?.injectJavaScript(
+              'window.updateFitnessPermissions(false,0,0)'
+            );
+
+            if (authStatus === 'DENIED') {
+              Alert.alert(
+                'Permission Denied',
+                'To allow permission, please follow these steps:\n\n' +
+                  '1. Open Settings\n' +
+                  '2. Tap on Apps → Health\n' +
+                  '3. Tap Data Access & Devices\n' +
+                  '4. Select this app and enable all categories',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Open Settings',
+                    onPress: () => {
+                      VisitRnSdkViewManager?.openAppleHealthApp?.().catch(
+                        (err) =>
+                          console.log('openAppleHealthApp failed:', err?.message)
+                      );
+                    },
+                  },
+                ]
               );
             }
           });
@@ -288,10 +271,9 @@ const VisitRnSdkView = ({
         break;
       case 'UPDATE_API_BASE_URL':
         if (!hasLoadedOnce) {
-          console.log('apiBaseUrl is,', apiBaseUrl);
-          setApiBaseUrl(apiBaseUrl);
-          setAuthToken(authtoken);
           VisitRnSdkViewManager?.updateApiUrl({
+            apiBaseUrl,
+            authToken: authtoken,
             googleFitLastSync,
             gfHourlyLastSync,
           });

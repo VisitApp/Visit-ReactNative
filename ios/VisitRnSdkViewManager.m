@@ -1,5 +1,15 @@
 #import "VisitRnSdkViewManager.h"
 #import <HealthKit/HealthKit.h>
+#import <UIKit/UIKit.h>
+
+static NSString *const kVisitApiBaseUrlKey = @"visit_api_base_url";
+static NSString *const kVisitAuthTokenKey = @"visit_auth_token";
+static NSString *const kVisitHourlyLastSyncKey = @"gfHourlyLastSync";
+static NSString *const kVisitDailyLastSyncKey = @"googleFitLastSync";
+
+@interface VisitRnSdkViewManager ()
+@property (atomic, assign) BOOL isSyncInProgress;
+@end
 
 @implementation VisitRnSdkViewManager
 
@@ -191,8 +201,10 @@ RCT_REMAP_METHOD(multiply,
 
 - (void)fetchHourlySteps:(NSDate*) endDate callback:(void(^)(NSArray*))callback{
     HKQuantityType *stepCountType = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
+    HKQuantityType *activeEnergyType = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierActiveEnergyBurned];
     NSCalendar *calendar = [NSCalendar currentCalendar];
     HKUnit *stepsUnit = [HKUnit countUnit];
+    HKUnit *kcalUnit = [HKUnit kilocalorieUnit];
     NSDateComponents *interval = [[NSDateComponents alloc] init];
     interval.hour = 1;
     NSDate *startDate = [[NSCalendar calendarWithIdentifier:NSCalendarIdentifierISO8601] startOfDayForDate:endDate];
@@ -204,46 +216,64 @@ RCT_REMAP_METHOD(multiply,
     NSDate *anchorDate = [calendar startOfDayForDate:startDate];
     NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:startDate endDate:endOfDay options:HKQueryOptionStrictStartDate];
     NSPredicate *userEnteredValuePredicate = [HKQuery predicateForObjectsWithMetadataKey:HKMetadataKeyWasUserEntered operatorType: NSNotEqualToPredicateOperatorType value: @YES];
-    
+
     NSCompoundPredicate *compoundPredicate = [NSCompoundPredicate andPredicateWithSubpredicates:@[predicate, userEnteredValuePredicate]];
-    
-    HKStatisticsCollectionQuery *query = [[HKStatisticsCollectionQuery alloc] initWithQuantityType:stepCountType quantitySamplePredicate:compoundPredicate options:HKStatisticsOptionCumulativeSum anchorDate:anchorDate intervalComponents:interval];
-    
-    query.initialResultsHandler = ^(HKStatisticsCollectionQuery * _Nonnull query, HKStatisticsCollection * _Nullable result, NSError * _Nullable error) {
+
+    dispatch_group_t group = dispatch_group_create();
+    NSMutableArray *stepsData = [NSMutableArray arrayWithCapacity:24];
+    NSMutableArray *calorieData = [NSMutableArray arrayWithCapacity:24];
+
+    dispatch_group_enter(group);
+    HKStatisticsCollectionQuery *stepsQuery = [[HKStatisticsCollectionQuery alloc]
+        initWithQuantityType:stepCountType
+     quantitySamplePredicate:compoundPredicate
+                     options:HKStatisticsOptionCumulativeSum
+                  anchorDate:anchorDate
+          intervalComponents:interval];
+    stepsQuery.initialResultsHandler = ^(HKStatisticsCollectionQuery *q,
+                                         HKStatisticsCollection *result,
+                                         NSError *error) {
         if (error) {
-            NSLog(@"*** An error occurred while calculating the statistics: %@ ***",
-                  error.localizedDescription);
-            return;
+            NSLog(@"fetchHourlySteps steps query error: %@", error.localizedDescription);
+        } else {
+            [result enumerateStatisticsFromDate:startDate toDate:endOfDay
+                                      withBlock:^(HKStatistics *stat, BOOL *stop) {
+                HKQuantity *quantity = stat.sumQuantity;
+                int value = quantity ? (int)[quantity doubleValueForUnit:stepsUnit] : 0;
+                [stepsData addObject:@(value)];
+            }];
         }
-        
-        NSMutableArray *data = [NSMutableArray arrayWithCapacity:24];
-        NSMutableArray *stepsData = [NSMutableArray arrayWithCapacity:24];
-        NSMutableArray *calorieData = [NSMutableArray arrayWithCapacity:24];
-        NSLog(@"the startDate is %@ while endOfDay is %@",startDate,endOfDay);
-        [result enumerateStatisticsFromDate:startDate toDate:endOfDay withBlock:^(HKStatistics * _Nonnull result, BOOL * _Nonnull stop) {
-            HKQuantity *quantity = result.sumQuantity;
-            
-            if (quantity) {
-                int value = (int)[quantity doubleValueForUnit:stepsUnit];
-                [data addObject:[NSNumber numberWithInt:value]];
-                int calories = value/21;
-                calories+=self->bmrCaloriesPerHour;
-                [calorieData addObject:[NSNumber numberWithInt:calories]];
-            } else {
-                [data addObject:[NSNumber numberWithInt:0]];
-                [calorieData addObject:[NSNumber numberWithInt:0]];
-            }
-        }];
-        int count = 0;
-        for (NSNumber* steps in data) {
-            [stepsData insertObject:steps atIndex:count];
-            count++;
-        }
-        NSArray* finalData = @[stepsData, calorieData];
-        callback(finalData);
+        dispatch_group_leave(group);
     };
-   
-    [[VisitRnSdkViewManager sharedManager] executeQuery:query];
+    [[VisitRnSdkViewManager sharedManager] executeQuery:stepsQuery];
+
+    dispatch_group_enter(group);
+    HKStatisticsCollectionQuery *caloriesQuery = [[HKStatisticsCollectionQuery alloc]
+        initWithQuantityType:activeEnergyType
+     quantitySamplePredicate:nil
+                     options:HKStatisticsOptionCumulativeSum
+                  anchorDate:anchorDate
+          intervalComponents:interval];
+    caloriesQuery.initialResultsHandler = ^(HKStatisticsCollectionQuery *q,
+                                            HKStatisticsCollection *result,
+                                            NSError *error) {
+        if (error) {
+            NSLog(@"fetchHourlySteps calories query error: %@", error.localizedDescription);
+        } else {
+            [result enumerateStatisticsFromDate:startDate toDate:endOfDay
+                                      withBlock:^(HKStatistics *stat, BOOL *stop) {
+                HKQuantity *quantity = stat.sumQuantity;
+                int value = quantity ? (int)[quantity doubleValueForUnit:kcalUnit] : 0;
+                [calorieData addObject:@(value)];
+            }];
+        }
+        dispatch_group_leave(group);
+    };
+    [[VisitRnSdkViewManager sharedManager] executeQuery:caloriesQuery];
+
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        callback(@[stepsData, calorieData]);
+    });
 }
 
 -(void) fetchSteps:(NSString*) frequency endDate:(NSDate*) endDate days:(NSInteger) days callback:(void(^)(NSArray*))callback{
@@ -286,44 +316,67 @@ RCT_REMAP_METHOD(multiply,
     NSLog(@"anchorComponents in fetchSteps are, %@",anchorComponents);
     NSDate *anchorDate = [self->calendar dateFromComponents:anchorComponents];
     NSLog(@"anchorDate in fetchSteps are, %@",anchorDate);
-    HKQuantityType *quantityType = [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
-    // Create the query
-    HKStatisticsCollectionQuery *query = [[HKStatisticsCollectionQuery alloc] initWithQuantityType:quantityType
-                                                                           quantitySamplePredicate:nil
-                                                                                           options:HKStatisticsOptionCumulativeSum
-                                                                                        anchorDate:anchorDate
-                                                                                intervalComponents:interval];
+    HKQuantityType *stepType = [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
+    HKQuantityType *activeEnergyType = [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierActiveEnergyBurned];
+    HKUnit *kcalUnit = [HKUnit kilocalorieUnit];
 
-    // Set the results handler
-    query.initialResultsHandler = ^(HKStatisticsCollectionQuery *query, HKStatisticsCollection *results, NSError *error) {
+    dispatch_group_t group = dispatch_group_create();
+    NSMutableArray *stepsData = [NSMutableArray new];
+    NSMutableArray *calorieData = [NSMutableArray new];
+
+    dispatch_group_enter(group);
+    HKStatisticsCollectionQuery *stepsQuery = [[HKStatisticsCollectionQuery alloc]
+        initWithQuantityType:stepType
+     quantitySamplePredicate:nil
+                     options:HKStatisticsOptionCumulativeSum
+                  anchorDate:anchorDate
+          intervalComponents:interval];
+    stepsQuery.initialResultsHandler = ^(HKStatisticsCollectionQuery *q,
+                                         HKStatisticsCollection *results,
+                                         NSError *error) {
         if (error) {
-            // Perform proper error handling here
-            NSLog(@"*** An error occurred while calculating the statistics: %@ ***",error.localizedDescription);
+            NSLog(@"fetchSteps steps query error: %@", error.localizedDescription);
+        } else {
+            [results enumerateStatisticsFromDate:startDate
+                                          toDate:endDatePeriod
+                                       withBlock:^(HKStatistics *stat, BOOL *stop) {
+                HKQuantity *quantity = stat.sumQuantity;
+                int value = quantity ? (int)[quantity doubleValueForUnit:[HKUnit countUnit]] : 0;
+                [stepsData addObject:@(value)];
+            }];
         }
-        NSMutableArray *data = [NSMutableArray arrayWithCapacity:1];
-        NSMutableArray *calorieData = [NSMutableArray arrayWithCapacity:1];
-        [results enumerateStatisticsFromDate:startDate
-                                      toDate:endDatePeriod
-                                   withBlock:^(HKStatistics *result, BOOL *stop) {
-
-                                       HKQuantity *quantity = result.sumQuantity;
-                                       if (quantity) {
-                                           int value = [[NSNumber numberWithInt:[quantity doubleValueForUnit:[HKUnit countUnit]]] intValue];
-                                           int calories = value/21;
-                                           calories+=self->bmrCaloriesPerHour;
-                                           [calorieData addObject:[NSNumber numberWithInt:calories]];
-                                           [data addObject:[NSNumber numberWithInt:value]];
-                                       }else{
-                                           [data addObject:[NSNumber numberWithInt:0]];
-                                           [calorieData addObject:[NSNumber numberWithInt:0]];
-                                       }
-                                   }];
-        NSLog(@"in stepsData and calorieData is %@,%@", data, calorieData);
-        NSArray* finalData = @[data, calorieData];
-        callback(finalData);
+        dispatch_group_leave(group);
     };
+    [[VisitRnSdkViewManager sharedManager] executeQuery:stepsQuery];
 
-    [[VisitRnSdkViewManager sharedManager] executeQuery:query];
+    dispatch_group_enter(group);
+    HKStatisticsCollectionQuery *caloriesQuery = [[HKStatisticsCollectionQuery alloc]
+        initWithQuantityType:activeEnergyType
+     quantitySamplePredicate:nil
+                     options:HKStatisticsOptionCumulativeSum
+                  anchorDate:anchorDate
+          intervalComponents:interval];
+    caloriesQuery.initialResultsHandler = ^(HKStatisticsCollectionQuery *q,
+                                            HKStatisticsCollection *results,
+                                            NSError *error) {
+        if (error) {
+            NSLog(@"fetchSteps calories query error: %@", error.localizedDescription);
+        } else {
+            [results enumerateStatisticsFromDate:startDate
+                                          toDate:endDatePeriod
+                                       withBlock:^(HKStatistics *stat, BOOL *stop) {
+                HKQuantity *quantity = stat.sumQuantity;
+                int value = quantity ? (int)[quantity doubleValueForUnit:kcalUnit] : 0;
+                [calorieData addObject:@(value)];
+            }];
+        }
+        dispatch_group_leave(group);
+    };
+    [[VisitRnSdkViewManager sharedManager] executeQuery:caloriesQuery];
+
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        callback(@[stepsData, calorieData]);
+    });
 }
 
 -(void) fetchHourlyDistanceWalkingRunning:(NSDate*) endDate callback:(void(^)(NSArray*))callback{
@@ -523,7 +576,9 @@ RCT_REMAP_METHOD(multiply,
     NSArray *readTypes = @[[HKSampleType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount],
                            [HKSampleType categoryTypeForIdentifier:HKCategoryTypeIdentifierSleepAnalysis],
                            [HKSampleType characteristicTypeForIdentifier:HKCharacteristicTypeIdentifierBiologicalSex],
-                           [HKSampleType quantityTypeForIdentifier:HKQuantityTypeIdentifierDistanceWalkingRunning]];
+                           [HKSampleType quantityTypeForIdentifier:HKQuantityTypeIdentifierDistanceWalkingRunning],
+                           [HKSampleType quantityTypeForIdentifier:HKQuantityTypeIdentifierActiveEnergyBurned],
+                           [HKSampleType quantityTypeForIdentifier:HKQuantityTypeIdentifierBasalEnergyBurned]];
     
     [[VisitRnSdkViewManager sharedManager] requestAuthorizationToShareTypes:[NSSet setWithArray:writeTypes] readTypes:[NSSet setWithArray:readTypes]
                                                                 completion:^(BOOL success, NSError *error) {
@@ -1069,7 +1124,11 @@ if([steps count]>0 && [distanceData count]>0 && [activityData count]>0 && [sleep
                 @"fitnessData" : dailySyncData,
         };
          callback(@[httpBody]);
-           
+
+      } else {
+          // Callback must always fire so callers can proceed even when a
+          // sub-fetch (steps/distance/activity/sleep) returned no data.
+          callback(@[]);
       }
     });
 }
@@ -1109,21 +1168,102 @@ if([steps count]>0 && [distanceData count]>0 && [activityData count]>0 && [sleep
 
 RCT_EXPORT_METHOD(connectToAppleHealth:(RCTResponseSenderBlock)callback)
 {
-//    [self isHealthKitAvailable:callback];
-          [self canAccessHealthKit:^(BOOL value){
-                  if(value){
-                    [self onHealthKitPermissionGranted:^(NSDictionary * data) {
-                      NSArray* finalData = @[data];
-                      callback(finalData);
-                    }];
-                  }else{
-//                    reject(@"Error", @"Unable to connect to Apple Health", nil);
-                      [self requestAuthorization:^(NSDictionary * data) {
-                        NSArray* finalData = @[data];
-                        callback(finalData);
-                      }];
-                  }
-              }];
+    if (![HKHealthStore isHealthDataAvailable]) {
+        callback(@[@{@"authStatus": @"UNAVAILABLE"}]);
+        return;
+    }
+
+    HKObjectType *stepType =
+        [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
+    HKAuthorizationStatus preStatus =
+        [[VisitRnSdkViewManager sharedManager] authorizationStatusForType:stepType];
+
+    // Match Android: report DENIED to JS and let the caller decide whether to
+    // prompt the user (via Alert) to open the Health app. Do NOT open Health
+    // ourselves — the JS side calls openAppleHealthApp on user confirmation.
+    if (preStatus == HKAuthorizationStatusSharingDenied) {
+        callback(@[@{@"authStatus": @"DENIED"}]);
+        return;
+    }
+
+    NSSet *writeTypes =
+        [NSSet setWithObject:[HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount]];
+    NSSet *readTypes = [NSSet setWithArray:@[
+        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount],
+        [HKObjectType categoryTypeForIdentifier:HKCategoryTypeIdentifierSleepAnalysis],
+        [HKObjectType characteristicTypeForIdentifier:HKCharacteristicTypeIdentifierBiologicalSex],
+        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierDistanceWalkingRunning],
+        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierActiveEnergyBurned],
+        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierBasalEnergyBurned],
+    ]];
+
+    __weak typeof(self) weakSelf = self;
+    [[VisitRnSdkViewManager sharedManager]
+        requestAuthorizationToShareTypes:writeTypes
+                               readTypes:readTypes
+                              completion:^(BOOL success, NSError *error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) { return; }
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            HKAuthorizationStatus postStatus =
+                [[VisitRnSdkViewManager sharedManager] authorizationStatusForType:stepType];
+
+            if (postStatus == HKAuthorizationStatusSharingDenied) {
+                callback(@[@{@"authStatus": @"DENIED"}]);
+                return;
+            }
+
+            [strongSelf onHealthKitPermissionGranted:^(NSDictionary *data) {
+                NSMutableDictionary *out =
+                    [NSMutableDictionary dictionaryWithDictionary:data ?: @{}];
+                out[@"authStatus"] = @"GRANTED";
+                callback(@[out]);
+            }];
+        });
+    }];
+}
+
+// Opens Settings.app on the Health section (Settings → Health → Data Access
+// & Devices path). Uses the unofficial `App-Prefs:root=HEALTH` URL scheme
+// with a graceful fallback to `UIApplicationOpenSettingsURLString` (the
+// current app's Settings page) if iOS refuses the deep link. Vendors should
+// note the App Review caveat around `App-Prefs:` schemes documented in the
+// iOS vendor guide.
+RCT_EXPORT_METHOD(openAppleHealthApp:(RCTPromiseResolveBlock)resolve
+                            rejecter:(RCTPromiseRejectBlock)reject)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIApplication *app = [UIApplication sharedApplication];
+
+        void (^openAppSettings)(void) = ^{
+            NSURL *settingsUrl = [NSURL URLWithString:UIApplicationOpenSettingsURLString];
+            if (!settingsUrl) {
+                reject(@"OPEN_HEALTH_FAILED", @"Settings URL is unavailable", nil);
+                return;
+            }
+            [app openURL:settingsUrl options:@{} completionHandler:^(BOOL success) {
+                if (success) {
+                    resolve(@YES);
+                } else {
+                    reject(@"OPEN_HEALTH_FAILED", @"Unable to open Settings app", nil);
+                }
+            }];
+        };
+
+        NSURL *healthPrefsUrl = [NSURL URLWithString:@"App-Prefs:root=HEALTH"];
+        if (!healthPrefsUrl) {
+            openAppSettings();
+            return;
+        }
+        [app openURL:healthPrefsUrl options:@{} completionHandler:^(BOOL success) {
+            if (success) {
+                resolve(@YES);
+            } else {
+                openAppSettings();
+            }
+        }];
+    });
 }
 
 RCT_EXPORT_METHOD(renderGraph:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback)
@@ -1138,43 +1278,289 @@ RCT_EXPORT_METHOD(renderGraph:(NSDictionary *)input callback:(RCTResponseSenderB
   }];
 }
 
+- (void)postJSONBody:(NSDictionary *)body
+              toURL:(NSString *)urlString
+          authToken:(NSString *)authToken
+         completion:(void (^)(NSError *error, NSInteger status))completion
+{
+    NSURL *url = [NSURL URLWithString:urlString];
+    if (!url) {
+        completion([NSError errorWithDomain:@"VisitSync" code:-1
+                                   userInfo:@{NSLocalizedDescriptionKey:
+                                                  [NSString stringWithFormat:@"Invalid URL: %@", urlString]}],
+                   0);
+        return;
+    }
+
+    NSError *jsonError = nil;
+    NSData *bodyData = [NSJSONSerialization dataWithJSONObject:body options:0 error:&jsonError];
+    if (jsonError) {
+        completion(jsonError, 0);
+        return;
+    }
+
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    request.HTTPMethod = @"POST";
+    [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+    if (authToken.length > 0) {
+        [request setValue:authToken forHTTPHeaderField:@"Authorization"];
+    }
+    request.HTTPBody = bodyData;
+
+    NSURLSessionDataTask *task =
+        [[NSURLSession sharedSession] dataTaskWithRequest:request
+                                        completionHandler:^(NSData *data,
+                                                            NSURLResponse *response,
+                                                            NSError *error) {
+        NSInteger status = 0;
+        if ([response isKindOfClass:[NSHTTPURLResponse class]]) {
+            status = ((NSHTTPURLResponse *)response).statusCode;
+        }
+        completion(error, status);
+    }];
+    [task resume];
+}
+
+// Fans out to fetchHourlySteps + fetchHourlyDistanceWalkingRunning per date,
+// then preprocessEmbellishRequest, collecting all httpBody dicts. Always fires
+// completion exactly once, even when no batches are produced.
+- (void)collectEmbellishBatchesForDates:(NSArray<NSDate *> *)dates
+                             completion:(void (^)(NSArray<NSDictionary *> *batches))completion
+{
+    if (dates.count == 0) {
+        completion(@[]);
+        return;
+    }
+
+    dispatch_group_t outer = dispatch_group_create();
+    NSMutableArray<NSDictionary *> *batches = [NSMutableArray new];
+    __weak typeof(self) weakSelf = self;
+
+    for (NSDate *date in dates) {
+        dispatch_group_enter(outer);
+        __block NSArray *steps = @[];
+        __block NSArray *calories = @[];
+        __block NSArray *distance = @[];
+        dispatch_group_t inner = dispatch_group_create();
+
+        dispatch_group_enter(inner);
+        [weakSelf fetchHourlySteps:date callback:^(NSArray *data) {
+            if (data.count >= 2) {
+                steps = data[0] ?: @[];
+                calories = data[1] ?: @[];
+            }
+            dispatch_group_leave(inner);
+        }];
+
+        dispatch_group_enter(inner);
+        [weakSelf fetchHourlyDistanceWalkingRunning:date callback:^(NSArray *dist) {
+            distance = dist ?: @[];
+            dispatch_group_leave(inner);
+        }];
+
+        dispatch_group_notify(inner,
+                              dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (steps.count > 0 && calories.count > 0 && distance.count > 0 && strongSelf) {
+                [strongSelf preprocessEmbellishRequest:steps
+                                              calories:calories
+                                              distance:distance
+                                                  date:date
+                                              callback:^(NSArray *data) {
+                    if (data.count > 0 && [data[0] isKindOfClass:[NSDictionary class]]) {
+                        @synchronized (batches) {
+                            [batches addObject:data[0]];
+                        }
+                    }
+                    dispatch_group_leave(outer);
+                }];
+            } else {
+                dispatch_group_leave(outer);
+            }
+        });
+    }
+
+    dispatch_group_notify(outer, dispatch_get_main_queue(), ^{
+        completion([batches copy]);
+    });
+}
+
+// Shared sync executor. Called from updateApiUrl (fire-and-forget) and
+// triggerManualSync (promise). Handles date-range → collection → HTTP POST for
+// both the embellish (hourly) and data-sync (daily) endpoints.
+- (void)performVisitSyncWithBaseUrl:(NSString *)baseUrl
+                          authToken:(NSString *)authToken
+                        hourlySince:(NSTimeInterval)gfHourlyLastSync
+                         dailySince:(NSTimeInterval)googleFitLastSync
+                            resolve:(RCTPromiseResolveBlock)resolve
+                             reject:(RCTPromiseRejectBlock)reject
+{
+    NSDate *hourlyDataSyncTime = [NSDate dateWithTimeIntervalSince1970:gfHourlyLastSync / 1000];
+    NSDate *dailyDataSyncTime = [NSDate dateWithTimeIntervalSince1970:googleFitLastSync / 1000];
+
+    NSString *embellishUrl = [NSString stringWithFormat:@"%@/users/embellish-sync", baseUrl];
+    NSString *dataSyncUrl = [NSString stringWithFormat:@"%@/users/data-sync", baseUrl];
+
+    __block NSError *firstError = nil;
+    NSLock *errorLock = [[NSLock alloc] init];
+    void (^recordError)(NSError *) = ^(NSError *err) {
+        if (!err) { return; }
+        [errorLock lock];
+        if (!firstError) { firstError = err; }
+        [errorLock unlock];
+    };
+
+    dispatch_group_t topGroup = dispatch_group_create();
+    __weak typeof(self) weakSelf = self;
+
+    // Hourly / embellish flow
+    dispatch_group_enter(topGroup);
+    [self getDateRanges:hourlyDataSyncTime callback:^(NSMutableArray *dates) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) {
+            dispatch_group_leave(topGroup);
+            return;
+        }
+        [strongSelf collectEmbellishBatchesForDates:dates
+                                         completion:^(NSArray *batches) {
+            if (batches.count == 0) {
+                NSLog(@"[Visit Sync] no embellish batches to POST");
+                dispatch_group_leave(topGroup);
+                return;
+            }
+            dispatch_group_t postGroup = dispatch_group_create();
+            for (NSDictionary *body in batches) {
+                dispatch_group_enter(postGroup);
+                [strongSelf postJSONBody:body
+                                   toURL:embellishUrl
+                               authToken:authToken
+                              completion:^(NSError *err, NSInteger status) {
+                    NSLog(@"[Visit Sync] embellish POST status=%ld err=%@",
+                          (long)status, err.localizedDescription);
+                    if (err) {
+                        recordError(err);
+                    } else if (status < 200 || status >= 300) {
+                        recordError([NSError errorWithDomain:@"VisitSync"
+                                                        code:status
+                                                    userInfo:@{NSLocalizedDescriptionKey:
+                                                                   [NSString stringWithFormat:
+                                                                    @"embellish HTTP %ld",
+                                                                    (long)status]}]);
+                    }
+                    dispatch_group_leave(postGroup);
+                }];
+            }
+            dispatch_group_notify(postGroup,
+                                  dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                dispatch_group_leave(topGroup);
+            });
+        }];
+    }];
+
+    // Daily / data-sync flow
+    dispatch_group_enter(topGroup);
+    [self getDateRanges:dailyDataSyncTime callback:^(NSMutableArray *dates) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf || dates.count == 0) {
+            dispatch_group_leave(topGroup);
+            return;
+        }
+        [strongSelf callSyncData:dates.count
+                           dates:dates
+                        callback:^(NSArray *data) {
+            if (data.count == 0 || ![data[0] isKindOfClass:[NSDictionary class]]) {
+                NSLog(@"[Visit Sync] no daily sync payload to POST");
+                dispatch_group_leave(topGroup);
+                return;
+            }
+            [strongSelf postJSONBody:data[0]
+                               toURL:dataSyncUrl
+                           authToken:authToken
+                          completion:^(NSError *err, NSInteger status) {
+                NSLog(@"[Visit Sync] data-sync POST status=%ld err=%@",
+                      (long)status, err.localizedDescription);
+                if (err) {
+                    recordError(err);
+                } else if (status < 200 || status >= 300) {
+                    recordError([NSError errorWithDomain:@"VisitSync"
+                                                    code:status
+                                                userInfo:@{NSLocalizedDescriptionKey:
+                                                               [NSString stringWithFormat:
+                                                                @"data-sync HTTP %ld",
+                                                                (long)status]}]);
+                }
+                dispatch_group_leave(topGroup);
+            }];
+        }];
+    }];
+
+    dispatch_group_notify(topGroup, dispatch_get_main_queue(), ^{
+        self.isSyncInProgress = NO;
+        if (firstError) {
+            if (reject) {
+                reject(@"SYNC_FAILED",
+                       firstError.localizedDescription ?: @"Sync failed",
+                       firstError);
+            }
+        } else {
+            if (resolve) {
+                resolve(@"Health Data Sync Completed");
+            }
+        }
+    });
+}
+
 RCT_EXPORT_METHOD(updateApiUrl:(NSDictionary *)input)
 {
+    NSString *apiBaseUrl = [input objectForKey:@"apiBaseUrl"];
+    NSString *authToken = [input objectForKey:@"authToken"];
     NSTimeInterval gfHourlyLastSync = [[input objectForKey:@"gfHourlyLastSync"] doubleValue];
     NSTimeInterval googleFitLastSync = [[input objectForKey:@"googleFitLastSync"] doubleValue];
-    NSDate* hourlyDataSyncTime = [NSDate dateWithTimeIntervalSince1970:gfHourlyLastSync/1000];
-    NSDate* dailyDataSyncTime = [NSDate dateWithTimeIntervalSince1970:googleFitLastSync/1000];
-        [self canAccessHealthKit:^(BOOL value){
-            if(value){
-              dispatch_group_t loadDetailsGroup = dispatch_group_create();
-//              NSMutableArray *apiData = [NSMutableArray arrayWithCapacity:2];
-              [self getDateRanges:hourlyDataSyncTime callback:^(NSMutableArray * dates) {
-                  if([dates count]>0){
-                    [self callEmbellishApi:dates callback:^(NSArray * data) {
-//                      [apiData addObject:data];
-                      NSLog(@"callEmbellishApi data is, %@",data);
-                      [self sendEventWithName:@"EventReminder" body:@{@"callEmbellishApi":data}];
-                    }];
-                  }
-              }];
-              [self getDateRanges:dailyDataSyncTime callback:^(NSMutableArray * dates) {
-                  if([dates count]>0){
-                    [self callSyncData:[dates count] dates:dates callback:^(NSArray * data) {
-//                      [apiData addObject:data];
-                      [self sendEventWithName:@"EventReminder" body:@{@"callSyncData":data}];
-                    }];
-                  }
-              }];
-              dispatch_group_notify(loadDetailsGroup,dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),^{
-//                callback([apiData copy]);
-              });
-            }else{
-              [self requestAuthorization:^(NSDictionary * data) {
-//                callback(@[data]);
-              }];
-            }
-        }];
-//    }
+
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    if (apiBaseUrl.length > 0) {
+        [defaults setObject:apiBaseUrl forKey:kVisitApiBaseUrlKey];
+    }
+    if (authToken.length > 0) {
+        [defaults setObject:authToken forKey:kVisitAuthTokenKey];
+    }
+    if (gfHourlyLastSync > 0) {
+        [defaults setDouble:gfHourlyLastSync forKey:kVisitHourlyLastSyncKey];
+    }
+    if (googleFitLastSync > 0) {
+        [defaults setDouble:googleFitLastSync forKey:kVisitDailyLastSyncKey];
+    }
+
+    NSString *storedBaseUrl = apiBaseUrl.length > 0 ? apiBaseUrl : [defaults stringForKey:kVisitApiBaseUrlKey];
+    NSString *storedAuthToken = authToken.length > 0 ? authToken : [defaults stringForKey:kVisitAuthTokenKey];
+
+    if (![HKHealthStore isHealthDataAvailable]) {
+        return;
+    }
+    if (storedBaseUrl.length == 0 || storedAuthToken.length == 0) {
+        return;
+    }
+    if (self.isSyncInProgress) {
+        return;
+    }
+
+    self.isSyncInProgress = YES;
+    __weak typeof(self) weakSelf = self;
+    [self canAccessHealthKit:^(BOOL value) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) { return; }
+        if (!value) {
+            strongSelf.isSyncInProgress = NO;
+            [strongSelf requestAuthorization:^(NSDictionary *data) { (void)data; }];
+            return;
+        }
+        [strongSelf performVisitSyncWithBaseUrl:storedBaseUrl
+                                     authToken:storedAuthToken
+                                   hourlySince:gfHourlyLastSync
+                                    dailySince:googleFitLastSync
+                                       resolve:nil
+                                        reject:nil];
+    }];
 }
 
 
@@ -1285,25 +1671,263 @@ RCT_REMAP_METHOD(getHealthKitStatus,
     }
 }
 
-RCT_EXPORT_METHOD(triggerManualSync)
+RCT_REMAP_METHOD(requestHealthKitAuthorization,
+                 requestHealthKitAuthorizationWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
 {
-    // Retrieve the stored values from NSUserDefaults
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    
-    NSTimeInterval gfHourlyLastSync = [defaults doubleForKey:@"gfHourlyLastSync"];
-    NSTimeInterval googleFitLastSync = [defaults doubleForKey:@"googleFitLastSync"];
-    
-    // Log the retrieved values for debugging
-    NSLog(@"Retrieved gfHourlyLastSync: %f and googleFitLastSync: %f from NSUserDefaults", gfHourlyLastSync, googleFitLastSync);
-    
-    // Create a dictionary to pass the values
-    NSDictionary *input = @{
-        @"gfHourlyLastSync": @(gfHourlyLastSync),
-        @"googleFitLastSync": @(googleFitLastSync)
+    if (![HKHealthStore isHealthDataAvailable]) {
+        reject(@"HEALTH_DATA_UNAVAILABLE", @"HealthKit is not available on this device", nil);
+        return;
+    }
+
+    NSSet *writeTypes =
+        [NSSet setWithObject:[HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount]];
+    NSMutableSet *readTypes = [NSMutableSet setWithArray:@[
+        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount],
+        [HKObjectType categoryTypeForIdentifier:HKCategoryTypeIdentifierSleepAnalysis],
+        [HKObjectType characteristicTypeForIdentifier:HKCharacteristicTypeIdentifierBiologicalSex],
+        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierDistanceWalkingRunning],
+        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierActiveEnergyBurned],
+        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierBasalEnergyBurned],
+    ]];
+
+    [[VisitRnSdkViewManager sharedManager]
+        requestAuthorizationToShareTypes:writeTypes
+                               readTypes:readTypes
+                              completion:^(BOOL success, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (!success) {
+                reject(@"AUTHORIZATION_FAILED",
+                       error.localizedDescription ?: @"HealthKit authorization failed",
+                       error);
+                return;
+            }
+
+            HKObjectType *stepType =
+                [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
+            HKAuthorizationStatus status =
+                [[VisitRnSdkViewManager sharedManager] authorizationStatusForType:stepType];
+
+            NSString *statusString;
+            switch (status) {
+                case HKAuthorizationStatusSharingAuthorized:
+                    statusString = @"GRANTED";
+                    break;
+                case HKAuthorizationStatusSharingDenied:
+                    statusString = @"DENIED";
+                    break;
+                case HKAuthorizationStatusNotDetermined:
+                default:
+                    statusString = @"NOT_DETERMINED";
+                    break;
+            }
+            resolve(statusString);
+        });
+    }];
+}
+
+RCT_REMAP_METHOD(getTodayStepCount,
+                 getTodayStepCountWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+    if (![HKHealthStore isHealthDataAvailable]) {
+        reject(@"HEALTH_DATA_UNAVAILABLE", @"HealthKit is not available on this device", nil);
+        return;
+    }
+
+    NSCalendar *cal = [NSCalendar currentCalendar];
+    NSDate *startOfDay = [cal startOfDayForDate:[NSDate date]];
+    NSDateComponents *dayInterval = [[NSDateComponents alloc] init];
+    dayInterval.day = 1;
+
+    HKQuantityType *stepType = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
+
+    HKStatisticsCollectionQuery *query = [[HKStatisticsCollectionQuery alloc]
+        initWithQuantityType:stepType
+     quantitySamplePredicate:nil
+                     options:HKStatisticsOptionCumulativeSum
+                  anchorDate:startOfDay
+          intervalComponents:dayInterval];
+
+    query.initialResultsHandler = ^(HKStatisticsCollectionQuery *q,
+                                    HKStatisticsCollection *collection,
+                                    NSError *error) {
+        if (error) {
+            reject(@"STEP_QUERY_FAILED",
+                   error.localizedDescription ?: @"Failed to query step count",
+                   error);
+            return;
+        }
+        HKStatistics *todayStats = [collection statisticsForDate:startOfDay];
+        HKQuantity *sum = todayStats.sumQuantity;
+        NSInteger steps = sum ? (NSInteger)[sum doubleValueForUnit:[HKUnit countUnit]] : 0;
+        resolve(@(steps));
     };
-    
-    // Call the existing updateApiUrl method
-    [self updateApiUrl:input];
+
+    [[VisitRnSdkViewManager sharedManager] executeQuery:query];
+}
+
+RCT_REMAP_METHOD(getTodaySleepMinutes,
+                 getTodaySleepMinutesWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+    if (![HKHealthStore isHealthDataAvailable]) {
+        reject(@"HEALTH_DATA_UNAVAILABLE", @"HealthKit is not available on this device", nil);
+        return;
+    }
+
+    // Sum sleep sessions whose end date falls on today. Look 36 hours back so
+    // overnight sessions (e.g., 11pm → 7am) that started yesterday are still
+    // considered, matching Apple Health's "sleep on wake day" convention.
+    NSCalendar *cal = [NSCalendar currentCalendar];
+    NSDate *now = [NSDate date];
+    NSDate *startOfDay = [cal startOfDayForDate:now];
+    NSDate *lookbackStart = [now dateByAddingTimeInterval:-36 * 60 * 60];
+
+    NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:lookbackStart
+                                                               endDate:now
+                                                               options:HKQueryOptionNone];
+    HKCategoryType *sleepType = [HKObjectType categoryTypeForIdentifier:HKCategoryTypeIdentifierSleepAnalysis];
+    NSSortDescriptor *sort = [[NSSortDescriptor alloc] initWithKey:HKSampleSortIdentifierEndDate ascending:YES];
+
+    HKSampleQuery *query = [[HKSampleQuery alloc]
+        initWithSampleType:sleepType
+                 predicate:predicate
+                     limit:HKObjectQueryNoLimit
+           sortDescriptors:@[sort]
+            resultsHandler:^(HKSampleQuery *q, NSArray<__kindof HKSample *> *results, NSError *error) {
+        if (error) {
+            reject(@"SLEEP_QUERY_FAILED", error.localizedDescription ?: @"Failed to query sleep data", error);
+            return;
+        }
+
+        NSTimeInterval totalSleepSeconds = 0;
+        for (HKCategorySample *sample in results) {
+            if (![self isAsleepSleepAnalysisValue:sample.value]) {
+                continue;
+            }
+            // Only count samples that ended today.
+            if ([sample.endDate compare:startOfDay] == NSOrderedAscending) {
+                continue;
+            }
+            totalSleepSeconds += [sample.endDate timeIntervalSinceDate:sample.startDate];
+        }
+        NSInteger minutes = (NSInteger)(totalSleepSeconds / 60.0);
+        resolve(@(minutes));
+    }];
+
+    [[VisitRnSdkViewManager sharedManager] executeQuery:query];
+}
+
+- (BOOL)isAsleepSleepAnalysisValue:(NSInteger)value
+{
+    if (value == HKCategoryValueSleepAnalysisInBed) {
+        return YES;
+    }
+    if (@available(iOS 16.0, *)) {
+        if (value == HKCategoryValueSleepAnalysisAsleepUnspecified ||
+            value == HKCategoryValueSleepAnalysisAsleepCore ||
+            value == HKCategoryValueSleepAnalysisAsleepDeep ||
+            value == HKCategoryValueSleepAnalysisAsleepREM) {
+            return YES;
+        }
+    }
+    // HKCategoryValueSleepAnalysisAsleep is deprecated on iOS 16+ but still reported by older samples.
+    if (value == HKCategoryValueSleepAnalysisAsleep) {
+        return YES;
+    }
+    return NO;
+}
+
+RCT_REMAP_METHOD(getTodayCalorieCount,
+                 getTodayCalorieCountWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+    if (![HKHealthStore isHealthDataAvailable]) {
+        reject(@"HEALTH_DATA_UNAVAILABLE", @"HealthKit is not available on this device", nil);
+        return;
+    }
+
+    NSCalendar *cal = [NSCalendar currentCalendar];
+    NSDate *startOfDay = [cal startOfDayForDate:[NSDate date]];
+    NSDateComponents *dayInterval = [[NSDateComponents alloc] init];
+    dayInterval.day = 1;
+
+    HKQuantityType *activeType = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierActiveEnergyBurned];
+    HKUnit *kcal = [HKUnit kilocalorieUnit];
+
+    HKStatisticsCollectionQuery *query = [[HKStatisticsCollectionQuery alloc]
+        initWithQuantityType:activeType
+     quantitySamplePredicate:nil
+                     options:HKStatisticsOptionCumulativeSum
+                  anchorDate:startOfDay
+          intervalComponents:dayInterval];
+    query.initialResultsHandler = ^(HKStatisticsCollectionQuery *q,
+                                    HKStatisticsCollection *collection,
+                                    NSError *error) {
+        if (error) {
+            reject(@"CALORIE_QUERY_FAILED",
+                   error.localizedDescription ?: @"Failed to query calorie data",
+                   error);
+            return;
+        }
+        HKStatistics *todayStats = [collection statisticsForDate:startOfDay];
+        HKQuantity *sum = todayStats.sumQuantity;
+        NSInteger activeKcal = sum ? (NSInteger)[sum doubleValueForUnit:kcal] : 0;
+        resolve(@(activeKcal));
+    };
+    [[VisitRnSdkViewManager sharedManager] executeQuery:query];
+}
+
+RCT_REMAP_METHOD(triggerManualSync,
+                 triggerManualSyncWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+    if (![HKHealthStore isHealthDataAvailable]) {
+        reject(@"HEALTH_DATA_UNAVAILABLE", @"HealthKit is not available on this device", nil);
+        return;
+    }
+    if (self.isSyncInProgress) {
+        reject(@"SYNC_IN_PROGRESS", @"Health data sync is already in progress", nil);
+        return;
+    }
+
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSString *baseUrl = [defaults stringForKey:kVisitApiBaseUrlKey];
+    NSString *authToken = [defaults stringForKey:kVisitAuthTokenKey];
+    NSTimeInterval gfHourlyLastSync = [defaults doubleForKey:kVisitHourlyLastSyncKey];
+    NSTimeInterval googleFitLastSync = [defaults doubleForKey:kVisitDailyLastSyncKey];
+
+    if (baseUrl.length == 0 || authToken.length == 0) {
+        reject(@"MISSING_SYNC_CREDENTIALS",
+               @"Visit apiBaseUrl or authToken is missing. Ensure the WebView has mounted at least once so credentials are seeded.",
+               nil);
+        return;
+    }
+    if (gfHourlyLastSync <= 0 && googleFitLastSync <= 0) {
+        reject(@"MISSING_SYNC_TIMESTAMPS",
+               @"Visit sync timestamps are missing. Ensure the WebView has run at least once.",
+               nil);
+        return;
+    }
+
+    self.isSyncInProgress = YES;
+    __weak typeof(self) weakSelf = self;
+    [self canAccessHealthKit:^(BOOL value) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) { return; }
+        if (!value) {
+            strongSelf.isSyncInProgress = NO;
+            reject(@"PERMISSION_DENIED", @"HealthKit permission is not granted", nil);
+            return;
+        }
+        [strongSelf performVisitSyncWithBaseUrl:baseUrl
+                                     authToken:authToken
+                                   hourlySince:gfHourlyLastSync
+                                    dailySince:googleFitLastSync
+                                       resolve:resolve
+                                        reject:reject];
+    }];
 }
 
 @end
