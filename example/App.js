@@ -143,14 +143,24 @@ function Home() {
     }
   }, [VisitRnSdkViewManager]);
 
-  const refreshIosHealthMetrics = useCallback(async () => {
-    // HealthKit permission is requested inside the Visit WebView (via
-    // CONNECT_TO_GOOGLE_FIT). Don't prompt here — just read whatever the OS
-    // will give us and refresh the cards. Reads silently return 0 when
-    // permission has not been granted yet.
-    setHealthTrackerConnectionStatus('CONNECTED');
-    await fetchTodayHealthMetrics();
-  }, [fetchTodayHealthMetrics]);
+  const checkIosHealthKitStatus = useCallback(async () => {
+    try {
+      const status = await VisitRnSdkViewManager?.getHealthKitConnectStatus();
+
+      console.log('getHealthKitConnectStatus: ' + status);
+
+      if (status === 'NOT_SUPPORTED') {
+      } else if (status === 'INSTALLED') {
+      } else if (status === 'CONNECTED') {
+        await fetchTodayHealthMetrics();
+      }
+
+      setHealthTrackerConnectionStatus(status);
+    } catch (e) {
+      console.error(e);
+      setHealthTrackerConnectionStatus('Error fetching health kit status');
+    }
+  }, [VisitRnSdkViewManager, fetchTodayHealthMetrics]);
 
   const checkAndroidHealthConnectStatus = useCallback(async () => {
     try {
@@ -199,12 +209,12 @@ function Home() {
         checkAndroidHealthConnectStatus();
       }
       if (Platform.OS === 'ios') {
-        refreshIosHealthMetrics();
+        checkIosHealthKitStatus();
       }
     }, [
       isAndroidSDKInitialized,
       checkAndroidHealthConnectStatus,
-      refreshIosHealthMetrics,
+      checkIosHealthKitStatus,
     ]),
   );
 

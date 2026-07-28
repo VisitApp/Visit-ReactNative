@@ -1623,6 +1623,22 @@ RCT_EXPORT_METHOD(fetchDailyData:(NSInteger)googleFitLastSync resolver:(RCTPromi
     }];
 }
 
+RCT_REMAP_METHOD(getHealthKitConnectStatus,
+                 getHealthKitConnectStatusWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+    if (![HKHealthStore isHealthDataAvailable]) {
+        resolve(@"NOT_SUPPORTED");
+        return;
+    }
+
+    [self canAccessHealthKit:^(BOOL granted) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            resolve(granted ? @"CONNECTED" : @"INSTALLED");
+        });
+    }];
+}
+
 // HealthKit Authorization Check
 RCT_REMAP_METHOD(getHealthKitStatus,
                  checkHealthKitAuthorizationWithResolver:(RCTPromiseResolveBlock)resolve
