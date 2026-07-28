@@ -1,7 +1,7 @@
 ### **Instructions for configuring your Android Project**
 
 * Install Visit React Native Plugin   
-  `npm install react-native-visit-rn-sdk@3.0.5`
+  `npm install react-native-visit-rn-sdk@3.0.6`
 * Install these transitive plugins that Visit Plugin requires internally:   
   `npm install react-native-device-info`   
   `npm install https://github.com/sashko9807/react-native-location-enabler`  
@@ -42,7 +42,7 @@ android {
 
 ### **Instructions for configuring Plugin in iOS project** 
 
-* Add the plugin `npm install react-native-visit-rn-sdk@3.0.5 && npx pod-install`
+* Add the plugin `npm install react-native-visit-rn-sdk@3.0.6 && npx pod-install`
 * Install pods(for M1 processors running build on `x86_64` hardware)
 
     `arch -x86_64 pod install`

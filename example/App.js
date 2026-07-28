@@ -24,15 +24,6 @@ import {EventRegister} from 'react-native-event-listeners';
 
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
-const visitBaseUrl = 'https://api.getvisitapp.com/v3';
-
-const errorBaseUrl = 'https://star-health.getvisitapp.net/';
-
-const token = '';
-
-const moduleName = '';
-const visitEvent = 'visit-event';
-
 const Stack = createNativeStackNavigator();
 
 function App() {
@@ -399,35 +390,11 @@ function VisitPage({route, navigation}) {
       {/* <VisitRnSdkView isLoggingEnabled={true} magicLink={ssoUrl} /> */}
 
       <VisitRnSdkView
-        baseUrl={'https://api.getvisitapp.com/v3'}
-        errorBaseUrl={'https://star-health.getvisitapp.com/'}
-        token={
-          'Bearer Q8wDXpPdbtMlrUdJeCpNPDeX_WQfHcqzaJQSc4ROTiyrnVXr9GgBYVv5DgKwJ8lqSBGwR0x_P82DBe_aW1VYRHg14PK23V1Oauq1oI2oqrSU-NFvYtKNpwHp_5wtWOuRIII9-TaxSXEXGiiEwlZ_lczMl9lXtMfuHW2cRMM5VHHN8pGn6QQyJH5XveCSQ2q2azYOfB_cr3_hiN3cREOh5p_fQIhZnCioppVdA3jjx-xuQHOmhtcelc-d_0_7VhWWrPPmq1s507mq0whrkH0bP_8lsPm3158Uqk706a6tdMs4-1etQQrZWTo6vnzI9rc3tXBQQOyD3OgJ6kzFJio3QG8sldqraz05OmCOOLza2hQb04ub6-P-6DeO_YAo1cWN8e01upcH_4wdt1QXmH52SY0_jb60_sFQHZ2cXOPKBRHie82z8aKA3PKdn51BcheU7nMXzlRcU7t2xbxBA5O93ftFQ1Td3dgEX82mDb0IIVoRAG7jVba9A5usmQ5TXAtflgCtuX-GZZwHmOuJf2W6Sl-OQ7I7I6cY3fzzx2UXjuIQQrWUlKHID9F_g08Pm_RDkB7VdBR83ziOFbf5Wj1sPSmOSbZkfFKsgPLTB_33idSqRRuJk_vi_tVdpSugvFJLiDIIYaHQxMAVD0EZBlLymeA0ve89x_sdhKwj2P2qSr8OjVQwaJvr0-Nd5CYWogOGfrzoqN8U8kO9S6qJLE0GgPDk6UqkbVcbklLRwEF5qCXvYIJxxsQ2Kr-BzDKh_wYh6l_LlqWL5TEfetIRmpf-xRymSYwj48EZpFR6mGlTTT_AR1w5gpqaUQgeBBAyaUK8oXg4YYoHWu01a57N5S5SUS4ayq5Lcrv3mXVMm3jaAcwGASUVi-F5loasuwN_6t7nxryZ7E5gfnNwWbRVLy_MlqaEnUgS8NmwY3zrkna2PZj2dBQpJ4Rop5-i_7eEjAzsKfgRF_6oQrXCnddIEl5zBZKR6wvpCuZ8GSwt3VRxkFAxVTyeppblzjIGU4ho8Lr1WZ8IDbffBtnwI4thkd1UQPtowg5gejwqLOgP1FT6-jlmVKvO3QOVKZsEx6pM4zi0uQol74FXcZk51C2VzX4GJqFtRsC_-D2s9j45_MCJSCJ2iDIO5h3-ae0UzIpv7LTRwgIMhHBLLsWn3DBpdX7p12npUo-YIcA8-iPO2ThVTPASv39wBfz1qaUk09o0U55BDvKuTRyn8BSuTK-Cdc9UUag0i0HOx0fLVPwfa0dUqMSynHCPakPzgiatpC8AUPtTBmPzKv7ez-X15yiYdsIZ1VIdT6KnDdAqZ3gzUtofYK8zJGBy7S_Bd5ZiNLR9QJU3V8CDwCcZlCwnsFHjoVHP3whtvs-rMqBty03CwBCMfMSf_VDE0fpjBAi9xrzMN8FvjrjvJVcV4Ufm8WdnEAKv6zWlh0qpD398-BWdcw_Q7IZFoUbL_mye9m8iGhBxewS7uybP9eVINNrdfuTPy88ldF_GDfcz2ekI_sOfKxjNmXNl52fxydQKWWOSLXrW0cUui3Du1PwiP5hPs0DaXBcCliIybdFvoOGnD4a97vy292Z_WWK3IOwxjCUFxwU6mZ-pts5cFjTk4PYq8GTwl5uk_ox_Rr-OL6109-ed5Z3C7QE8c61nd7LjMQxOE71mpCKPbr79_hmgN3y5oOMSB1S-Mw3uwjnHK42A5EX8WG2Hn_UfoeYlq8K5Vx_6VQYT9H7sPDsTvkQa2WXhMmwFfTNfO8YFezBJpq1DL39xC6Iuw4UKhI1cP7p-XQQUUh9OIR0DDPSQkKEBISK93lMsYQgNS6iNsPjNBuf36V5aJBdZNQS4ISN51gb6aVbAu6u2C2p96gX0t31EercPdKjHJC9b8akwU72Jk6I_QHnSzBs5SU0xEyySJMT1DZUVboqrxT59EqsfxpjouGJmE_ih3JwbID4DLdZWEjU0F5iBlJg6DVo='
-        }
-        cpsid={'CPS1830380877849624013'}
-        moduleName={moduleName}
-        environment={'prod'}
         isLoggingEnabled={true}
         magicLink={ssoUrl}
       />
     </SafeAreaView>
   );
 }
-
-/**
- *
- <VisitRnSdkView
-        baseUrl={'https://api.getvisitapp.com/v4'}
-        errorBaseUrl={'https://star-health.getvisitapp.com/'}
-        token={
-          ''
-        }
-        cpsid={'CPS1830380877849624013'}
-        moduleName={moduleName}
-        environment={'prod'}
-        isLoggingEnabled={true}
-        // magicLink={ssoUrl}
-      />
- */
 
 export default App;
