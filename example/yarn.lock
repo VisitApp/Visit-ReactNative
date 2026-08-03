@@ -5650,8 +5650,9 @@ react-native-screens@4.18.0:
     react-freeze "^1.0.0"
     warn-once "^0.1.0"
 
-"react-native-visit-rn-sdk@file:..":
-  version "5.0.3"
+"react-native-visit-rn-sdk@github:VisitApp/Visit-ReactNative#feature/twilio-video-call":
+  version "3.0.0"
+  resolved "git+ssh://git@github.com/VisitApp/Visit-ReactNative.git#cbea4f2b0b429dcb3c58c3d5530bd658efe95a19"
   dependencies:
     "@visit-health/react-native-location-enabler" "1.0.1"
     axios "^1.8.2"

@@ -77,7 +77,7 @@ function Home() {
   const navigation = useNavigation();
 
   const [text, setText] = useState(
-    'https://star-health.getvisitapp.net/?mluib7c=%5B%0A%20%20%7B%0A%20%20%20%20%22userId%22%3A%202306609%2C%0A%20%20%20%20%22policyId%22%3A%201774%2C%0A%20%20%20%20%22agentCode%22%3A%20null%2C%0A%20%20%20%20%22policyName%22%3A%20%22Family%20Health%20Optima%20Insurance%20-%202022%22%2C%0A%20%20%20%20%22isHospiCash%22%3A%20false%2C%0A%20%20%20%20%22magicUserId%22%3A%2041685%2C%0A%20%20%20%20%22policyNumber%22%3A%20%2211251091557200%22%2C%0A%20%20%20%20%22policyEndDate%22%3A%20%222025-11-21T23%3A59%3A59.000Z%22%2C%0A%20%20%20%20%22userMagicCode%22%3A%20%22rP4fFTfr%22%2C%0A%20%20%20%20%22policyStartDate%22%3A%20%222024-11-22T00%3A00%3A00.000Z%22%2C%0A%20%20%20%20%22isPolicyAvailable%22%3A%20true%2C%0A%20%20%20%20%22isAlreadyOnboarded%22%3A%20true%2C%0A%20%20%20%20%22platform%22%3A%20%22TEST%22%0A%20%20%7D%0A%5D%0A',
+    'https://digit-visit.getvisitapp.com/sso?userParams=AogPOG-g1eeEKvpBJanqsy9uytwIdeBx1drCEvgZbsrELVgkcSvYWYGYAt0LGbtX2iPW9PUkYaZYjwnUaLhvcDPB7EXUI27dkmkCO0YT_XvaZwt8DQSK_Ihpx4aodWMPAO3wkH61iqvHgBOMQnLbE6yfwenopFWOaZTLfQcH3uEOFUzsf7s8SDNTl2LrUyY5ia-EM4O0ZlokeUjaaqdOadR0xWyMkcVZS_ynkUlJ0quNcNSf1aE3PcxIX6YATj2lftQZbC0BBASPc6DszEAttY5a-duv32yEgkZ53vSTaoK57i33S6rbGzlZ_bOa-p22&clientId=digit-777',
   );
 
   const [healthTrackerConnectionStatus, setHealthTrackerConnectionStatus] =
