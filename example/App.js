@@ -63,7 +63,7 @@ function Home() {
   const navigation = useNavigation();
 
   const [text, setText] = useState(
-    'https://digit-visit.getvisitapp.com/sso?userParams=AogPOG-g1eeEKvpBJanqsy9uytwIdeBx1drCEvgZbsrELVgkcSvYWYGYAt0LGbtX2iPW9PUkYaZYjwnUaLhvcDPB7EXUI27dkmkCO0YT_XvaZwt8DQSK_Ihpx4aodWMPAO3wkH61iqvHgBOMQnLbE6yfwenopFWOaZTLfQcH3uEOFUzsf7s8SDNTl2LrUyY5ia-EM4O0ZlokeUjaaqdOadR0xWyMkcVZS_ynkUlJ0quNcNSf1aE3PcxIX6YATj2lftQZbC0BBASPc6DszEAttY5a-duv32yEgkZ53vSTaoK57i33S6rbGzlZ_bOa-p22&clientId=digit-777',
+    'https://digit-visit.getvisitapp.com/sso?userParams=AogPOG-g1eeEKvpBJanqsy9uytwIdeBx1drCEvgZbsrELVgkcSvYWYGYAt0LGbtX2iPW9PUkYaZYjwnUaLhvcDPB7EXUI27dkmkCO0YT_XvaZwt8DQSK_Ihpx4aodWMPAO3wkH61iqvHgBOMQnLbE6yfwenopFWOaZTLfQcH3uEOFUzsf7s8SDNTl2LrUyY5ia-EM4O0ZlokeUjaaqdOadR0xWyMkcVZS_ynkUlJ0quNcNSf1aE3PcxIX6YATj2lftQZbC0BBASPc6DszEAttY5a-duv32yEgkZ53vSTaoK57i33S6rbGzlZ_bOa-p22&clientId=digit-777&consultationId=6703526&redirectTo=video-call&sessionId=265432',
   );
 
   useEffect(() => {
@@ -97,8 +97,8 @@ function Home() {
   }, []);
 
   return (
-    <View style={{flex: 1}}>
-      <View style={{padding: 16}}>
+    <View style={styles.container}>
+      <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
           multiline
@@ -110,7 +110,7 @@ function Home() {
         />
       </View>
 
-      <View style={{paddingHorizontal: 20}}>
+      <View style={styles.buttonContainer}>
         <Button
           title="Go to next page"
           color="#7e55fa"
@@ -130,6 +130,15 @@ function Home() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  inputContainer: {
+    padding: 16,
+  },
+  buttonContainer: {
+    paddingHorizontal: 20,
+  },
   input: {
     height: 120, // Adjust height as needed
     borderColor: '#ccc',
