@@ -160,7 +160,7 @@ function VisitPage({route}) {
   return (
     // eslint-disable-next-line react-native/no-inline-styles
     <SafeAreaView style={{flex: 1}}>
-      <VisitRnSdkView isLoggingEnabled={true} magicLink={ssoUrl} />
+      <VisitRnSdkView isLoggingEnabled={true} ssoLink={ssoUrl} />
     </SafeAreaView>
   );
 }
