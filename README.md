@@ -5,7 +5,7 @@ a package to inject data into visit health pwa
 ## Installation
 
 ```sh
-npm install react-native-visit-rn-sdk
+npm install react-native-visit-rn-sdk@6.0.1 @twilio/video-react-native-sdk@3.5.0 --legacy-peer-deps
 ```
 
 ## Usage
@@ -15,8 +15,13 @@ import VisitRnSdkView from 'react-native-visit-rn-sdk';
 
 // ...
 
-<VisitRnSdkView magicLink="magic-link" />;
+<VisitRnSdkView ssoLink="pre-generated-sso-link" />;
 ```
+
+## Migrating to 6.0.1
+
+Pass the pre-generated SSO URL through `ssoLink`. This is the only URL prop in
+`6.0.1`; `isLoggingEnabled` remains optional and defaults to `false`.
 
 ## Migrating to 6.0.0
 
@@ -25,7 +30,7 @@ Host apps no longer need to add HealthKit entitlements, HealthKit usage
 descriptions, Health Connect permissions, or Health Connect rationale screens
 for this package.
 
-`VisitRnSdkView` now accepts only a pre-generated `magicLink` plus the optional
+`VisitRnSdkView` accepts only a pre-generated `ssoLink` plus the optional
 `isLoggingEnabled` flag. The SDK no longer accepts `cpsid`, `baseUrl`,
 `errorBaseUrl`, `token`, `moduleName`, or `environment`, and it no longer
 generates magic links internally.
@@ -35,7 +40,7 @@ generates magic links internally.
 `react-native-visit-rn-sdk` declares [`@twilio/video-react-native-sdk`](https://www.npmjs.com/package/@twilio/video-react-native-sdk) as a **peer dependency**. Install the matching version in your app:
 
 ```sh
-npm install @twilio/video-react-native-sdk@3.5.0
+npm install @twilio/video-react-native-sdk@3.5.0 --legacy-peer-deps
 ```
 
 Or with Yarn:

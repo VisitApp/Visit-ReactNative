@@ -31,8 +31,8 @@ const unescapeHTML = (str) =>
 
 const visitEvent = 'visit-event';
 
-const VisitRnSdkView = ({ magicLink, isLoggingEnabled }) => {
-  const source = typeof magicLink === 'string' ? magicLink.trim() : '';
+const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
+  const source = typeof ssoLink === 'string' ? ssoLink.trim() : '';
 
   const webviewRef = useRef(null);
   const videoCallRef = useRef(null);
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
 });
 
 VisitRnSdkView.defaultProps = {
-  magicLink: '',
+  ssoLink: '',
   isLoggingEnabled: false,
 };
 

@@ -21,8 +21,8 @@ const {
   addListener,
 } = LocationEnabler;
 
-const VisitRnSdkView = ({ magicLink, isLoggingEnabled }) => {
-  const source = typeof magicLink === 'string' ? magicLink.trim() : '';
+const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
+  const source = typeof ssoLink === 'string' ? ssoLink.trim() : '';
 
   const [
     showPermissionAlreadyDeniedDialog,
@@ -337,6 +337,6 @@ const VisitRnSdkView = ({ magicLink, isLoggingEnabled }) => {
 export default VisitRnSdkView;
 
 VisitRnSdkView.defaultProps = {
-  magicLink: '',
+  ssoLink: '',
   isLoggingEnabled: false,
 };
