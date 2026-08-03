@@ -5532,7 +5532,7 @@ react-native-screens@^4.16.0:
     react-native-is-edge-to-edge "^1.2.1"
     warn-once "^0.1.0"
 
-react-native-visit-rn-sdk@6.0.1:
+react-native-visit-rn-sdk@^6.0.1:
   version "6.0.1"
   resolved "https://registry.npmjs.org/react-native-visit-rn-sdk/-/react-native-visit-rn-sdk-6.0.1.tgz"
   integrity sha512-KPT25c/k78oGjdW+3zbzLPZxSea29n98Z99HUlTiCrm/6AkoEsuAlg8A3JY7tmfCz79nSaamszgvv2aMO+0b5w==
