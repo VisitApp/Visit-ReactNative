@@ -11,12 +11,24 @@ npm install react-native-visit-rn-sdk
 ## Usage
 
 ```js
-import VisitRnSdkView from "react-native-visit-rn-sdk";
+import VisitRnSdkView from 'react-native-visit-rn-sdk';
 
 // ...
 
-<VisitRnSdkView magicLink="magic-link" />
+<VisitRnSdkView magicLink="magic-link" />;
 ```
+
+## Migrating to 6.0.0
+
+Apple Health and Health Connect functionality has been removed in `6.0.0`.
+Host apps no longer need to add HealthKit entitlements, HealthKit usage
+descriptions, Health Connect permissions, or Health Connect rationale screens
+for this package.
+
+`VisitRnSdkView` now accepts only a pre-generated `magicLink` plus the optional
+`isLoggingEnabled` flag. The SDK no longer accepts `cpsid`, `baseUrl`,
+`errorBaseUrl`, `token`, `moduleName`, or `environment`, and it no longer
+generates magic links internally.
 
 ### Video Calling
 
@@ -33,7 +45,9 @@ yarn add @twilio/video-react-native-sdk@3.5.0
 ```
 
 Required native permissions in the host app:
+
 - Android (`AndroidManifest.xml`)
+
 ```xml
 <uses-permission android:name="android.permission.CAMERA" />
 <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -41,6 +55,7 @@ Required native permissions in the host app:
 ```
 
 - iOS (`Info.plist`)
+
 ```xml
 <key>NSCameraUsageDescription</key>
 <string>Visit needs camera access for video consultations.</string>
@@ -49,6 +64,7 @@ Required native permissions in the host app:
 ```
 
 Proguard Rules (Android)
+
 ```pro
 # Twilio Video SDK
 -keep class com.twilio.** { *; }

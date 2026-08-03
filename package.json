@@ -1,6 +1,6 @@
 {
   "name": "react-native-visit-rn-sdk",
-  "version": "5.0.3",
+  "version": "6.0.0",
   "description": "a package to inject data into visit health pwa",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -16,6 +16,7 @@
     "*.podspec",
     "!lib/typescript/example",
     "!ios/build",
+    "!android/bin",
     "!android/build",
     "!android/gradle",
     "!android/gradlew",
@@ -165,11 +166,8 @@
     ]
   },
   "dependencies": {
-    "axios": "^1.8.2",
-    "moment": "^2.29.4",
-    "react-native-device-info": "13.0.0",
-    "react-native-event-listeners": "^1.0.7",
     "@visit-health/react-native-location-enabler": "1.0.1",
+    "react-native-event-listeners": "^1.0.7",
     "react-native-webview": "^13.12.1"
   },
   "directories": {
