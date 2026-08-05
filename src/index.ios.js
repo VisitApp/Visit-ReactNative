@@ -329,10 +329,22 @@ const VisitRnSdkView = ({
       ) : (
         <WebView
           ref={webviewRef}
+
           source={{ uri: source }}
           style={styles.webView}
           javascriptEnabled
           onMessage={handleMessage}
+          onShouldStartLoadWithRequest={(request) => {
+            if (!request.url.includes('sdk.getvisitapp.net')) {
+              Linking.openURL(request.url).catch((err) => {
+                if (isLoggingEnabled) {
+                  console.warn('Linking.openURL error: ', err);
+                }
+              });
+              return false;
+            }
+            return true;
+          }}
           onError={(errorMessage) => {
             EventRegister.emitEvent(visitEvent, {
               message: 'web-view-error',
