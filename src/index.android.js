@@ -12,7 +12,6 @@ import {
   NativeEventEmitter,
 } from 'react-native';
 
-
 import WebView from 'react-native-webview';
 
 import LocationEnabler from 'react-native-location-enabler';
@@ -683,6 +682,17 @@ const VisitRnSdkView = ({
             headers: {
               platform: 'ANDROID',
             },
+          }}
+          onShouldStartLoadWithRequest={(request) => {
+            if (!request.url.includes('sdk.getvisitapp.net')) {
+              Linking.openURL(request.url).catch((err) => {
+                if (isLoggingEnabled) {
+                  console.warn('Linking.openURL error: ', err);
+                }
+              });
+              return false;
+            }
+            return true;
           }}
           onMessage={handleMessage}
           injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
