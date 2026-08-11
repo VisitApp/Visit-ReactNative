@@ -101,7 +101,7 @@ dependencies {
   //noinspection GradleDynamicVersion
   implementation "com.facebook.react:react-native:+"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-  implementation "com.github.VisitApp:AndroidSDK:v3.10"
+  implementation "com.github.VisitApp:AndroidSDK:v3.11"
   implementation "androidx.health.connect:connect-client:1.1.0"
   implementation "com.jakewharton.timber:timber:5.0.1"
   implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1"

@@ -12,7 +12,6 @@ import {
   NativeEventEmitter,
 } from 'react-native';
 
-
 import WebView from 'react-native-webview';
 
 import LocationEnabler from 'react-native-location-enabler';
@@ -22,6 +21,7 @@ import DeviceInfo from 'react-native-device-info';
 import axios from 'axios';
 
 import constants from './constants';
+import { routeHealthConnectConnectionRequest } from './healthConnectRouting';
 
 export const httpClient = axios.create({
   timeout: 60000,
@@ -277,6 +277,7 @@ const VisitRnSdkView = ({
   );
 
   const webviewRef = useRef(null);
+  const healthConnectFlowInFlightRef = useRef(false);
 
   const showLocationPermissionAlert = () => {
     Alert.alert(
@@ -407,6 +408,29 @@ const VisitRnSdkView = ({
     }
   };
 
+  const handleHealthConnectConnectionRequest = async (disclaimerAccepted) => {
+    await routeHealthConnectConnectionRequest({
+      disclaimerAccepted,
+      inFlightRef: healthConnectFlowInFlightRef,
+      isLoggingEnabled,
+      isNativeStepTrackingAvailable: () =>
+        NativeModules.VisitFitnessModule.isNativeStepTrackingAvailable(),
+      startPermissionFlow: askForHealthConnectPermission,
+      showDisclaimer: () =>
+        webviewRef.current?.injectJavaScript(`
+          if (typeof window.showHealthConnectDisclaimer === 'function') {
+            window.showHealthConnectDisclaimer();
+          }
+          true;
+        `),
+      onCapabilityCheckError: (error) => {
+        if (isLoggingEnabled) {
+          console.error('Native step tracking capability check failed', error);
+        }
+      },
+    });
+  };
+
   const getHealthConnectStatus = async () => {
     try {
       const healthConnectStatus =
@@ -533,7 +557,9 @@ const VisitRnSdkView = ({
               getHealthConnectStatus();
               break;
             case 'CONNECT_TO_GOOGLE_FIT':
-              askForHealthConnectPermission();
+              handleHealthConnectConnectionRequest(
+                parsedObject.disclaimerAccepted
+              );
               break;
             case 'UPDATE_PLATFORM':
               webviewRef.current?.injectJavaScript(

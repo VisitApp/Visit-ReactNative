@@ -18,6 +18,7 @@ import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.getvisitapp.visit.HealthConnectListener
 import com.getvisitapp.visit.data.VisitStepSyncHelper
+import com.getvisitapp.visit.healthConnect.HealthConnectCapabilities
 import com.getvisitapp.visit.healthConnect.activity.HealthConnectUtil
 import com.getvisitapp.visit.healthConnect.contants.Contants.previouslyRevoked
 import com.getvisitapp.visit.healthConnect.enums.HealthConnectConnectionState
@@ -119,6 +120,20 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
           }
         }
       }
+    }
+  }
+
+  @ReactMethod
+  fun isNativeStepTrackingAvailable(promise: Promise) {
+    try {
+      promise.resolve(HealthConnectCapabilities.isNativeStepTrackingAvailable())
+    } catch (exception: Exception) {
+      Timber.e(exception, "Native step tracking capability check failed")
+      promise.reject(
+        "CAPABILITY_CHECK_FAILED",
+        "Unable to determine native step tracking capability",
+        exception
+      )
     }
   }
 
