@@ -277,7 +277,6 @@ const VisitRnSdkView = ({
   );
 
   const webviewRef = useRef(null);
-  const healthConnectFlowInFlightRef = useRef(false);
 
   const showLocationPermissionAlert = () => {
     Alert.alert(
@@ -411,7 +410,6 @@ const VisitRnSdkView = ({
   const handleHealthConnectConnectionRequest = async (disclaimerAccepted) => {
     await routeHealthConnectConnectionRequest({
       disclaimerAccepted,
-      inFlightRef: healthConnectFlowInFlightRef,
       isLoggingEnabled,
       isNativeStepTrackingAvailable: () =>
         NativeModules.VisitFitnessModule.isNativeStepTrackingAvailable(),
