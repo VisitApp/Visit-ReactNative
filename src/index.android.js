@@ -26,6 +26,26 @@ export const httpClient = axios.create({
   timeout: 60000,
 });
 
+// Domains that stay inside the WebView. Matches the host exactly or any of its
+// subdomains. Everything else (wa.me, tel:, mailto: ...) is handed to the OS.
+const INTERNAL_HOSTS = ['getvisitapp.net', 'getvisitapp.com', 'myhubble.money'];
+
+// Note: does not use `new URL()` - React Native's URL polyfill throws
+// "URL.hostname is not implemented".
+const isInternalUrl = (url) => {
+  const link = typeof url === 'string' ? url.trim() : '';
+  const match = /^https?:\/\/([^/?#]+)/i.exec(link);
+  if (!match) {
+    // about:blank / data: / blob: are rendered by the WebView itself.
+    return /^(about|data|blob):/i.test(link);
+  }
+  // Strip any userinfo and port before comparing.
+  const host = match[1].split('@').pop().split(':')[0].toLowerCase();
+  return INTERNAL_HOSTS.some(
+    (domain) => host === domain || host.endsWith(`.${domain}`)
+  );
+};
+
 const messageEmitter = new NativeEventEmitter(NativeModules.VisitFitnessModule);
 
 const {
@@ -248,6 +268,9 @@ const VisitRnSdkView = ({
     return () => {
       subscription.remove();
     };
+    // handleAppStateChange is declared below and only closes over appState,
+    // which is already a dependency, so the listener never sees a stale value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appState]); // Include appState in the dependency array to ensure it's up to date.
 
   const handleAppStateChange = (nextAppState) => {
@@ -647,6 +670,9 @@ const VisitRnSdkView = ({
       backSub?.remove();
       locationSub?.remove();
     };
+    // checkLocationPermissionAndSendCallback is declared below and only reads
+    // isLoggingEnabled and the webview ref, so it holds no stale state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleBack]);
 
   const checkLocationPermissionAndSendCallback = async () => {
@@ -684,15 +710,19 @@ const VisitRnSdkView = ({
             },
           }}
           onShouldStartLoadWithRequest={(request) => {
-            if (!request.url.includes('sdk.getvisitapp.net')) {
-              Linking.openURL(request.url).catch((err) => {
-                if (isLoggingEnabled) {
-                  console.warn('Linking.openURL error: ', err);
-                }
-              });
-              return false;
+            // Sub-frames (iframes) are never handed to the OS.
+            if (request.isTopFrame === false) {
+              return true;
             }
-            return true;
+            if (isInternalUrl(request.url)) {
+              return true;
+            }
+            Linking.openURL(request.url).catch((err) => {
+              if (isLoggingEnabled) {
+                console.warn('Linking.openURL error: ', err);
+              }
+            });
+            return false;
           }}
           onMessage={handleMessage}
           injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
