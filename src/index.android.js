@@ -411,6 +411,8 @@ const VisitRnSdkView = ({
     await routeHealthConnectConnectionRequest({
       disclaimerAccepted,
       isLoggingEnabled,
+      getHealthConnectStatus: () =>
+        NativeModules.VisitFitnessModule.getHealthConnectStatus(),
       isNativeStepTrackingAvailable: () =>
         NativeModules.VisitFitnessModule.isNativeStepTrackingAvailable(),
       startPermissionFlow: askForHealthConnectPermission,
@@ -421,6 +423,11 @@ const VisitRnSdkView = ({
           }
           true;
         `),
+      onHealthConnectStatusCheckError: (error) => {
+        if (isLoggingEnabled) {
+          console.error('Health Connect status check failed', error);
+        }
+      },
       onCapabilityCheckError: (error) => {
         if (isLoggingEnabled) {
           console.error('Native step tracking capability check failed', error);

@@ -1,15 +1,45 @@
 export const routeHealthConnectConnectionRequest = async ({
   disclaimerAccepted,
   isLoggingEnabled,
+  getHealthConnectStatus,
   isNativeStepTrackingAvailable,
   startPermissionFlow,
   showDisclaimer,
+  onHealthConnectStatusCheckError,
   onCapabilityCheckError,
 }) => {
   if (disclaimerAccepted === true) {
     logHealthConnectRouting(
       isLoggingEnabled,
       'Disclaimer accepted. Starting the permission flow without another capability check.'
+    );
+    await startPermissionFlow();
+    return 'PERMISSION_FLOW';
+  }
+
+  let healthConnectStatus;
+
+  try {
+    healthConnectStatus = await getHealthConnectStatus();
+
+    logHealthConnectRouting(
+      isLoggingEnabled,
+      `Health Connect status result: ${healthConnectStatus}`
+    );
+  } catch (error) {
+    logHealthConnectRouting(
+      isLoggingEnabled,
+      'Health Connect status check failed. Starting the permission flow.'
+    );
+    onHealthConnectStatusCheckError?.(error);
+    await startPermissionFlow();
+    return 'PERMISSION_FLOW';
+  }
+
+  if (healthConnectStatus === 'NOT_INSTALLED') {
+    logHealthConnectRouting(
+      isLoggingEnabled,
+      'Health Connect is not installed. Starting the permission flow to open the Play Store.'
     );
     await startPermissionFlow();
     return 'PERMISSION_FLOW';
