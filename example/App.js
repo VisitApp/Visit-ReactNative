@@ -68,7 +68,7 @@ function Home() {
   const navigation = useNavigation();
 
   const [text, setText] = useState(
-    'https://mchi.getvisitapp.net/sso?userParams=kCN1Rr2D_T7WJTRxWATonzuRw9Onk-97yLfQ4V6pwZPWyWb3cBS4Jj7EKNFeaBn2Zw7yapIzGJJxpsUSXc4Uo0e931AjMbRiTrkhiXoZWSeQL5elhb6MBhot4ch1xOauR8hSUpcmXUGLLH9h8ECnL1aGQkv-CPbl1VypW7_ZrIkzNW4IBAl9vIO976G31sX8g8Omzj_9sXtxOYZ4WJkQzqiYEpm7ngXnSzvQgDjGcWk&clientId=mchi-ds-we-09',
+    'https://mchi.getvisitapp.net/sso?userParams=Wbu8XTldnlYz5TIeRwd-G8IpTToVDQer6HQYDD9jesef8BAlfF7NapDJ-ocgYEhaAUF6FNghSQlypxsg_Kz5spY7EqG_atHdQHlqCvuj17GkthdYWBG1x3u43YZoSuEaxB0nx8wvqbPptFyjLbasQJltJXgqWs7CNUcXSHJxwxY8b7_-_En_tUv5VZgXaA3i&clientId=mchi-ds-we-09',
   );
 
   const [healthTrackerConnectionStatus, setHealthTrackerConnectionStatus] =

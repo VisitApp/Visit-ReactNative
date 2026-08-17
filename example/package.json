@@ -19,7 +19,7 @@
     "react-native-location-enabler": "github:sashko9807/react-native-location-enabler",
     "react-native-safe-area-context": "^5.6.1",
     "react-native-screens": "4.8.0",
-    "react-native-visit-rn-sdk": "3.0.8",
+    "react-native-visit-rn-sdk": "3.0.9",
     "react-native-webview": "^13.16.0"
   },
   "devDependencies": {
