@@ -1,9 +1,4 @@
-import React, {
-  useRef,
-  useEffect,
-  useState,
-  useMemo,
-} from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import {
   StyleSheet,
   SafeAreaView,
@@ -213,11 +208,13 @@ const VisitRnSdkView = ({
           VisitRnSdkViewManager?.connectToAppleHealth((res) => {
             const authStatus = res?.authStatus;
             const steps = res?.numberOfSteps || 0;
-            const sleep = res?.sleepTime || 0;
 
             if (authStatus === 'GRANTED') {
+              // Third argument is sleep minutes, which this SDK no longer
+              // reads. It stays in the call to keep the WebView's
+              // updateFitnessPermissions(granted, steps, sleep) signature.
               webviewRef.current?.injectJavaScript(
-                `window.updateFitnessPermissions(true,${steps},${sleep})`
+                `window.updateFitnessPermissions(true,${steps},0)`
               );
               return;
             }
@@ -244,7 +241,10 @@ const VisitRnSdkView = ({
                     onPress: () => {
                       VisitRnSdkViewManager?.openAppleHealthApp?.().catch(
                         (err) =>
-                          console.log('openAppleHealthApp failed:', err?.message)
+                          console.log(
+                            'openAppleHealthApp failed:',
+                            err?.message
+                          )
                       );
                     },
                   },
@@ -255,6 +255,14 @@ const VisitRnSdkView = ({
         }
         break;
       case 'GET_DATA_TO_GENERATE_GRAPH':
+        // Steps is the only metric this SDK reads, so other graph types are
+        // ignored rather than sent to the native layer.
+        if (type !== 'steps') {
+          if (isLoggingEnabled) {
+            console.log('ignoring unsupported graph type: ', type);
+          }
+          break;
+        }
         VisitRnSdkViewManager?.renderGraph(
           { type, frequency, timestamp },
           (err, results) => {
