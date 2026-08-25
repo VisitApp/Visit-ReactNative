@@ -1835,7 +1835,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-visit-rn-sdk (6.0.1):
+  - react-native-visit-rn-sdk (6.0.2):
     - boost
     - DoubleConversion
     - fast_float
@@ -2775,7 +2775,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 8f8bba0802f49d7926602c5c276f2a2083a5ac55
   React-microtasksnativemodule: 1e4d3178ba5d5000b351b902c603fb0c9d60649e
   react-native-safe-area-context: c6e2edd1c1da07bdce287fa9d9e60c5f7b514616
-  react-native-visit-rn-sdk: 261bfd4c23a72d4b1ff4b33e7c8bbb4e65889a8f
+  react-native-visit-rn-sdk: bbc691aeeab29d2b2c262eda11c2bcd668851e51
   react-native-webview: 654f794a7686b47491cf43aa67f7f428bea00eed
   React-NativeModulesApple: 183f9bd5b20a51a8b016e90be78ed6c1538da4a7
   React-oscompat: d5e3366fbd6c7150e17c1bda85eab583a6fa9fce
@@ -2814,6 +2814,6 @@ SPEC CHECKSUMS:
   TwilioVideo: 446b82f75575e0ee1e15a24afcea47f626bf8b50
   Yoga: 3196a843cc5f4bc433f1a41cf17cdf804a01a529
 
-PODFILE CHECKSUM: a5de45e2350a9515567a6e18ca8ceea718b48523
+PODFILE CHECKSUM: 754a67a302a2b843a227bbfa9b7575b130d20a70
 
 COCOAPODS: 1.17.0

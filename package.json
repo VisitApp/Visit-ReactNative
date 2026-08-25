@@ -33,10 +33,14 @@
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
     "prepack": "bob build",
     "release": "release-it",
-    "example": "yarn --cwd example",
+    "example:start": "npm --prefix example run start --",
+    "example:android": "npm --prefix example run android --",
+    "example:ios": "npm --prefix example run ios --",
+    "example:test": "npm --prefix example run test --",
+    "example:pods": "npm --prefix example run pods",
     "build:android": "cd example/android && ./gradlew assembleDebug --no-daemon --console=plain -PreactNativeArchitectures=arm64-v8a",
     "build:ios": "cd example/ios && xcodebuild -workspace example.xcworkspace -scheme example -configuration Debug -sdk iphonesimulator CC=clang CPLUSPLUS=clang++ LD=clang LDPLUSPLUS=clang++ GCC_OPTIMIZATION_LEVEL=0 GCC_PRECOMPILE_PREFIX_HEADER=YES ASSETCATALOG_COMPILER_OPTIMIZATION=time DEBUG_INFORMATION_FORMAT=dwarf COMPILER_INDEX_STORE_ENABLE=NO",
-    "bootstrap": "yarn example && yarn install && yarn example pods",
+    "bootstrap": "npm install && npm --prefix example install && npm run example:pods",
     "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build"
   },
   "keywords": [
@@ -83,9 +87,6 @@
     "turbo": "^1.10.7",
     "typescript": "^5.0.2"
   },
-  "resolutions": {
-    "@types/react": "17.0.21"
-  },
   "peerDependencies": {
     "@twilio/video-react-native-sdk": "3.5.0",
     "react": "*",
@@ -95,7 +96,7 @@
   "engines": {
     "node": ">= 16.0.0"
   },
-  "packageManager": "yarn@1.22.22",
+  "packageManager": "npm@11.16.0",
   "jest": {
     "preset": "react-native",
     "modulePathIgnorePatterns": [

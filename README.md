@@ -8,12 +8,6 @@ a package to inject data into visit health pwa
 npm install react-native-visit-rn-sdk @twilio/video-react-native-sdk@3.5.0 react-native-permissions@4.1.5 --legacy-peer-deps
 ```
 
-Or with Yarn:
-
-```sh
-yarn add react-native-visit-rn-sdk @twilio/video-react-native-sdk@3.5.0 react-native-permissions@4.1.5
-```
-
 The minimum supported iOS deployment target is `12.4`.
 
 ## Usage
@@ -89,12 +83,6 @@ generates magic links internally.
 
 ```sh
 npm install @twilio/video-react-native-sdk@3.5.0 --legacy-peer-deps
-```
-
-Or with Yarn:
-
-```sh
-yarn add @twilio/video-react-native-sdk@3.5.0
 ```
 
 Required native permissions in the host app:

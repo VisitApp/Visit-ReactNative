@@ -10,19 +10,19 @@ runs:
         node-version-file: .nvmrc
 
     - name: Cache dependencies
-      id: yarn-cache
+      id: npm-cache
       uses: actions/cache@v3
       with:
         path: |
           **/node_modules
-        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/package.json') }}
+        key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/package.json') }}
         restore-keys: |
-          ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          ${{ runner.os }}-yarn-
+          ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          ${{ runner.os }}-npm-
 
     - name: Install dependencies
-      if: steps.yarn-cache.outputs.cache-hit != 'true'
+      if: steps.npm-cache.outputs.cache-hit != 'true'
       run: |
-        yarn install --cwd example --frozen-lockfile
-        yarn install --frozen-lockfile
+        npm ci
+        npm --prefix example ci
       shell: bash
