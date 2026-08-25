@@ -28,7 +28,7 @@ Do not reintroduce removed authentication, environment, Apple Health, or Health 
 
 - Use Yarn Classic (`yarn@1.22.22`) for repository tasks. Avoid changing lockfiles with a different package manager.
 - Keep Android- and iOS-specific behavior aligned when changing shared WebView messages or the public component API. Document intentional platform differences.
-- Preserve the WebView message contract used by the Visit PWA, including `startVideoCall`, `UPDATE_PLATFORM`, `OPEN_PDF`, `OPEN_FACE_SCAN_FLOW`, `CLOSE_VIEW`, and `GET_LOCATION_PERMISSIONS`.
+- Preserve the handled WebView message contract used by the Visit PWA, including `startVideoCall`, `UPDATE_PLATFORM`, `OPEN_PDF`, `CLOSE_VIEW`, and `GET_LOCATION_PERMISSIONS`.
 - Treat SSO links and Twilio access tokens as secrets. Never add real tokens, signed URLs, patient information, or credentials to source, fixtures, snapshots, logs, or documentation.
 - Gate new diagnostic logs behind `isLoggingEnabled`. Never log an entire SSO URL, access token, or sensitive message payload.
 - Keep platform permission changes synchronized with the host-app requirements documented in `README.md`.
@@ -73,7 +73,7 @@ Native validation is available through `yarn build:android` and `yarn build:ios`
 
 ## API and dependency changes
 
-- Treat changes to component props, emitted events, PWA message names/payloads, native permissions, peer dependencies, and minimum React Native versions as public API changes.
+- Treat changes to component props, PWA message names/payloads, native permissions, peer dependencies, and minimum React Native versions as public API changes. The SDK does not expose global event-emitter notifications.
 - Keep `README.md`, the example app, tests, native configuration, podspec, and package metadata consistent with public API changes.
 - `@twilio/video-react-native-sdk` is a peer dependency pinned to the compatible version declared in `package.json`; do not move it into regular dependencies casually.
 - Avoid manually editing the package version or publishing. Releases use `yarn release` and require explicit maintainer authorization.

@@ -35,7 +35,7 @@
     "release": "release-it",
     "example": "yarn --cwd example",
     "build:android": "cd example/android && ./gradlew assembleDebug --no-daemon --console=plain -PreactNativeArchitectures=arm64-v8a",
-    "build:ios": "cd example/ios && xcodebuild -workspace VisitRnSdkExample.xcworkspace -scheme VisitRnSdkExample -configuration Debug -sdk iphonesimulator CC=clang CPLUSPLUS=clang++ LD=clang LDPLUSPLUS=clang++ GCC_OPTIMIZATION_LEVEL=0 GCC_PRECOMPILE_PREFIX_HEADER=YES ASSETCATALOG_COMPILER_OPTIMIZATION=time DEBUG_INFORMATION_FORMAT=dwarf COMPILER_INDEX_STORE_ENABLE=NO",
+    "build:ios": "cd example/ios && xcodebuild -workspace example.xcworkspace -scheme example -configuration Debug -sdk iphonesimulator CC=clang CPLUSPLUS=clang++ LD=clang LDPLUSPLUS=clang++ GCC_OPTIMIZATION_LEVEL=0 GCC_PRECOMPILE_PREFIX_HEADER=YES ASSETCATALOG_COMPILER_OPTIMIZATION=time DEBUG_INFORMATION_FORMAT=dwarf COMPILER_INDEX_STORE_ENABLE=NO",
     "bootstrap": "yarn example && yarn install && yarn example pods",
     "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build"
   },
@@ -69,6 +69,7 @@
     "del-cli": "^5.0.0",
     "eslint": "^8.4.1",
     "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-jest": "^26.5.3",
     "eslint-plugin-prettier": "^4.0.0",
     "jest": "^28.1.1",
     "pod-install": "^0.1.0",
@@ -76,6 +77,8 @@
     "react": "18.2.0",
     "react-native": "0.72.4",
     "react-native-builder-bob": "^0.20.0",
+    "react-native-permissions": "4.1.5",
+    "react-test-renderer": "18.2.0",
     "release-it": "^15.0.0",
     "turbo": "^1.10.7",
     "typescript": "^5.0.2"
@@ -86,7 +89,8 @@
   "peerDependencies": {
     "@twilio/video-react-native-sdk": "3.5.0",
     "react": "*",
-    "react-native": "*"
+    "react-native": "*",
+    "react-native-permissions": "^4.1.5"
   },
   "engines": {
     "node": ">= 16.0.0"
@@ -97,6 +101,9 @@
     "modulePathIgnorePatterns": [
       "<rootDir>/example/node_modules",
       "<rootDir>/lib/"
+    ],
+    "testPathIgnorePatterns": [
+      "<rootDir>/example/"
     ]
   },
   "commitlint": {
@@ -166,8 +173,6 @@
     ]
   },
   "dependencies": {
-    "@visit-health/react-native-location-enabler": "1.0.1",
-    "react-native-event-listeners": "^1.0.7",
     "react-native-webview": "^13.12.1"
   },
   "directories": {

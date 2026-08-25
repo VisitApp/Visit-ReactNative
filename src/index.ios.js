@@ -1,6 +1,5 @@
 import React, { useRef, useCallback } from 'react';
 import { StyleSheet, SafeAreaView, Linking, Dimensions } from 'react-native';
-import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
 import VideoCallComponent from './components/VideoCallComponent';
 
@@ -28,8 +27,6 @@ const unescapeHTML = (str) =>
       return entity;
     }
   });
-
-const visitEvent = 'visit-event';
 
 const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
   const source = typeof ssoLink === 'string' ? ssoLink.trim() : '';
@@ -75,11 +72,12 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
     [isLoggingEnabled]
   );
 
-  const handleMessage = async (event) => {
+  const handleMessage = (event) => {
     const data = JSON.parse(unescapeHTML(event.nativeEvent.data));
     const { method, url } = data;
-    console.log('handleMessage data is', data);
-    console.log(unescapeHTML(event.nativeEvent.data));
+    if (isLoggingEnabled) {
+      console.log('Received WebView method:', method);
+    }
     switch (method) {
       case 'startVideoCall':
         startVideoConsultation(data);
@@ -90,11 +88,6 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
 
       case 'OPEN_PDF':
         Linking.openURL(url);
-        break;
-      case 'OPEN_FACE_SCAN_FLOW':
-        EventRegister.emitEvent('visit-event', {
-          message: 'OPEN_FACE_SCAN_FLOW',
-        });
         break;
       case 'CLOSE_VIEW':
         break;
@@ -122,10 +115,6 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
           onMessage={handleMessage}
           injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
           onError={(errorMessage) => {
-            EventRegister.emitEvent(visitEvent, {
-              message: 'web-view-error',
-              errorMessage: errorMessage,
-            });
             if (isLoggingEnabled) {
               console.warn('Webview error: ', errorMessage);
             }

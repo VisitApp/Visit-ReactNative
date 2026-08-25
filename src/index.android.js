@@ -1,127 +1,208 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { EventRegister } from 'react-native-event-listeners';
-
 import {
-  SafeAreaView,
-  PermissionsAndroid,
+  Alert,
+  AppState,
   BackHandler,
   Linking,
-  Alert,
+  NativeModules,
+  SafeAreaView,
 } from 'react-native';
-
+import {
+  check,
+  openSettings,
+  PERMISSIONS,
+  request,
+  RESULTS,
+} from 'react-native-permissions';
 import WebView from 'react-native-webview';
-
-import LocationEnabler from '@visit-health/react-native-location-enabler';
 
 import VideoCallComponent from './components/VideoCallComponent';
 
-const {
-  PRIORITIES: { HIGH_ACCURACY },
-  useLocationSettings,
-  addListener,
-} = LocationEnabler;
+const LOCATION_SOURCE_SETTINGS = 'android.settings.LOCATION_SOURCE_SETTINGS';
+const GENERAL_SETTINGS = 'android.settings.SETTINGS';
+const { VisitRnSdkLocation } = NativeModules;
 
 const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
   const source = typeof ssoLink === 'string' ? ssoLink.trim() : '';
-
-  const [
-    showPermissionAlreadyDeniedDialog,
-    setShowPermissionAlreadyDeniedDialog,
-  ] = useState(false);
-
-  const [enabled, requestResolution] = useLocationSettings(
-    {
-      priority: HIGH_ACCURACY, // default BALANCED_POWER_ACCURACY
-      alwaysShow: true, // default false
-      needBle: true, // default false
-    },
-    false /* optional: default undefined */
-  );
-
   const webviewRef = useRef(null);
   const videoCallRef = useRef(null);
+  const locationFlowInProgressRef = useRef(false);
+  const pendingSettingsRef = useRef(null);
+  const appStateRef = useRef(AppState.currentState);
+  const [canGoBack, setCanGoBack] = useState(false);
 
-  const showLocationPermissionAlert = () => {
+  const warn = useCallback(
+    (message, error) => {
+      if (isLoggingEnabled) {
+        console.warn(message, error);
+      }
+    },
+    [isLoggingEnabled]
+  );
+
+  const finishLocationFlow = useCallback((granted) => {
+    locationFlowInProgressRef.current = false;
+    pendingSettingsRef.current = null;
+    webviewRef.current?.injectJavaScript(
+      `window.checkTheGpsPermission(${granted}); true;`
+    );
+  }, []);
+
+  const showLocationPermissionSettingsAlert = useCallback(() => {
     Alert.alert(
-      'Permission Required',
-      'Allow location permission from app settings',
+      'Location permission required',
+      'Allow location access in app settings to continue.',
       [
         {
           text: 'Cancel',
-          onPress: () => {
-            console.log('Cancel clicked');
-          },
+          style: 'cancel',
+          onPress: () => finishLocationFlow(false),
         },
         {
-          text: 'Go to Settings',
-          onPress: () => {
-            Linking.openSettings();
+          text: 'Open Settings',
+          onPress: async () => {
+            pendingSettingsRef.current = 'location-permission';
+            try {
+              await openSettings();
+            } catch (error) {
+              warn('Unable to open application settings.', error);
+              finishLocationFlow(false);
+            }
           },
         },
-      ]
+      ],
+      { cancelable: false }
     );
-  };
+  }, [finishLocationFlow, warn]);
 
-  const requestLocationPermission = async () => {
+  const openLocationServicesSettings = useCallback(async () => {
+    pendingSettingsRef.current = 'location-services';
     try {
-      console.log('requestLocationPermission called');
-
-      const isLocationPermissionPresent = await PermissionsAndroid.check(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+      await Linking.sendIntent(LOCATION_SOURCE_SETTINGS);
+    } catch (locationSettingsError) {
+      warn(
+        'Unable to open Location Services settings; opening general settings.',
+        locationSettingsError
       );
-
-      console.log(
-        'isLocationPermissionPresent: ' +
-          isLocationPermissionPresent +
-          ' showPermissionAlreadyDeniedDialog: ' +
-          showPermissionAlreadyDeniedDialog
-      );
-
-      if (!isLocationPermissionPresent && showPermissionAlreadyDeniedDialog) {
-        console.log('showLocationPermissionAlert() called');
-
-        showLocationPermissionAlert();
-      } else {
-        console.log('requesting location permission');
-
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: 'Need Location Permission',
-            message: 'Need access to location permission',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
-          }
-        );
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          if (isLoggingEnabled) {
-            console.log('Location permission granted');
-          }
-          setShowPermissionAlreadyDeniedDialog(false);
-
-          if (!enabled) {
-            requestResolution();
-          } else {
-            var finalString = `window.checkTheGpsPermission(true)`;
-            console.log('requestLocationPermission: ' + finalString);
-
-            webviewRef.current?.injectJavaScript(finalString);
-          }
-        } else {
-          setShowPermissionAlreadyDeniedDialog(true);
-          console.log('Location permission denied');
-
-          var finalString = `window.checkTheGpsPermission(false)`;
-          console.log('requestLocationPermission: ' + finalString);
-
-          webviewRef.current?.injectJavaScript(finalString);
-        }
+      try {
+        await Linking.sendIntent(GENERAL_SETTINGS);
+      } catch (generalSettingsError) {
+        warn('Unable to open Android settings.', generalSettingsError);
+        finishLocationFlow(false);
       }
-    } catch (e) {
-      console.error(e);
     }
-  };
+  }, [finishLocationFlow, warn]);
+
+  const checkLocationServices = useCallback(
+    async ({ promptIfDisabled }) => {
+      try {
+        if (!VisitRnSdkLocation?.isLocationServicesEnabled) {
+          throw new Error('VisitRnSdkLocation native module is unavailable.');
+        }
+
+        const isEnabled = await VisitRnSdkLocation.isLocationServicesEnabled();
+        if (isEnabled) {
+          finishLocationFlow(true);
+          return;
+        }
+
+        if (!promptIfDisabled) {
+          finishLocationFlow(false);
+          return;
+        }
+
+        Alert.alert(
+          'Turn on Location Services',
+          'Enable Location Services in phone settings to continue.',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => finishLocationFlow(false),
+            },
+            {
+              text: 'Open Settings',
+              onPress: openLocationServicesSettings,
+            },
+          ],
+          { cancelable: false }
+        );
+      } catch (error) {
+        warn('Unable to check Location Services.', error);
+        finishLocationFlow(false);
+      }
+    },
+    [finishLocationFlow, openLocationServicesSettings, warn]
+  );
+
+  const requestLocationPermission = useCallback(async () => {
+    if (
+      locationFlowInProgressRef.current ||
+      pendingSettingsRef.current !== null
+    ) {
+      return;
+    }
+
+    locationFlowInProgressRef.current = true;
+
+    try {
+      let permissionStatus = await check(
+        PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION
+      );
+
+      if (permissionStatus === RESULTS.DENIED) {
+        permissionStatus = await request(
+          PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION
+        );
+      }
+
+      if (permissionStatus === RESULTS.GRANTED) {
+        await checkLocationServices({ promptIfDisabled: true });
+        return;
+      }
+
+      if (permissionStatus === RESULTS.BLOCKED) {
+        showLocationPermissionSettingsAlert();
+        return;
+      }
+
+      finishLocationFlow(false);
+    } catch (error) {
+      warn('Unable to check or request location permission.', error);
+      finishLocationFlow(false);
+    }
+  }, [
+    checkLocationServices,
+    finishLocationFlow,
+    showLocationPermissionSettingsAlert,
+    warn,
+  ]);
+
+  const recheckAfterSettings = useCallback(async () => {
+    const settingsType = pendingSettingsRef.current;
+    if (!settingsType) {
+      return;
+    }
+
+    pendingSettingsRef.current = null;
+
+    try {
+      const permissionStatus = await check(
+        PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION
+      );
+      if (permissionStatus !== RESULTS.GRANTED) {
+        finishLocationFlow(false);
+        return;
+      }
+
+      await checkLocationServices({
+        promptIfDisabled: settingsType === 'location-permission',
+      });
+    } catch (error) {
+      warn('Unable to recheck location access after settings.', error);
+      finishLocationFlow(false);
+    }
+  }, [checkLocationServices, finishLocationFlow, warn]);
 
   const runBeforeFirst = `
         window.isNativeApp = true;
@@ -164,10 +245,10 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
   const handleMessage = (event) => {
     if (event.nativeEvent.data != null) {
       try {
-        if (isLoggingEnabled) {
-          console.log('Event :' + event.nativeEvent.data);
-        }
         const parsedObject = JSON.parse(event.nativeEvent.data);
+        if (isLoggingEnabled) {
+          console.log('Received WebView method:', parsedObject.method);
+        }
         if (parsedObject.method != null) {
           switch (parsedObject.method) {
             case 'startVideoCall':
@@ -179,87 +260,54 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
               );
               break;
             case 'GET_LOCATION_PERMISSIONS':
-              console.log('GET_LOCATION_PERMISSIONS');
               requestLocationPermission();
               break;
             case 'OPEN_PDF':
-              {
-                let pdfUrl = parsedObject.url;
-                // console.log("pdfUrl "+pdfUrl);
-
-                Linking.openURL(pdfUrl);
-              }
-              break;
-            case 'OPEN_FACE_SCAN_FLOW':
-              EventRegister.emitEvent('visit-event', {
-                message: 'OPEN_FACE_SCAN_FLOW',
-              });
+              Linking.openURL(parsedObject.url);
               break;
             case 'CLOSE_VIEW':
               break;
-
             default:
               break;
           }
         }
-      } catch (exception) {
-        console.log('Exception occured:' + exception.message);
+      } catch (error) {
+        warn('Unable to handle WebView message.', error);
       }
     }
   };
 
-  const [canGoBack, setCanGoBack] = useState(false);
-
   const handleBack = useCallback(() => {
     if (canGoBack && webviewRef.current) {
-      webviewRef.current?.goBack();
+      webviewRef.current.goBack();
       return true;
     }
     return false;
   }, [canGoBack]);
 
-  const checkLocationPermissionAndSendCallback = useCallback(async () => {
-    const isLocationPermissionAvailable = await PermissionsAndroid.check(
-      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
-    );
-
-    if (isLoggingEnabled) {
-      console.log(
-        'checkLocationPermissionAndSendCallback() isLocationPermissionAvailable: ' +
-          isLocationPermissionAvailable +
-          'isGPSPermissionAvailabe: true'
-      );
-    }
-
-    if (isLocationPermissionAvailable) {
-      var finalString = `window.checkTheGpsPermission(true)`;
-
-      console.log('listener: ' + finalString);
-
-      webviewRef.current?.injectJavaScript(finalString);
-    }
-  }, [isLoggingEnabled]);
-
   useEffect(() => {
-    // Subscribe to GPS/location setting changes
-    const locationSub = addListener(({ locationEnabled }) => {
-      if (locationEnabled) {
-        checkLocationPermissionAndSendCallback();
-      }
-    });
-
-    // Subscribe to Android hardware back press
     const backSub = BackHandler.addEventListener(
       'hardwareBackPress',
       handleBack
     );
+    const appStateSub = AppState.addEventListener('change', (nextAppState) => {
+      const wasInBackground = /inactive|background/.test(appStateRef.current);
+      appStateRef.current = nextAppState;
 
-    // Cleanup subscriptions on unmount
+      if (
+        wasInBackground &&
+        nextAppState === 'active' &&
+        pendingSettingsRef.current
+      ) {
+        recheckAfterSettings();
+      }
+    });
+
     return () => {
       backSub?.remove();
-      locationSub?.remove();
+      appStateSub?.remove();
     };
-  }, [handleBack, checkLocationPermissionAndSendCallback]);
+  }, [handleBack, recheckAfterSettings]);
 
   return (
     // eslint-disable-next-line react-native/no-inline-styles
@@ -278,10 +326,6 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
           javaScriptEnabled={true}
           onLoadProgress={(event) => setCanGoBack(event.nativeEvent.canGoBack)}
           onError={(errorMessage) => {
-            EventRegister.emitEvent('visit-event', {
-              message: 'web-view-error',
-              errorMessage: errorMessage,
-            });
             if (isLoggingEnabled) {
               console.warn('Webview error: ', errorMessage);
             }
@@ -309,30 +353,6 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
     </SafeAreaView>
   );
 };
-
-// debounce, deferred
-// function debounce(task, ms) {
-//   let t = { promise: null, cancel: (_) => void 0 };
-//   return async (...args) => {
-//     try {
-//       t.cancel();
-//       t = deferred(ms);
-//       await t.promise;
-//       await task(...args);
-//     } catch (_) {
-//       console.log('cleaning up cancelled promise');
-//     }
-//   };
-// }
-
-// function deferred(ms) {
-//   let cancel,
-//     promise = new Promise((resolve, reject) => {
-//       cancel = reject;
-//       setTimeout(resolve, ms);
-//     });
-//   return { promise, cancel };
-// }
 
 export default VisitRnSdkView;
 

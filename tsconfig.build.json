@@ -1,5 +1,10 @@
 
 {
   "extends": "./tsconfig",
-  "exclude": ["example"]
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["src/**/*.js"],
+  "exclude": ["src/**/__tests__"]
 }
