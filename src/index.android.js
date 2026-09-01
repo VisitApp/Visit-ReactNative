@@ -261,7 +261,10 @@ const VisitRnSdkView = ({
       if (isLoggingEnabled) {
         console.log('App has come to the foreground!');
       }
-      getHealthConnectStatus();
+      console.log(
+        'getHealthConnectStatus commented out, because it it not required for MCHI since we rely on callback from the web to get the health connect status.'
+      );
+      // getHealthConnectStatus();
     }
 
     setAppState(nextAppState); // Update the state with the new app state
