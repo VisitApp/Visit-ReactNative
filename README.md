@@ -1,7 +1,7 @@
 ### **Instructions for configuring your Android Project**
 
 * Install Visit React Native Plugin   
-  `npm install react-native-visit-rn-sdk@3.0.13`
+  `npm install react-native-visit-rn-sdk@3.0.14`
 * Install these transitive plugins that Visit Plugin requires internally:   
   `npm install react-native-device-info`   
   `npm install https://github.com/sashko9807/react-native-location-enabler`  
@@ -42,7 +42,7 @@ android {
 
 ### **Instructions for configuring Plugin in iOS project** 
 
-* Add the plugin `npm install react-native-visit-rn-sdk@3.0.13 && npx pod-install`
+* Add the plugin `npm install react-native-visit-rn-sdk@3.0.14 && npx pod-install`
 * Install pods(for M1 processors running build on `x86_64` hardware)
 
     `arch -x86_64 pod install`
@@ -86,7 +86,7 @@ To see the full usage code for getting Health Connect/HealthKit connection statu
 
 ## **Health Connect Connection Flow (Android)**
 
-Version `3.0.13` uses AndroidSDK `v3.13` and routes the PWA's Health Connect request according to the Health Connect installation status and the device's native step-tracking capability.
+Version `3.0.14` uses AndroidSDK `v3.13` and routes the PWA's Health Connect request according to the Health Connect installation status and the device's native step-tracking capability.
 
 The maintained RN 3.x release is also available through its npm dist-tag:
 
@@ -196,6 +196,12 @@ Set `isLoggingEnabled={true}` on `VisitRnSdkView` to log the status, capability 
 ```
 
 ## **RN 3.x Release Notes**
+
+### **3.0.14**
+
+* Request read-only HealthKit access for step data on iOS without requesting write permission.
+* Determine HealthKit connection status without writing and deleting a probe step sample.
+* Keep the existing JavaScript APIs and callback signatures unchanged.
 
 ### **3.0.13**
 
