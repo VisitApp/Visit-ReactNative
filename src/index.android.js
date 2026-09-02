@@ -21,6 +21,7 @@ import DeviceInfo from 'react-native-device-info';
 import axios from 'axios';
 
 import constants from './constants';
+import SecondaryWebView from './SecondaryWebView';
 
 export const httpClient = axios.create({
   timeout: 60000,
@@ -65,6 +66,7 @@ const VisitRnSdkView = ({
   isLoggingEnabled,
 }) => {
   const [source, setSource] = useState('');
+  const [secondarySource, setSecondarySource] = useState('');
   const [appState, setAppState] = useState(AppState.currentState);
 
   const [
@@ -628,6 +630,22 @@ const VisitRnSdkView = ({
                 message: 'OPEN_FACE_SCAN_FLOW',
               });
               break;
+            case 'OPEN_SECONDARY_WEB_VIEW':
+              {
+                const secondaryLink =
+                  typeof parsedObject.link === 'string'
+                    ? parsedObject.link.trim()
+                    : '';
+
+                if (
+                  /^https?:\/\/[^\s/?#]+(?:[/?#][^\s]*)?$/i.test(secondaryLink)
+                ) {
+                  setSecondarySource(
+                    (currentSource) => currentSource || secondaryLink
+                  );
+                }
+              }
+              break;
             case 'CLOSE_VIEW':
               break;
 
@@ -738,6 +756,13 @@ const VisitRnSdkView = ({
               console.warn('Webview error: ', errorMessage);
             }
           }}
+        />
+      ) : null}
+      {secondarySource ? (
+        <SecondaryWebView
+          link={secondarySource}
+          isLoggingEnabled={isLoggingEnabled}
+          onClose={() => setSecondarySource('')}
         />
       ) : null}
     </SafeAreaView>

@@ -18,6 +18,34 @@ import VisitRnSdkView from "react-native-visit-rn-sdk";
 <VisitRnSdkView magicLink="magic-link" />
 ```
 
+## Android secondary WebView
+
+The Android SDK can open one full-screen secondary WebView modal while keeping
+the primary WebView mounted in the back stack. Send this message from the
+primary WebView:
+
+```json
+{
+  "method": "OPEN_SECONDARY_WEB_VIEW",
+  "link": "https://example.com"
+}
+```
+
+`link` must be an absolute HTTP or HTTPS URL. HTTP(S) links and redirects stay
+inside the secondary WebView; other schemes such as `tel:` and `mailto:` are
+passed to Android. Pressing Back navigates through the secondary WebView's page
+history before closing it and returning to the preserved primary WebView.
+
+The secondary WebView handles these callbacks:
+
+- `OPEN_SECONDARY_WEB_VIEW` (ignored while the single secondary WebView is open)
+- `GET_LOCATION_PERMISSIONS`
+- `OPEN_PDF`
+- `OPEN_FACE_SCAN_FLOW`
+
+All other web callbacks from the secondary WebView are ignored. This behavior
+is currently Android-only.
+
 ## Contributing
 
 See the [contributing guide](CONTRIBUTING.md) to learn how to contribute to the repository and the development workflow.
