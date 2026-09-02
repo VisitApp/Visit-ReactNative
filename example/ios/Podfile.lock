@@ -1239,7 +1239,7 @@ PODS:
     - Yoga
   - react-native-safe-area-context (5.8.0):
     - React-Core
-  - react-native-visit-rn-sdk (3.0.13):
+  - react-native-visit-rn-sdk (3.0.14):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1817,7 +1817,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 5785862c3ba3c1222162b6a14b05478a6908e4ac
   React-microtasksnativemodule: 2fa1c780087238662ed009d44fe71d19c085fa8b
   react-native-safe-area-context: a9f88b96b54546384efbf54d92eba1ebe60444e9
-  react-native-visit-rn-sdk: f037e1a059acc200ccaf54f0421ce3768b8cf8df
+  react-native-visit-rn-sdk: 1be42649b3ad7c0e8be5e3237710540c261f0ea5
   react-native-webview: 3a6372c1f686e995c667826c26dea96eb678465b
   React-nativeconfig: 237c862aab56a7426301fcbbb8dd6988745231e0
   React-NativeModulesApple: 205d3251b2e7fc625b7e6232153d4393bc2d30fe
