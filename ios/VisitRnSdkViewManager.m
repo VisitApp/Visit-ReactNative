@@ -1158,6 +1158,22 @@ RCT_REMAP_METHOD(getTodayStepCount,
     [[VisitRnSdkViewManager sharedManager] executeQuery:query];
 }
 
+// Compatibility stub: always resolves 0.
+RCT_REMAP_METHOD(getTodaySleepMinutes,
+                 getTodaySleepMinutesWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+    resolve(@0);
+}
+
+// Compatibility stub: always resolves 0.
+RCT_REMAP_METHOD(getTodayCalorieCount,
+                 getTodayCalorieCountWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+    resolve(@0);
+}
+
 RCT_REMAP_METHOD(triggerManualSync,
                  triggerManualSyncWithResolver:(RCTPromiseResolveBlock)resolve
                  rejecter:(RCTPromiseRejectBlock)reject)

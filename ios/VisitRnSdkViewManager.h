@@ -19,6 +19,8 @@
 - (void)getHealthKitStatus:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject;
 - (void)requestHealthKitAuthorization:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject;
 - (void)getTodayStepCount:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject;
+- (void)getTodaySleepMinutes:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject;
+- (void)getTodayCalorieCount:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject;
 - (void)triggerManualSync:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject;
 
 @end
