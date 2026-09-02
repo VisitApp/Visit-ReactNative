@@ -313,10 +313,9 @@ RCT_REMAP_METHOD(multiply,
         // If our device doesn't support HealthKit -> return.
         return;
     }
-    NSArray *writeTypes = @[[HKSampleType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount]];
     NSArray *readTypes = @[[HKSampleType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount]];
-    
-    [[VisitRnSdkViewManager sharedManager] requestAuthorizationToShareTypes:[NSSet setWithArray:writeTypes] readTypes:[NSSet setWithArray:readTypes]
+
+    [[VisitRnSdkViewManager sharedManager] requestAuthorizationToShareTypes:nil readTypes:[NSSet setWithArray:readTypes]
                                                                 completion:^(BOOL success, NSError *error) {
         NSLog(@"requestAuthorizationToShareTypes executed");
         [self canAccessHealthKit:^(BOOL value){
@@ -352,29 +351,24 @@ RCT_REMAP_METHOD(multiply,
 }
 
 -(void) canAccessHealthKit: (void(^)(BOOL))callback {
-    double value = 1;
-    NSDate *startDate = [NSDate date];
-    NSDate *endDate = [NSDate date];
-    
-    HKUnit *unit = [HKUnit countUnit];
-    HKQuantity *quantity = [HKQuantity quantityWithUnit:unit doubleValue:value];
-    HKQuantityType *type = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
-    HKQuantitySample *sample = [HKQuantitySample quantitySampleWithType:type quantity:quantity startDate:startDate endDate:endDate];
-    
-    [[VisitRnSdkViewManager sharedManager] saveObject:sample withCompletion:^(BOOL success, NSError *error) {
-            if (!success) {
-                NSLog(@"An error occured saving the step count sample %@. The error was: %@.", sample, error);
-                callback(NO);
-            }else{
-                [[VisitRnSdkViewManager sharedManager] deleteObject:sample withCompletion:^(BOOL success, NSError * _Nullable error) {
-                    if(!success){
-                        callback(NO);
-                    }else{
-                        callback(YES);
-                    }
-                }];
-            }
-        }];
+    if (![HKHealthStore isHealthDataAvailable]) {
+        callback(NO);
+        return;
+    }
+
+    NSSet *readTypes = [NSSet setWithObject:
+        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount]];
+
+    [[VisitRnSdkViewManager sharedManager]
+        getRequestStatusForAuthorizationToShareTypes:[NSSet set]
+                                           readTypes:readTypes
+                                          completion:^(HKAuthorizationRequestStatus status,
+                                                       NSError *error) {
+        if (error) {
+            NSLog(@"canAccessHealthKit request status error: %@", error.localizedDescription);
+        }
+        callback(status == HKAuthorizationRequestStatusUnnecessary);
+    }];
 }
 
 -(void) evaluateJavascript:(NSArray *) data type:(NSString *) type frequency:(NSString *) frequency activityTime:(NSString *) activityTime callback:(void(^)(NSArray*))callback{
@@ -587,49 +581,43 @@ RCT_EXPORT_METHOD(connectToAppleHealth:(RCTResponseSenderBlock)callback)
         return;
     }
 
-    HKObjectType *stepType =
-        [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
-    HKAuthorizationStatus preStatus =
-        [[VisitRnSdkViewManager sharedManager] authorizationStatusForType:stepType];
-
-    // Match Android: report DENIED to JS and let the caller decide whether to
-    // prompt the user (via Alert) to open the Health app. Do NOT open Health
-    // ourselves — the JS side calls openAppleHealthApp on user confirmation.
-    if (preStatus == HKAuthorizationStatusSharingDenied) {
-        callback(@[@{@"authStatus": @"DENIED"}]);
-        return;
-    }
-
-    NSSet *writeTypes =
-        [NSSet setWithObject:[HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount]];
     NSSet *readTypes = [NSSet setWithArray:@[
         [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount],
     ]];
 
     __weak typeof(self) weakSelf = self;
     [[VisitRnSdkViewManager sharedManager]
-        requestAuthorizationToShareTypes:writeTypes
+        requestAuthorizationToShareTypes:nil
                                readTypes:readTypes
                               completion:^(BOOL success, NSError *error) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) { return; }
 
-        dispatch_async(dispatch_get_main_queue(), ^{
-            HKAuthorizationStatus postStatus =
-                [[VisitRnSdkViewManager sharedManager] authorizationStatusForType:stepType];
-
-            if (postStatus == HKAuthorizationStatusSharingDenied) {
+        if (!success) {
+            NSLog(@"connectToAppleHealth authorization failed: %@", error.localizedDescription);
+            dispatch_async(dispatch_get_main_queue(), ^{
                 callback(@[@{@"authStatus": @"DENIED"}]);
-                return;
-            }
+            });
+            return;
+        }
 
-            [strongSelf onHealthKitPermissionGranted:^(NSDictionary *data) {
-                NSMutableDictionary *out =
-                    [NSMutableDictionary dictionaryWithDictionary:data ?: @{}];
-                out[@"authStatus"] = @"GRANTED";
-                callback(@[out]);
-            }];
-        });
+        [strongSelf canAccessHealthKit:^(BOOL resolved) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (!resolved) {
+                    // Sheet was never answered, so treat it as not granted and
+                    // let JS offer the Apple Health deep link.
+                    callback(@[@{@"authStatus": @"DENIED"}]);
+                    return;
+                }
+
+                [strongSelf onHealthKitPermissionGranted:^(NSDictionary *data) {
+                    NSMutableDictionary *out =
+                        [NSMutableDictionary dictionaryWithDictionary:data ?: @{}];
+                    out[@"authStatus"] = @"GRANTED";
+                    callback(@[out]);
+                }];
+            });
+        }];
     }];
 }
 
@@ -1029,42 +1017,36 @@ RCT_REMAP_METHOD(getHealthKitStatus,
         return;
     }
 
-    HKObjectType *stepCountType = [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
-    HKAuthorizationStatus status = [[VisitRnSdkViewManager sharedManager] authorizationStatusForType:stepCountType];
+    // Was gated on HKAuthorizationStatusSharingAuthorized, i.e. *write*
+    // authorization, which this read-only SDK no longer requests. Now gated on
+    // whether the permission sheet has been answered.
+    [self canAccessHealthKit:^(BOOL resolved) {
+        if (!resolved) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                resolve(@(NO)); // HealthKit access not granted
+            });
+            return;
+        }
 
-    if (status == HKAuthorizationStatusSharingAuthorized) {
-        NSInteger days = 1; // Example: Fetch data for the last 7 days
-        dispatch_group_t syncDataGroup = dispatch_group_create();
-        __block NSArray *stepsData;
-
-        // Enter dispatch group before fetching data
-        dispatch_group_enter(syncDataGroup);
+        NSInteger days = 1;
         [self fetchSteps:@"custom"
                   endDate:[NSDate date]
                      days:days
                  callback:^(NSArray *data) {
             NSLog(@"Fetched steps data: %@", data);
-            stepsData = [data objectAtIndex:0];
-            dispatch_group_leave(syncDataGroup);
+            NSArray *stepsData = [data count] > 0 ? [data objectAtIndex:0] : nil;
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (stepsData) {
+                    resolve(@{@"steps": stepsData});
+                } else {
+                    NSError *error = [NSError errorWithDomain:@"HealthKit"
+                                                         code:500
+                                                     userInfo:@{NSLocalizedDescriptionKey: @"Failed to fetch step data"}];
+                    reject(@"fetch_error", @"Error fetching step data", error);
+                }
+            });
         }];
-
-        // Wait for the fetch to complete
-        dispatch_group_notify(syncDataGroup, dispatch_get_main_queue(), ^{
-            if (stepsData) {
-                NSDictionary *result = @{
-                    @"steps": stepsData,
-                };
-                resolve(result);
-            } else {
-                NSError *error = [NSError errorWithDomain:@"HealthKit"
-                                                     code:500
-                                                 userInfo:@{NSLocalizedDescriptionKey: @"Failed to fetch step data"}];
-                reject(@"fetch_error", @"Error fetching step data", error);
-            }
-        });
-    } else {
-        resolve(@(NO)); // HealthKit access not granted
-    }
+    }];
 }
 
 RCT_REMAP_METHOD(requestHealthKitAuthorization,
@@ -1076,44 +1058,33 @@ RCT_REMAP_METHOD(requestHealthKitAuthorization,
         return;
     }
 
-    NSSet *writeTypes =
-        [NSSet setWithObject:[HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount]];
     NSMutableSet *readTypes = [NSMutableSet setWithArray:@[
         [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount],
     ]];
 
+    __weak typeof(self) weakSelf = self;
     [[VisitRnSdkViewManager sharedManager]
-        requestAuthorizationToShareTypes:writeTypes
+        requestAuthorizationToShareTypes:nil
                                readTypes:readTypes
                               completion:^(BOOL success, NSError *error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (!success) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!success || !strongSelf) {
+            dispatch_async(dispatch_get_main_queue(), ^{
                 reject(@"AUTHORIZATION_FAILED",
                        error.localizedDescription ?: @"HealthKit authorization failed",
                        error);
-                return;
-            }
+            });
+            return;
+        }
 
-            HKObjectType *stepType =
-                [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
-            HKAuthorizationStatus status =
-                [[VisitRnSdkViewManager sharedManager] authorizationStatusForType:stepType];
-
-            NSString *statusString;
-            switch (status) {
-                case HKAuthorizationStatusSharingAuthorized:
-                    statusString = @"GRANTED";
-                    break;
-                case HKAuthorizationStatusSharingDenied:
-                    statusString = @"DENIED";
-                    break;
-                case HKAuthorizationStatusNotDetermined:
-                default:
-                    statusString = @"NOT_DETERMINED";
-                    break;
-            }
-            resolve(statusString);
-        });
+        // Resolves GRANTED once the sheet has been answered. DENIED is not
+        // reachable for a read-only app: HealthKit reports read authorization
+        // to no one, so a denial is indistinguishable from having no step data.
+        [strongSelf canAccessHealthKit:^(BOOL resolved) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                resolve(resolved ? @"GRANTED" : @"NOT_DETERMINED");
+            });
+        }];
     }];
 }
 
