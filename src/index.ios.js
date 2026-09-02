@@ -20,6 +20,7 @@ import { WebView } from 'react-native-webview';
 import DeviceInfo from 'react-native-device-info';
 import { getWebViewLink, httpClient } from './Services';
 import constants from './constants';
+import SecondaryWebView from './SecondaryWebView';
 
 const LINKING_ERROR =
   `The package 'react-native-visit-rn-sdk' doesn't seem to be linked. Make sure: \n\n` +
@@ -86,6 +87,7 @@ const VisitRnSdkView = ({
 }) => {
   const [source, setSource] = useState('');
   const [loading, setLoading] = useState(true);
+  const [secondarySource, setSecondarySource] = useState('');
   useEffect(() => {
     if (magicLink?.trim()?.length) {
       setSource(magicLink);
@@ -327,6 +329,18 @@ const VisitRnSdkView = ({
           message: 'OPEN_FACE_SCAN_FLOW',
         });
         break;
+      case 'OPEN_SECONDARY_WEB_VIEW':
+        {
+          const secondaryLink =
+            typeof data.link === 'string' ? data.link.trim() : '';
+
+          if (/^https?:\/\/[^\s/?#]+(?:[/?#][^\s]*)?$/i.test(secondaryLink)) {
+            setSecondarySource(
+              (currentSource) => currentSource || secondaryLink
+            );
+          }
+        }
+        break;
       case 'CLOSE_VIEW':
         break;
       case 'GET_LOCATION_PERMISSIONS':
@@ -379,6 +393,13 @@ const VisitRnSdkView = ({
           }}
         />
       )}
+      {secondarySource ? (
+        <SecondaryWebView
+          link={secondarySource}
+          isLoggingEnabled={isLoggingEnabled}
+          onClose={() => setSecondarySource('')}
+        />
+      ) : null}
     </SafeAreaView>
   );
 };

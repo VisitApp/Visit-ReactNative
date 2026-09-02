@@ -1,58 +1,40 @@
 import React from 'react';
 import ShallowRenderer from 'react-shallow-renderer';
 
-const mockInitiateSDK = jest.fn();
-const mockUpdateApiBaseUrl = jest.fn();
-const mockPermissionCheck = jest.fn();
-const mockPermissionRequest = jest.fn();
-const mockRequestResolution = jest.fn();
 const mockLinkingOpenURL = jest.fn(() => Promise.resolve());
 const mockEmitEvent = jest.fn();
-
-let mockLocationEnabled = true;
-
-jest.mock('axios', () => ({
-  create: jest.fn(() => ({ post: jest.fn() })),
-}));
+const mockUpdateApiUrl = jest.fn();
 
 jest.mock('react-native', () => ({
   SafeAreaView: 'SafeAreaView',
   Modal: 'Modal',
+  Pressable: 'Pressable',
+  Text: 'Text',
+  View: 'View',
   NativeModules: {
-    VisitFitnessModule: {
-      initiateSDK: mockInitiateSDK,
-      updateApiBaseUrl: mockUpdateApiBaseUrl,
-      getHealthConnectStatus: jest.fn(),
-      askForFitnessPermission: jest.fn(),
-      requestDailyFitnessData: jest.fn(),
-      requestActivityDataFromHealthConnect: jest.fn(),
-      openHealthConnectApp: jest.fn(),
+    VisitRnSdkViewManager: {
+      updateApiUrl: mockUpdateApiUrl,
+      connectToAppleHealth: jest.fn(),
+      renderGraph: jest.fn(),
     },
-  },
-  PermissionsAndroid: {
-    PERMISSIONS: { ACCESS_FINE_LOCATION: 'ACCESS_FINE_LOCATION' },
-    RESULTS: { GRANTED: 'granted' },
-    check: mockPermissionCheck,
-    request: mockPermissionRequest,
-  },
-  BackHandler: {
-    addEventListener: jest.fn(() => ({ remove: jest.fn() })),
-  },
-  Linking: {
-    openURL: mockLinkingOpenURL,
-    openSettings: jest.fn(),
-  },
-  Alert: { alert: jest.fn() },
-  AppState: {
-    currentState: 'active',
-    addEventListener: jest.fn(() => ({ remove: jest.fn() })),
   },
   NativeEventEmitter: class NativeEventEmitter {
     addListener() {
       return { remove: jest.fn() };
     }
   },
+  Linking: {
+    openURL: mockLinkingOpenURL,
+  },
+  Platform: {
+    select: jest.fn((options) => options.ios),
+  },
+  ActivityIndicator: 'ActivityIndicator',
+  Dimensions: {
+    get: jest.fn(() => ({ height: 844, width: 390 })),
+  },
   StyleSheet: {
+    hairlineWidth: 1,
     create: (styles) => styles,
   },
 }));
@@ -68,30 +50,14 @@ jest.mock(
 );
 
 jest.mock(
-  'react-native-location-enabler',
-  () => ({
-    __esModule: true,
-    default: {
-      PRIORITIES: { HIGH_ACCURACY: 'HIGH_ACCURACY' },
-      useLocationSettings: jest.fn(() => [
-        mockLocationEnabled,
-        mockRequestResolution,
-      ]),
-      addListener: jest.fn(() => ({ remove: jest.fn() })),
-    },
-  }),
-  { virtual: true }
-);
-
-jest.mock(
   'react-native-device-info',
   () => ({
     __esModule: true,
     default: {
-      getAndroidId: jest.fn(),
-      getBuildNumber: jest.fn(),
       getSystemVersion: jest.fn(),
       getVersion: jest.fn(),
+      getUniqueId: jest.fn(),
+      getModel: jest.fn(),
     },
   }),
   { virtual: true }
@@ -100,17 +66,13 @@ jest.mock(
 jest.mock(
   'react-native-webview',
   () => ({
-    __esModule: true,
-    default: 'WebView',
+    WebView: 'WebView',
   }),
   { virtual: true }
 );
 
-const {
-  default: SecondaryWebView,
-  checkSecondaryLocationPermissionAndSendCallback,
-} = require('../SecondaryWebView.android');
-const VisitRnSdkView = require('../index.android').default;
+const SecondaryWebView = require('../SecondaryWebView.ios').default;
+const VisitRnSdkView = require('../index.ios').default;
 
 const primaryLink = 'https://sdk.getvisitapp.net/home';
 const secondaryLink = 'https://partner.example.com/flow';
@@ -121,21 +83,16 @@ const messageEvent = (method, properties = {}) => ({
   },
 });
 
-const flushPromises = async () => {
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
-};
-
 const renderPrimary = () => {
   const renderer = new ShallowRenderer();
   renderer.render(
     <VisitRnSdkView magicLink={primaryLink} isLoggingEnabled={false} />
   );
 
-  // ShallowRenderer skips effects. Dispatch the source state hook to mirror
-  // the existing magicLink effect without changing production timing.
+  // ShallowRenderer skips effects. Mirror the existing magicLink effect by
+  // setting source and loading through their existing state hooks.
   renderer._firstWorkInProgressHook.queue.dispatch(primaryLink);
+  renderer._firstWorkInProgressHook.next.queue.dispatch(false);
   return renderer;
 };
 
@@ -157,10 +114,18 @@ const renderSecondary = (properties = {}) => {
   return renderer;
 };
 
-const getSecondaryWebView = (renderer) =>
-  renderer.getRenderOutput().props.children.props.children;
+const getSecondaryContent = (renderer) => {
+  const modal = renderer.getRenderOutput();
+  const safeAreaView = modal.props.children;
+  const [header, webView] = safeAreaView.props.children;
+  return {
+    modal,
+    backButton: header.props.children,
+    webView,
+  };
+};
 
-describe('Android secondary WebView isolation', () => {
+describe('iOS secondary WebView isolation', () => {
   let consoleLogSpy;
 
   beforeAll(() => {
@@ -173,16 +138,13 @@ describe('Android secondary WebView isolation', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockLocationEnabled = true;
-    mockPermissionCheck.mockResolvedValue(false);
-    mockPermissionRequest.mockResolvedValue('granted');
   });
 
-  test('opens one secondary component while preserving the primary WebView', () => {
+  test('opens one secondary component while preserving the primary WebView', async () => {
     const renderer = renderPrimary();
     const primaryBefore = getPrimaryChildren(renderer)[0];
 
-    primaryBefore.props.onMessage(
+    await primaryBefore.props.onMessage(
       messageEvent('OPEN_SECONDARY_WEB_VIEW', {
         link: `  ${secondaryLink}  `,
       })
@@ -192,9 +154,10 @@ describe('Android secondary WebView isolation', () => {
     expect(children).toHaveLength(2);
     expect(children[0].props.source.uri).toBe(primaryLink);
     expect(children[0].ref).toBe(primaryBefore.ref);
+    expect(children[1].type).toBe(SecondaryWebView);
     expect(children[1].props.link).toBe(secondaryLink);
 
-    children[0].props.onMessage(
+    await children[0].props.onMessage(
       messageEvent('OPEN_SECONDARY_WEB_VIEW', {
         link: 'https://another.example.com',
       })
@@ -212,20 +175,20 @@ describe('Android secondary WebView isolation', () => {
     ['java' + 'script:alert(1)'],
     ['https://'],
     ['https://example.com/has whitespace'],
-  ])('ignores invalid secondary link %p', (link) => {
+  ])('ignores invalid secondary link %p', async (link) => {
     const renderer = renderPrimary();
 
-    getPrimaryChildren(renderer)[0].props.onMessage(
+    await getPrimaryChildren(renderer)[0].props.onMessage(
       messageEvent('OPEN_SECONDARY_WEB_VIEW', { link })
     );
 
     expect(getPrimaryChildren(renderer)).toHaveLength(1);
   });
 
-  test('keeps HTTP(S) navigation inside the modal WebView', () => {
+  test('keeps HTTP(S) navigation inside and sends other schemes to iOS', () => {
     const renderer = renderSecondary();
-    const shouldLoad =
-      getSecondaryWebView(renderer).props.onShouldStartLoadWithRequest;
+    const { webView } = getSecondaryContent(renderer);
+    const shouldLoad = webView.props.onShouldStartLoadWithRequest;
 
     expect(
       shouldLoad({ url: 'http://other.example.com', isTopFrame: true })
@@ -233,83 +196,89 @@ describe('Android secondary WebView isolation', () => {
     expect(
       shouldLoad({ url: 'https://redirect.example.org', isTopFrame: true })
     ).toBe(true);
-    expect(shouldLoad({ url: 'about:blank', isTopFrame: true })).toBe(true);
+    expect(
+      shouldLoad({ url: 'blob:https://example.com/id', isTopFrame: true })
+    ).toBe(true);
     expect(shouldLoad({ url: 'tel:+911234567890', isTopFrame: true })).toBe(
       false
     );
     expect(mockLinkingOpenURL).toHaveBeenCalledWith('tel:+911234567890');
   });
 
-  test('handles PDF and face-scan callbacks and ignores other bridges', () => {
-    const renderer = renderSecondary();
-    const webView = getSecondaryWebView(renderer);
+  test('handles location, PDF, and face scan while ignoring other callbacks', () => {
+    const onClose = jest.fn();
+    const renderer = renderSecondary({ onClose });
+    const { webView } = getSecondaryContent(renderer);
+    const secondaryInstance = { injectJavaScript: jest.fn() };
+    webView.ref.current = secondaryInstance;
 
+    webView.props.onMessage(messageEvent('GET_LOCATION_PERMISSIONS'));
     webView.props.onMessage(
       messageEvent('OPEN_PDF', { url: 'https://example.com/a.pdf' })
     );
     webView.props.onMessage(messageEvent('OPEN_FACE_SCAN_FLOW'));
     webView.props.onMessage(messageEvent('UPDATE_API_BASE_URL'));
+    webView.props.onMessage(messageEvent('CLOSE_VIEW'));
     webView.props.onMessage(
       messageEvent('OPEN_SECONDARY_WEB_VIEW', {
         link: 'https://another.example.com',
       })
     );
 
+    expect(secondaryInstance.injectJavaScript).toHaveBeenCalledWith(
+      'window.checkTheGpsPermission(true)'
+    );
     expect(mockLinkingOpenURL).toHaveBeenCalledWith(
       'https://example.com/a.pdf'
     );
     expect(mockEmitEvent).toHaveBeenCalledWith('visit-event', {
       message: 'OPEN_FACE_SCAN_FLOW',
     });
-    expect(mockUpdateApiBaseUrl).not.toHaveBeenCalled();
-    expect(renderer.getRenderOutput().props.visible).toBe(true);
+    expect(mockUpdateApiUrl).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
-  test('injects an immediate location result only into the modal WebView', async () => {
-    const renderer = renderSecondary();
-    const webView = getSecondaryWebView(renderer);
-    const secondaryInstance = { injectJavaScript: jest.fn() };
-    webView.ref.current = secondaryInstance;
-
-    webView.props.onMessage(messageEvent('GET_LOCATION_PERMISSIONS'));
-    await flushPromises();
-
-    expect(secondaryInstance.injectJavaScript).toHaveBeenCalledWith(
-      'window.checkTheGpsPermission(true)'
-    );
-  });
-
-  test('keeps the delayed GPS result targeted at the modal WebView', async () => {
-    const secondaryRef = {
-      current: { injectJavaScript: jest.fn() },
-    };
-    mockPermissionCheck.mockResolvedValue(true);
-
-    await checkSecondaryLocationPermissionAndSendCallback(secondaryRef, false);
-
-    expect(secondaryRef.current.injectJavaScript).toHaveBeenCalledWith(
-      'window.checkTheGpsPermission(true)'
-    );
-  });
-
-  test('uses modal history before closing on Android Back', () => {
+  test('uses secondary history before the native Back button closes the modal', () => {
     const onClose = jest.fn();
     const renderer = renderSecondary({ onClose });
-    let webView = getSecondaryWebView(renderer);
+    let { webView } = getSecondaryContent(renderer);
     const secondaryInstance = { goBack: jest.fn() };
     webView.ref.current = secondaryInstance;
 
     webView.props.onLoadProgress({ nativeEvent: { canGoBack: true } });
-    renderer.getRenderOutput().props.onRequestClose();
+    getSecondaryContent(renderer).backButton.props.onPress();
 
     expect(secondaryInstance.goBack).toHaveBeenCalledTimes(1);
     expect(onClose).not.toHaveBeenCalled();
 
-    webView = getSecondaryWebView(renderer);
+    webView = getSecondaryContent(renderer).webView;
     webView.props.onLoadProgress({ nativeEvent: { canGoBack: false } });
-    renderer.getRenderOutput().props.onRequestClose();
+    getSecondaryContent(renderer).backButton.props.onPress();
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test('injects iOS platform state before content loads', () => {
+    const renderer = renderSecondary();
+    const { webView } = getSecondaryContent(renderer);
+
+    expect(webView.props.injectedJavaScriptBeforeContentLoaded).toContain(
+      'window.platform = "IOS"'
+    );
+    expect(webView.props.allowsBackForwardNavigationGestures).toBe(true);
+  });
+
+  test('emits the existing WebView error event', () => {
+    const renderer = renderSecondary();
+    const { webView } = getSecondaryContent(renderer);
+    const errorMessage = { nativeEvent: { description: 'load failed' } };
+
+    webView.props.onError(errorMessage);
+
+    expect(mockEmitEvent).toHaveBeenCalledWith('visit-event', {
+      message: 'web-view-error',
+      errorMessage,
+    });
   });
 
   test('does not render the modal for an invalid direct link', () => {

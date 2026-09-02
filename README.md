@@ -18,11 +18,11 @@ import VisitRnSdkView from "react-native-visit-rn-sdk";
 <VisitRnSdkView magicLink="magic-link" />
 ```
 
-## Android secondary WebView
+## Secondary WebView
 
-The Android SDK can open one full-screen secondary WebView modal while keeping
-the primary WebView mounted in the back stack. Send this message from the
-primary WebView:
+The Android and iOS SDKs can open one full-screen secondary WebView modal while
+keeping the primary WebView mounted in the back stack. Send this message from
+the primary WebView:
 
 ```json
 {
@@ -33,7 +33,8 @@ primary WebView:
 
 `link` must be an absolute HTTP or HTTPS URL. HTTP(S) links and redirects stay
 inside the secondary WebView; other schemes such as `tel:` and `mailto:` are
-passed to Android. Pressing Back navigates through the secondary WebView's page
+passed to the operating system. Android uses the system Back action, while iOS
+shows a native Back header. Both navigate through the secondary WebView's page
 history before closing it and returning to the preserved primary WebView.
 
 The secondary WebView handles these callbacks:
@@ -43,8 +44,7 @@ The secondary WebView handles these callbacks:
 - `OPEN_PDF`
 - `OPEN_FACE_SCAN_FLOW`
 
-All other web callbacks from the secondary WebView are ignored. This behavior
-is currently Android-only.
+All other web callbacks from the secondary WebView are ignored.
 
 ## Contributing
 
