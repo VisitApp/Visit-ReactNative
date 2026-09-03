@@ -1,4 +1,10 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, {
+  useRef,
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+} from 'react';
 import {
   StyleSheet,
   SafeAreaView,
@@ -8,6 +14,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Alert,
+  AppState,
 } from 'react-native';
 import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
@@ -178,6 +185,51 @@ const VisitRnSdkView = ({
 
   const webviewRef = useRef(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
+  const refreshHealthKitPermissionState = useCallback(async () => {
+    try {
+      const status = await VisitRnSdkViewManager?.getHealthKitConnectStatus?.();
+
+      if (isLoggingEnabled) {
+        console.log('getHealthKitConnectStatus on foreground: ', status);
+      }
+
+      if (status === 'NOT_SUPPORTED') {
+        webviewRef.current?.injectJavaScript(
+          'window.unsupportedHealthKitDevice(true)'
+        );
+        return;
+      }
+
+      if (status === 'CONNECTED') {
+        const steps = await VisitRnSdkViewManager?.getTodayStepCount?.();
+        webviewRef.current?.injectJavaScript(
+          `window.updateFitnessPermissions(true,${Number(steps) || 0},0)`
+        );
+        return;
+      }
+
+      webviewRef.current?.injectJavaScript(
+        'window.updateFitnessPermissions(false,0,0)'
+      );
+    } catch (err) {
+      if (isLoggingEnabled) {
+        console.warn('refreshHealthKitPermissionState failed: ', err?.message);
+      }
+    }
+  }, [VisitRnSdkViewManager, isLoggingEnabled]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        refreshHealthKitPermissionState();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [refreshHealthKitPermissionState]);
 
   const handleMessage = async (event) => {
     const data = JSON.parse(unescapeHTML(event.nativeEvent.data));

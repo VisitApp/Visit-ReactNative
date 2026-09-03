@@ -350,9 +350,9 @@ RCT_REMAP_METHOD(multiply,
     }];
 }
 
--(void) canAccessHealthKit: (void(^)(BOOL))callback {
+-(void) healthKitRequestStatus:(void(^)(HKAuthorizationRequestStatus))callback {
     if (![HKHealthStore isHealthDataAvailable]) {
-        callback(NO);
+        callback(HKAuthorizationRequestStatusUnknown);
         return;
     }
 
@@ -365,9 +365,51 @@ RCT_REMAP_METHOD(multiply,
                                           completion:^(HKAuthorizationRequestStatus status,
                                                        NSError *error) {
         if (error) {
-            NSLog(@"canAccessHealthKit request status error: %@", error.localizedDescription);
+            NSLog(@"healthKitRequestStatus error: %@", error.localizedDescription);
         }
-        callback(status == HKAuthorizationRequestStatusUnnecessary);
+        callback(status);
+    }];
+}
+
+-(void) hasStepReadAccess:(void(^)(BOOL))callback {
+    if (![HKHealthStore isHealthDataAvailable]) {
+        callback(NO);
+        return;
+    }
+
+    HKQuantityType *stepType =
+        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
+    NSSortDescriptor *newestFirst =
+        [[NSSortDescriptor alloc] initWithKey:HKSampleSortIdentifierEndDate ascending:NO];
+
+    HKSampleQuery *probe = [[HKSampleQuery alloc]
+        initWithSampleType:stepType
+                 predicate:nil
+                     limit:1
+           sortDescriptors:@[newestFirst]
+            resultsHandler:^(HKSampleQuery *query,
+                             NSArray<__kindof HKSample *> *results,
+                             NSError *error) {
+        if (error) {
+            NSLog(@"hasStepReadAccess probe error: %@", error.localizedDescription);
+            callback(NO);
+            return;
+        }
+        callback(results.count > 0);
+    }];
+
+    [[VisitRnSdkViewManager sharedManager] executeQuery:probe];
+}
+
+-(void) canAccessHealthKit: (void(^)(BOOL))callback {
+    __weak typeof(self) weakSelf = self;
+    [self healthKitRequestStatus:^(HKAuthorizationRequestStatus status) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf || status != HKAuthorizationRequestStatusUnnecessary) {
+            callback(NO);
+            return;
+        }
+        [strongSelf hasStepReadAccess:callback];
     }];
 }
 
@@ -586,37 +628,47 @@ RCT_EXPORT_METHOD(connectToAppleHealth:(RCTResponseSenderBlock)callback)
     ]];
 
     __weak typeof(self) weakSelf = self;
-    [[VisitRnSdkViewManager sharedManager]
-        requestAuthorizationToShareTypes:nil
-                               readTypes:readTypes
-                              completion:^(BOOL success, NSError *error) {
+
+    void (^finish)(void) = ^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) { return; }
 
-        if (!success) {
-            NSLog(@"connectToAppleHealth authorization failed: %@", error.localizedDescription);
-            dispatch_async(dispatch_get_main_queue(), ^{
-                callback(@[@{@"authStatus": @"DENIED"}]);
-            });
+        [strongSelf hasStepReadAccess:^(BOOL readable) {
+            if (!readable) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    callback(@[@{@"authStatus": @"DENIED"}]);
+                });
+                return;
+            }
+            [strongSelf onHealthKitPermissionGranted:^(NSDictionary *data) {
+                NSMutableDictionary *out =
+                    [NSMutableDictionary dictionaryWithDictionary:data ?: @{}];
+                out[@"authStatus"] = @"GRANTED";
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    callback(@[out]);
+                });
+            }];
+        }];
+    };
+
+    [self healthKitRequestStatus:^(HKAuthorizationRequestStatus status) {
+        if (status == HKAuthorizationRequestStatusUnnecessary) {
+            finish();
             return;
         }
 
-        [strongSelf canAccessHealthKit:^(BOOL resolved) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                if (!resolved) {
-                    // Sheet was never answered, so treat it as not granted and
-                    // let JS offer the Apple Health deep link.
+        [[VisitRnSdkViewManager sharedManager]
+            requestAuthorizationToShareTypes:nil
+                                   readTypes:readTypes
+                                  completion:^(BOOL success, NSError *error) {
+            if (!success) {
+                NSLog(@"connectToAppleHealth authorization failed: %@", error.localizedDescription);
+                dispatch_async(dispatch_get_main_queue(), ^{
                     callback(@[@{@"authStatus": @"DENIED"}]);
-                    return;
-                }
-
-                [strongSelf onHealthKitPermissionGranted:^(NSDictionary *data) {
-                    NSMutableDictionary *out =
-                        [NSMutableDictionary dictionaryWithDictionary:data ?: @{}];
-                    out[@"authStatus"] = @"GRANTED";
-                    callback(@[out]);
-                }];
-            });
+                });
+                return;
+            }
+            finish();
         }];
     }];
 }
