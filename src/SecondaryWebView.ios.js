@@ -1,5 +1,12 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { Linking, Modal, SafeAreaView, StyleSheet } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  Linking,
+  Modal,
+  PanResponder,
+  SafeAreaView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
 
@@ -35,6 +42,20 @@ const getHttpUrl = (url) => {
 
 const isWebViewLocalUrl = (url) =>
   /^(about|data|blob):/i.test(typeof url === 'string' ? url.trim() : '');
+
+const BACK_SWIPE_EDGE_WIDTH = 24;
+const BACK_SWIPE_DISTANCE = 60;
+const BACK_SWIPE_FAST_DISTANCE = 24;
+const BACK_SWIPE_VELOCITY = 0.5;
+
+const isCompletedBackSwipe = ({ dx = 0, dy = 0, vx = 0 }) => {
+  const isRightwardHorizontalSwipe = dx > 0 && dx > Math.abs(dy);
+  const passedDistance = dx >= BACK_SWIPE_DISTANCE;
+  const passedFastFlick =
+    dx >= BACK_SWIPE_FAST_DISTANCE && vx >= BACK_SWIPE_VELOCITY;
+
+  return isRightwardHorizontalSwipe && (passedDistance || passedFastFlick);
+};
 
 const runBeforeFirst = `
       window.isNativeApp = true;
@@ -72,6 +93,9 @@ const SecondaryWebView = ({ link, isLoggingEnabled, onClose }) => {
               message: 'OPEN_FACE_SCAN_FLOW',
             });
             break;
+          case 'CLOSE_VIEW':
+            onClose();
+            break;
           case 'OPEN_SECONDARY_WEB_VIEW':
             break;
           default:
@@ -91,6 +115,22 @@ const SecondaryWebView = ({ link, isLoggingEnabled, onClose }) => {
 
     onClose();
   }, [canGoBack, onClose]);
+
+  const backSwipeResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderRelease: (_event, gestureState) => {
+          if (isCompletedBackSwipe(gestureState)) {
+            handleBack();
+          }
+        },
+        onPanResponderTerminate: () => undefined,
+        onPanResponderTerminationRequest: () => false,
+      }),
+    [handleBack]
+  );
 
   const source = getHttpUrl(link);
   if (!source) {
@@ -127,8 +167,10 @@ const SecondaryWebView = ({ link, isLoggingEnabled, onClose }) => {
           injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
           javaScriptEnabled={true}
           mediaPlaybackRequiresUserAction={false}
-          allowsBackForwardNavigationGestures={true}
-          onLoadProgress={(event) => setCanGoBack(event.nativeEvent.canGoBack)}
+          allowsBackForwardNavigationGestures={false}
+          onNavigationStateChange={(navigationState) =>
+            setCanGoBack(Boolean(navigationState.canGoBack))
+          }
           onError={(errorMessage) => {
             EventRegister.emitEvent('visit-event', {
               message: 'web-view-error',
@@ -138,6 +180,11 @@ const SecondaryWebView = ({ link, isLoggingEnabled, onClose }) => {
               console.warn('Webview error: ', errorMessage);
             }
           }}
+        />
+        <View
+          testID="secondary-webview-back-swipe-edge"
+          style={styles.backSwipeEdge}
+          {...backSwipeResponder.panHandlers}
         />
       </SafeAreaView>
     </Modal>
@@ -151,6 +198,14 @@ const styles = StyleSheet.create({
   },
   webView: {
     flex: 1,
+  },
+  backSwipeEdge: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    top: 0,
+    width: BACK_SWIPE_EDGE_WIDTH,
+    zIndex: 1,
   },
 });
 

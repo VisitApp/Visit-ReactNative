@@ -190,6 +190,9 @@ const SecondaryWebView = ({ link, isLoggingEnabled, onClose }) => {
               message: 'OPEN_FACE_SCAN_FLOW',
             });
             break;
+          case 'CLOSE_VIEW':
+            onClose();
+            break;
           case 'OPEN_SECONDARY_WEB_VIEW':
             break;
           default:

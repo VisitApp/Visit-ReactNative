@@ -36,7 +36,9 @@ inside the secondary WebView; other schemes such as `tel:` and `mailto:` are
 passed to the operating system. No native Back header is added on either
 platform. Android's system Back action navigates through the secondary
 WebView's page history before closing it and returning to the preserved primary
-WebView.
+WebView. On iOS, a rightward swipe beginning at the left screen edge performs
+the same history-first Back behavior and closes the secondary WebView when it
+is already at its root.
 
 The secondary WebView handles these callbacks:
 
@@ -44,6 +46,7 @@ The secondary WebView handles these callbacks:
 - `GET_LOCATION_PERMISSIONS`
 - `OPEN_PDF`
 - `OPEN_FACE_SCAN_FLOW`
+- `CLOSE_VIEW` (immediately closes the secondary WebView)
 
 All other web callbacks from the secondary WebView are ignored.
 

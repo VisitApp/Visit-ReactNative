@@ -4,6 +4,15 @@ import ShallowRenderer from 'react-shallow-renderer';
 const mockLinkingOpenURL = jest.fn(() => Promise.resolve());
 const mockEmitEvent = jest.fn();
 const mockUpdateApiUrl = jest.fn();
+const mockPanResponderCreate = jest.fn((config) => ({
+  panHandlers: {
+    onStartShouldSetResponder: config.onStartShouldSetPanResponder,
+    onMoveShouldSetResponder: config.onMoveShouldSetPanResponder,
+    onResponderRelease: config.onPanResponderRelease,
+    onResponderTerminate: config.onPanResponderTerminate,
+    onResponderTerminationRequest: config.onPanResponderTerminationRequest,
+  },
+}));
 
 jest.mock('react-native', () => ({
   SafeAreaView: 'SafeAreaView',
@@ -25,6 +34,9 @@ jest.mock('react-native', () => ({
   },
   Linking: {
     openURL: mockLinkingOpenURL,
+  },
+  PanResponder: {
+    create: mockPanResponderCreate,
   },
   Platform: {
     select: jest.fn((options) => options.ios),
@@ -116,9 +128,11 @@ const renderSecondary = (properties = {}) => {
 const getSecondaryContent = (renderer) => {
   const modal = renderer.getRenderOutput();
   const safeAreaView = modal.props.children;
+  const [webView, backSwipeEdge] = safeAreaView.props.children;
   return {
     modal,
-    webView: safeAreaView.props.children,
+    webView,
+    backSwipeEdge,
   };
 };
 
@@ -215,7 +229,6 @@ describe('iOS secondary WebView isolation', () => {
     );
     webView.props.onMessage(messageEvent('OPEN_FACE_SCAN_FLOW'));
     webView.props.onMessage(messageEvent('UPDATE_API_BASE_URL'));
-    webView.props.onMessage(messageEvent('CLOSE_VIEW'));
     webView.props.onMessage(
       messageEvent('OPEN_SECONDARY_WEB_VIEW', {
         link: 'https://another.example.com',
@@ -235,6 +248,21 @@ describe('iOS secondary WebView isolation', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  test('closes immediately on CLOSE_VIEW without navigating WebView history', () => {
+    const onClose = jest.fn();
+    const renderer = renderSecondary({ onClose });
+    let { webView } = getSecondaryContent(renderer);
+    const secondaryInstance = { goBack: jest.fn() };
+    webView.ref.current = secondaryInstance;
+
+    webView.props.onNavigationStateChange({ canGoBack: true });
+    webView = getSecondaryContent(renderer).webView;
+    webView.props.onMessage(messageEvent('CLOSE_VIEW'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(secondaryInstance.goBack).not.toHaveBeenCalled();
+  });
+
   test('uses secondary history before a modal close request closes it', () => {
     const onClose = jest.fn();
     const renderer = renderSecondary({ onClose });
@@ -242,27 +270,101 @@ describe('iOS secondary WebView isolation', () => {
     const secondaryInstance = { goBack: jest.fn() };
     webView.ref.current = secondaryInstance;
 
-    webView.props.onLoadProgress({ nativeEvent: { canGoBack: true } });
+    webView.props.onNavigationStateChange({ canGoBack: true });
     getSecondaryContent(renderer).modal.props.onRequestClose();
 
     expect(secondaryInstance.goBack).toHaveBeenCalledTimes(1);
     expect(onClose).not.toHaveBeenCalled();
 
     webView = getSecondaryContent(renderer).webView;
-    webView.props.onLoadProgress({ nativeEvent: { canGoBack: false } });
+    webView.props.onNavigationStateChange({ canGoBack: false });
     getSecondaryContent(renderer).modal.props.onRequestClose();
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  test('injects iOS platform state before content loads', () => {
+  test('uses secondary history for a completed left-edge swipe', () => {
+    const onClose = jest.fn();
+    const renderer = renderSecondary({ onClose });
+    const { webView } = getSecondaryContent(renderer);
+    const secondaryInstance = { goBack: jest.fn() };
+    webView.ref.current = secondaryInstance;
+
+    webView.props.onNavigationStateChange({ canGoBack: true });
+    getSecondaryContent(renderer).backSwipeEdge.props.onResponderRelease(null, {
+      dx: 70,
+      dy: 5,
+      vx: 0.2,
+    });
+
+    expect(secondaryInstance.goBack).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  test('closes the secondary WebView for a completed root swipe', () => {
+    const onClose = jest.fn();
+    const renderer = renderSecondary({ onClose });
+    const { backSwipeEdge } = getSecondaryContent(renderer);
+
+    backSwipeEdge.props.onResponderRelease(null, {
+      dx: 70,
+      dy: 5,
+      vx: 0.2,
+    });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test('accepts a fast rightward flick from the left edge', () => {
+    const onClose = jest.fn();
+    const renderer = renderSecondary({ onClose });
+    const { backSwipeEdge } = getSecondaryContent(renderer);
+
+    backSwipeEdge.props.onResponderRelease(null, {
+      dx: 25,
+      dy: 2,
+      vx: 0.6,
+    });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test.each([
+    ['short drag', { dx: 20, dy: 1, vx: 0.2 }],
+    ['leftward drag', { dx: -70, dy: 1, vx: -1 }],
+    ['vertical drag', { dx: 70, dy: 80, vx: 1 }],
+    ['slow partial drag', { dx: 24, dy: 1, vx: 0.49 }],
+  ])('ignores a %s', (_name, gestureState) => {
+    const onClose = jest.fn();
+    const renderer = renderSecondary({ onClose });
+    const { backSwipeEdge } = getSecondaryContent(renderer);
+
+    backSwipeEdge.props.onResponderRelease(null, gestureState);
+    backSwipeEdge.props.onResponderTerminate();
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  test('limits the custom responder to the invisible 24-point edge', () => {
+    const renderer = renderSecondary();
+    const { backSwipeEdge } = getSecondaryContent(renderer);
+
+    expect(backSwipeEdge.props.testID).toBe(
+      'secondary-webview-back-swipe-edge'
+    );
+    expect(backSwipeEdge.props.style.width).toBe(24);
+    expect(backSwipeEdge.props.onStartShouldSetResponder()).toBe(true);
+    expect(backSwipeEdge.props.onResponderTerminationRequest()).toBe(false);
+  });
+
+  test('injects iOS platform state and disables native history gestures', () => {
     const renderer = renderSecondary();
     const { webView } = getSecondaryContent(renderer);
 
     expect(webView.props.injectedJavaScriptBeforeContentLoaded).toContain(
       'window.platform = "IOS"'
     );
-    expect(webView.props.allowsBackForwardNavigationGestures).toBe(true);
+    expect(webView.props.allowsBackForwardNavigationGestures).toBe(false);
   });
 
   test('emits the existing WebView error event', () => {

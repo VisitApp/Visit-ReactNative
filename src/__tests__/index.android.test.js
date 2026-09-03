@@ -265,6 +265,21 @@ describe('Android secondary WebView isolation', () => {
     expect(renderer.getRenderOutput().props.visible).toBe(true);
   });
 
+  test('closes immediately on CLOSE_VIEW without navigating WebView history', () => {
+    const onClose = jest.fn();
+    const renderer = renderSecondary({ onClose });
+    let webView = getSecondaryWebView(renderer);
+    const secondaryInstance = { goBack: jest.fn() };
+    webView.ref.current = secondaryInstance;
+
+    webView.props.onLoadProgress({ nativeEvent: { canGoBack: true } });
+    webView = getSecondaryWebView(renderer);
+    webView.props.onMessage(messageEvent('CLOSE_VIEW'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(secondaryInstance.goBack).not.toHaveBeenCalled();
+  });
+
   test('injects an immediate location result only into the modal WebView', async () => {
     const renderer = renderSecondary();
     const webView = getSecondaryWebView(renderer);
