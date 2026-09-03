@@ -1,7 +1,7 @@
 ### **Instructions for configuring your Android Project**
 
 * Install Visit React Native Plugin   
-  `npm install react-native-visit-rn-sdk@3.0.14`
+  `npm install react-native-visit-rn-sdk@3.0.15`
 * Install these transitive plugins that Visit Plugin requires internally:   
   `npm install react-native-device-info`   
   `npm install https://github.com/sashko9807/react-native-location-enabler`  
@@ -42,20 +42,18 @@ android {
 
 ### **Instructions for configuring Plugin in iOS project** 
 
-* Add the plugin `npm install react-native-visit-rn-sdk@3.0.14 && npx pod-install`
+* Add the plugin `npm install react-native-visit-rn-sdk@3.0.15 && npx pod-install`
 * Install pods(for M1 processors running build on `x86_64` hardware)
 
     `arch -x86_64 pod install`
 
 
 * In the Signing & Capabilities section in Xcode, add HealthKit as a capability
-* Add these keys inside `info.plist` file
+* Add this read-only HealthKit key inside the `Info.plist` file. Version `3.0.15` does not request HealthKit write permission, so `NSHealthUpdateUsageDescription` is not required.
 
 ```
 <key>NSHealthShareUsageDescription</key>
 <string>Visit requires your permission to read health and fitness data.</string>
-<key>NSHealthUpdateUsageDescription</key>
-<string>Visit requires your permission to store health and fitness data in HealthKit.</string>
 ```
 
 # **Usage**
@@ -86,7 +84,7 @@ To see the full usage code for getting Health Connect/HealthKit connection statu
 
 ## **Health Connect Connection Flow (Android)**
 
-Version `3.0.14` uses AndroidSDK `v3.13` and routes the PWA's Health Connect request according to the Health Connect installation status and the device's native step-tracking capability.
+Version `3.0.15` uses AndroidSDK `v3.13` and routes the PWA's Health Connect request according to the Health Connect installation status and the device's native step-tracking capability.
 
 The maintained RN 3.x release is also available through its npm dist-tag:
 
@@ -196,6 +194,12 @@ Set `isLoggingEnabled={true}` on `VisitRnSdkView` to log the status, capability 
 ```
 
 ## **RN 3.x Release Notes**
+
+### **3.0.15**
+
+* Detect when iOS step-read access is unavailable after the HealthKit authorization sheet has already been answered.
+* Show recovery instructions when HealthKit access is denied and offer to open the Health settings page.
+* Refresh the PWA's HealthKit permission state when the iOS app returns to the foreground.
 
 ### **3.0.14**
 
