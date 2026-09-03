@@ -1,13 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import {
-  Linking,
-  Modal,
-  Pressable,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Linking, Modal, SafeAreaView, StyleSheet } from 'react-native';
 import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
 
@@ -113,17 +105,6 @@ const SecondaryWebView = ({ link, isLoggingEnabled, onClose }) => {
       visible={true}
     >
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Pressable
-            accessibilityLabel="Back"
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={handleBack}
-            style={styles.backButton}
-          >
-            <Text style={styles.backButtonText}>‹ Back</Text>
-          </Pressable>
-        </View>
         <WebView
           ref={webviewRef}
           source={{ uri: source }}
@@ -167,22 +148,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'white',
-  },
-  header: {
-    minHeight: 44,
-    justifyContent: 'center',
-    borderBottomColor: '#E5E5EA',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    justifyContent: 'center',
-    minHeight: 44,
-    paddingHorizontal: 16,
-  },
-  backButtonText: {
-    color: '#007AFF',
-    fontSize: 17,
   },
   webView: {
     flex: 1,

@@ -34,7 +34,6 @@ jest.mock('react-native', () => ({
     get: jest.fn(() => ({ height: 844, width: 390 })),
   },
   StyleSheet: {
-    hairlineWidth: 1,
     create: (styles) => styles,
   },
 }));
@@ -117,11 +116,9 @@ const renderSecondary = (properties = {}) => {
 const getSecondaryContent = (renderer) => {
   const modal = renderer.getRenderOutput();
   const safeAreaView = modal.props.children;
-  const [header, webView] = safeAreaView.props.children;
   return {
     modal,
-    backButton: header.props.children,
-    webView,
+    webView: safeAreaView.props.children,
   };
 };
 
@@ -238,7 +235,7 @@ describe('iOS secondary WebView isolation', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  test('uses secondary history before the native Back button closes the modal', () => {
+  test('uses secondary history before a modal close request closes it', () => {
     const onClose = jest.fn();
     const renderer = renderSecondary({ onClose });
     let { webView } = getSecondaryContent(renderer);
@@ -246,14 +243,14 @@ describe('iOS secondary WebView isolation', () => {
     webView.ref.current = secondaryInstance;
 
     webView.props.onLoadProgress({ nativeEvent: { canGoBack: true } });
-    getSecondaryContent(renderer).backButton.props.onPress();
+    getSecondaryContent(renderer).modal.props.onRequestClose();
 
     expect(secondaryInstance.goBack).toHaveBeenCalledTimes(1);
     expect(onClose).not.toHaveBeenCalled();
 
     webView = getSecondaryContent(renderer).webView;
     webView.props.onLoadProgress({ nativeEvent: { canGoBack: false } });
-    getSecondaryContent(renderer).backButton.props.onPress();
+    getSecondaryContent(renderer).modal.props.onRequestClose();
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });

@@ -33,9 +33,10 @@ the primary WebView:
 
 `link` must be an absolute HTTP or HTTPS URL. HTTP(S) links and redirects stay
 inside the secondary WebView; other schemes such as `tel:` and `mailto:` are
-passed to the operating system. Android uses the system Back action, while iOS
-shows a native Back header. Both navigate through the secondary WebView's page
-history before closing it and returning to the preserved primary WebView.
+passed to the operating system. No native Back header is added on either
+platform. Android's system Back action navigates through the secondary
+WebView's page history before closing it and returning to the preserved primary
+WebView.
 
 The secondary WebView handles these callbacks:
 
