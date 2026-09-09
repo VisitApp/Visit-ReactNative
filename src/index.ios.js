@@ -384,6 +384,7 @@ const VisitRnSdkView = ({
           source={{ uri: source }}
           style={styles.webView}
           javascriptEnabled
+          webviewDebuggingEnabled={Boolean(isLoggingEnabled)}
           onMessage={handleMessage}
           onShouldStartLoadWithRequest={(request) => {
             // Sub-frames (iframes) are never handed to the OS.

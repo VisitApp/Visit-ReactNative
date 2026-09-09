@@ -121,10 +121,14 @@ const preciseLocation = {
   source: 'ios-core-location',
 };
 
-const renderPrimary = () => {
+const renderPrimary = (properties = {}) => {
   const renderer = new ShallowRenderer();
   renderer.render(
-    <VisitRnSdkView magicLink={primaryLink} isLoggingEnabled={false} />
+    <VisitRnSdkView
+      magicLink={primaryLink}
+      isLoggingEnabled={false}
+      {...properties}
+    />
   );
 
   // ShallowRenderer skips effects. Mirror the existing magicLink effect by
@@ -177,6 +181,37 @@ describe('iOS secondary WebView isolation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetCurrentLocation.mockResolvedValue(preciseLocation);
+  });
+
+  test.each([true, false])(
+    'sets primary and secondary WebView inspectability to %p',
+    (isLoggingEnabled) => {
+      const primaryRenderer = renderPrimary({ isLoggingEnabled });
+      const primaryWebView = getPrimaryChildren(primaryRenderer)[0];
+      const secondaryRenderer = renderSecondary({ isLoggingEnabled });
+      const { webView: secondaryWebView } =
+        getSecondaryContent(secondaryRenderer);
+
+      expect(primaryWebView.props.webviewDebuggingEnabled).toBe(
+        isLoggingEnabled
+      );
+      expect(secondaryWebView.props.webviewDebuggingEnabled).toBe(
+        isLoggingEnabled
+      );
+    }
+  );
+
+  test('disables WebView inspectability when logging is omitted', () => {
+    const primaryRenderer = renderPrimary({ isLoggingEnabled: undefined });
+    const primaryWebView = getPrimaryChildren(primaryRenderer)[0];
+    const secondaryRenderer = renderSecondary({
+      isLoggingEnabled: undefined,
+    });
+    const { webView: secondaryWebView } =
+      getSecondaryContent(secondaryRenderer);
+
+    expect(primaryWebView.props.webviewDebuggingEnabled).toBe(false);
+    expect(secondaryWebView.props.webviewDebuggingEnabled).toBe(false);
   });
 
   test('opens one secondary component while preserving the primary WebView', async () => {

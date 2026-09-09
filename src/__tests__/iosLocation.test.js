@@ -38,6 +38,40 @@ describe('iOS native location handoff', () => {
     mockGetCurrentLocation.mockResolvedValue(preciseLocation);
   });
 
+  test.each([
+    {
+      name: 'native location payload',
+      isAvailable: true,
+      location: preciseLocation,
+      callbackArguments: `true, ${JSON.stringify(preciseLocation)}`,
+    },
+    {
+      name: 'WebView fallback',
+      isAvailable: true,
+      location: null,
+      callbackArguments: 'true',
+    },
+    {
+      name: 'permission failure',
+      isAvailable: false,
+      location: null,
+      callbackArguments: 'false',
+    },
+  ])(
+    'logs the complete callback arguments for $name',
+    ({ isAvailable, location, callbackArguments }) => {
+      const script = createIosGpsPermissionCallbackScript(
+        isAvailable,
+        location
+      );
+
+      expect(script).toContain(`'callbackArguments:', ${callbackArguments},`);
+      expect(script).toContain(
+        `window.checkTheGpsPermission(${callbackArguments});`
+      );
+    }
+  );
+
   test('keeps the legacy callback path when the PWA sends no version', async () => {
     const webviewRef = createWebViewRef();
 

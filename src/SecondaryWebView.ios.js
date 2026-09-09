@@ -166,6 +166,7 @@ const SecondaryWebView = ({ link, isLoggingEnabled, onClose }) => {
           ref={webviewRef}
           source={{ uri: source }}
           style={styles.webView}
+          webviewDebuggingEnabled={Boolean(isLoggingEnabled)}
           onShouldStartLoadWithRequest={(request) => {
             if (request.isTopFrame === false) {
               return true;

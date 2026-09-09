@@ -18,6 +18,11 @@ import VisitRnSdkView from "react-native-visit-rn-sdk";
 <VisitRnSdkView magicLink="magic-link" />
 ```
 
+Set `isLoggingEnabled={true}` to enable SDK diagnostic logs. On iOS, the same
+flag makes both the primary and secondary WebViews inspectable through Safari's
+Develop menu. Leave the flag `false` or omit it to keep WebView inspection
+disabled.
+
 ## Secondary WebView
 
 The Android and iOS SDKs can open one full-screen secondary WebView modal while

@@ -69,6 +69,17 @@ export const createIosGpsPermissionCallbackScript = (
   isAvailable,
   location = null
 ) => {
+  // The generated script invokes one of these callback forms:
+  // window.checkTheGpsPermission(true);
+  // window.checkTheGpsPermission(true, {
+  //   latitude: 28.5683506,
+  //   longitude: 77.3163723,
+  //   accuracy: 100,
+  //   timestamp: 1788954715833,
+  //   precision: 'precise',
+  //   source: 'ios-core-location',
+  // });
+  // window.checkTheGpsPermission(false);
   const callbackArguments = isAvailable
     ? location
       ? `true, ${JSON.stringify(location)}`
@@ -80,7 +91,8 @@ export const createIosGpsPermissionCallbackScript = (
       console.log(
         '[VisitLocation] invoking checkTheGpsPermission',
         'isAvailable:', ${Boolean(isAvailable)},
-        'hasLocation:', ${Boolean(location)}
+        'hasLocation:', ${Boolean(location)},
+        'callbackArguments:', ${callbackArguments},
       );
       window.checkTheGpsPermission(${callbackArguments});
     } else {
