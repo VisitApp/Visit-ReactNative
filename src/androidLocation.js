@@ -118,7 +118,8 @@ export const createGpsPermissionCallbackScript = (
       console.log(
         '[VisitLocation] invoking checkTheGpsPermission',
         'isAvailable:', ${Boolean(isAvailable)},
-        'hasLocation:', ${Boolean(location)}
+        'hasLocation:', ${Boolean(location)},
+        'callbackArguments:', ${callbackArguments},
       );
       window.checkTheGpsPermission(${callbackArguments});
     }
