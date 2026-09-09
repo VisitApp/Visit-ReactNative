@@ -107,6 +107,17 @@ export const createGpsPermissionCallbackScript = (
   isAvailable,
   location = null
 ) => {
+  // The generated script invokes one of these callback forms:
+  // window.checkTheGpsPermission(true);
+  // window.checkTheGpsPermission(true, {
+  //   latitude: 28.5683506,
+  //   longitude: 77.3163723,
+  //   accuracy: 100,
+  //   timestamp: 1788954715833,
+  //   precision: 'precise',
+  //   source: 'android-fused',
+  // });
+  // window.checkTheGpsPermission(false);
   const callbackArguments = isAvailable
     ? location
       ? `true, ${JSON.stringify(location)}`
@@ -122,7 +133,9 @@ export const createGpsPermissionCallbackScript = (
         'callbackArguments:', ${callbackArguments},
       );
       window.checkTheGpsPermission(${callbackArguments});
-    }
+    } else {
+       console.warn('[VisitLocation] checkTheGpsPermission is not defined');
+      }
     return true;
   })();
   true;`;
