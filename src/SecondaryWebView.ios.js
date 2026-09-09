@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
+import { requestIosLocation } from './iosLocation';
 
 const escapeChars = {
   lt: '<',
@@ -68,7 +69,25 @@ const runBeforeFirst = `
 
 const SecondaryWebView = ({ link, isLoggingEnabled, onClose }) => {
   const webviewRef = useRef(null);
+  const locationRequestInFlightRef = useRef(false);
   const [canGoBack, setCanGoBack] = useState(false);
+
+  const requestLocationPermission = async (locationResponseVersion) => {
+    if (locationRequestInFlightRef.current) {
+      return;
+    }
+
+    locationRequestInFlightRef.current = true;
+    try {
+      await requestIosLocation({
+        webviewRef,
+        locationResponseVersion,
+        isLoggingEnabled,
+      });
+    } finally {
+      locationRequestInFlightRef.current = false;
+    }
+  };
 
   const handleMessage = (event) => {
     if (event.nativeEvent.data != null) {
@@ -81,9 +100,7 @@ const SecondaryWebView = ({ link, isLoggingEnabled, onClose }) => {
 
         switch (parsedObject.method) {
           case 'GET_LOCATION_PERMISSIONS':
-            webviewRef.current?.injectJavaScript(
-              'window.checkTheGpsPermission(true)'
-            );
+            requestLocationPermission(parsedObject.locationResponseVersion);
             break;
           case 'OPEN_PDF':
             Linking.openURL(parsedObject.url);

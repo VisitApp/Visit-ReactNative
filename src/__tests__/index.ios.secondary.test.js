@@ -2,8 +2,11 @@ import React from 'react';
 import ShallowRenderer from 'react-shallow-renderer';
 
 const mockLinkingOpenURL = jest.fn(() => Promise.resolve());
+const mockLinkingOpenSettings = jest.fn(() => Promise.resolve());
 const mockEmitEvent = jest.fn();
 const mockUpdateApiUrl = jest.fn();
+const mockGetCurrentLocation = jest.fn();
+const mockAlert = jest.fn();
 const mockPanResponderCreate = jest.fn((config) => ({
   panHandlers: {
     onStartShouldSetResponder: config.onStartShouldSetPanResponder,
@@ -26,6 +29,9 @@ jest.mock('react-native', () => ({
       connectToAppleHealth: jest.fn(),
       renderGraph: jest.fn(),
     },
+    VisitLocationModule: {
+      getCurrentLocation: mockGetCurrentLocation,
+    },
   },
   NativeEventEmitter: class NativeEventEmitter {
     addListener() {
@@ -34,7 +40,9 @@ jest.mock('react-native', () => ({
   },
   Linking: {
     openURL: mockLinkingOpenURL,
+    openSettings: mockLinkingOpenSettings,
   },
+  Alert: { alert: mockAlert },
   PanResponder: {
     create: mockPanResponderCreate,
   },
@@ -83,6 +91,10 @@ jest.mock(
 );
 
 const SecondaryWebView = require('../SecondaryWebView.ios').default;
+const {
+  createIosGpsPermissionCallbackScript,
+  NATIVE_LOCATION_OPTIONS,
+} = require('../iosLocation');
 const VisitRnSdkView = require('../index.ios').default;
 
 const primaryLink = 'https://sdk.getvisitapp.net/home';
@@ -93,6 +105,21 @@ const messageEvent = (method, properties = {}) => ({
     data: JSON.stringify({ method, ...properties }),
   },
 });
+
+const flushPromises = async () => {
+  for (let index = 0; index < 10; index += 1) {
+    await Promise.resolve();
+  }
+};
+
+const preciseLocation = {
+  latitude: 12.9716,
+  longitude: 77.5946,
+  accuracy: 8,
+  timestamp: 1788940000000,
+  precision: 'precise',
+  source: 'ios-core-location',
+};
 
 const renderPrimary = () => {
   const renderer = new ShallowRenderer();
@@ -149,6 +176,7 @@ describe('iOS secondary WebView isolation', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetCurrentLocation.mockResolvedValue(preciseLocation);
   });
 
   test('opens one secondary component while preserving the primary WebView', async () => {
@@ -236,7 +264,7 @@ describe('iOS secondary WebView isolation', () => {
     );
 
     expect(secondaryInstance.injectJavaScript).toHaveBeenCalledWith(
-      'window.checkTheGpsPermission(true)'
+      createIosGpsPermissionCallbackScript(true)
     );
     expect(mockLinkingOpenURL).toHaveBeenCalledWith(
       'https://example.com/a.pdf'
@@ -246,6 +274,97 @@ describe('iOS secondary WebView isolation', () => {
     });
     expect(mockUpdateApiUrl).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  test('returns Core Location coordinates only to the v2 modal WebView requester', async () => {
+    const renderer = renderSecondary();
+    const { webView } = getSecondaryContent(renderer);
+    const secondaryInstance = { injectJavaScript: jest.fn() };
+    webView.ref.current = secondaryInstance;
+
+    webView.props.onMessage(
+      messageEvent('GET_LOCATION_PERMISSIONS', {
+        locationResponseVersion: 2,
+      })
+    );
+    await flushPromises();
+
+    expect(mockGetCurrentLocation).toHaveBeenCalledWith(
+      NATIVE_LOCATION_OPTIONS
+    );
+    expect(secondaryInstance.injectJavaScript).toHaveBeenCalledTimes(1);
+    expect(secondaryInstance.injectJavaScript).toHaveBeenCalledWith(
+      createIosGpsPermissionCallbackScript(true, preciseLocation)
+    );
+  });
+
+  test('coalesces repeated location requests from the same modal WebView', async () => {
+    let resolveLocation;
+    mockGetCurrentLocation.mockReturnValue(
+      new Promise((resolve) => {
+        resolveLocation = resolve;
+      })
+    );
+    const renderer = renderSecondary();
+    const { webView } = getSecondaryContent(renderer);
+    const secondaryInstance = { injectJavaScript: jest.fn() };
+    webView.ref.current = secondaryInstance;
+    const request = messageEvent('GET_LOCATION_PERMISSIONS', {
+      locationResponseVersion: 2,
+    });
+
+    webView.props.onMessage(request);
+    webView.props.onMessage(request);
+    await flushPromises();
+
+    expect(mockGetCurrentLocation).toHaveBeenCalledTimes(1);
+
+    resolveLocation(preciseLocation);
+    await flushPromises();
+    expect(secondaryInstance.injectJavaScript).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not inject a late location result after the modal WebView closes', async () => {
+    let resolveLocation;
+    mockGetCurrentLocation.mockReturnValue(
+      new Promise((resolve) => {
+        resolveLocation = resolve;
+      })
+    );
+    const renderer = renderSecondary();
+    const { webView } = getSecondaryContent(renderer);
+    const secondaryInstance = { injectJavaScript: jest.fn() };
+    webView.ref.current = secondaryInstance;
+
+    webView.props.onMessage(
+      messageEvent('GET_LOCATION_PERMISSIONS', {
+        locationResponseVersion: 2,
+      })
+    );
+    webView.ref.current = null;
+    resolveLocation(preciseLocation);
+    await flushPromises();
+
+    expect(secondaryInstance.injectJavaScript).not.toHaveBeenCalled();
+  });
+
+  test('injects a v2 location result only into the primary WebView requester', async () => {
+    const renderer = renderPrimary();
+    const primaryWebView = getPrimaryChildren(renderer)[0];
+    const primaryInstance = { injectJavaScript: jest.fn() };
+    primaryWebView.ref.current = primaryInstance;
+
+    primaryWebView.props.onMessage(
+      messageEvent('GET_LOCATION_PERMISSIONS', {
+        locationResponseVersion: 2,
+      })
+    );
+    await flushPromises();
+
+    expect(primaryInstance.injectJavaScript).toHaveBeenCalledTimes(1);
+    expect(primaryInstance.injectJavaScript).toHaveBeenCalledWith(
+      createIosGpsPermissionCallbackScript(true, preciseLocation)
+    );
   });
 
   test('closes immediately on CLOSE_VIEW without navigating WebView history', () => {

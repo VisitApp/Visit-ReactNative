@@ -72,7 +72,7 @@ window.checkTheGpsPermission = (available, location) => {
     return;
   }
 
-  // Older Android SDKs and iOS use the existing browser fallback.
+  // Older Android and iOS SDKs use the existing browser fallback.
   navigator.geolocation.getCurrentPosition(successCallback, failureCallback, {
     timeout: 15000,
   });
@@ -117,6 +117,45 @@ ext {
   playServicesLocationVersion = "21.3.0"
 }
 ```
+
+## iOS native location handoff
+
+iOS uses the same versioned PWA request and callback contract shown above. A
+successful iOS v2 response has this shape:
+
+```js
+window.checkTheGpsPermission(true, {
+  latitude: 12.9716,
+  longitude: 77.5946,
+  accuracy: 8,
+  timestamp: 1788940000000,
+  precision: 'precise', // or 'approximate'
+  source: 'ios-core-location',
+});
+```
+
+The SDK requests foreground When In Use authorization and obtains a one-shot
+location through Core Location. It accepts a cached fix up to 60 seconds old;
+otherwise it waits up to 10 seconds for a location. A valid native payload lets
+the PWA skip `navigator.geolocation`, avoiding the additional WebKit website
+permission prompt.
+
+Every consuming iOS app must provide a meaningful location purpose string in
+its application `Info.plist`; an SDK pod cannot supply this text on behalf of
+the host app:
+
+```xml
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>Visit uses your location to find healthcare services available near you.</string>
+```
+
+When authorization is denied/restricted, Location Services are disabled, or
+the purpose string is missing, the SDK sends
+`window.checkTheGpsPermission(false)`. A native acquisition failure or timeout
+sends the bare `window.checkTheGpsPermission(true)` callback so the PWA can use
+its WebView fallback. Requests without `locationResponseVersion: 2` retain the
+legacy bare-`true` behavior and do not start Core Location. No background or
+Always location authorization is requested.
 
 ## Contributing
 

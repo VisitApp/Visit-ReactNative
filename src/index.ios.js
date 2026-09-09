@@ -21,6 +21,7 @@ import DeviceInfo from 'react-native-device-info';
 import { getWebViewLink, httpClient } from './Services';
 import constants from './constants';
 import SecondaryWebView from './SecondaryWebView';
+import { requestIosLocation } from './iosLocation';
 
 const LINKING_ERROR =
   `The package 'react-native-visit-rn-sdk' doesn't seem to be linked. Make sure: \n\n` +
@@ -205,9 +206,27 @@ const VisitRnSdkView = ({
   );
 
   const webviewRef = useRef(null);
+  const locationRequestInFlightRef = useRef(false);
   const [apiBaseUrl, setApiBaseUrl] = useState('');
   const [authToken, setAuthToken] = useState('');
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
+  const requestLocationPermission = async (locationResponseVersion) => {
+    if (locationRequestInFlightRef.current) {
+      return;
+    }
+
+    locationRequestInFlightRef.current = true;
+    try {
+      await requestIosLocation({
+        webviewRef,
+        locationResponseVersion,
+        isLoggingEnabled,
+      });
+    } finally {
+      locationRequestInFlightRef.current = false;
+    }
+  };
 
   const callSyncApi = useCallback(
     (data) =>
@@ -266,6 +285,7 @@ const VisitRnSdkView = ({
       googleFitLastSync,
       gfHourlyLastSync,
       url,
+      locationResponseVersion,
     } = data;
     console.log('handleMessage data is', data);
     console.log(unescapeHTML(event.nativeEvent.data));
@@ -344,9 +364,7 @@ const VisitRnSdkView = ({
       case 'CLOSE_VIEW':
         break;
       case 'GET_LOCATION_PERMISSIONS':
-        webviewRef.current?.injectJavaScript(
-          'window.checkTheGpsPermission(true)'
-        );
+        requestLocationPermission(locationResponseVersion);
         break;
 
       default:
