@@ -50,6 +50,74 @@ The secondary WebView handles these callbacks:
 
 All other web callbacks from the secondary WebView are ignored.
 
+## Android native location handoff
+
+Android PWA builds that support native fused location should version the
+location request:
+
+```js
+window.checkTheGpsPermission = (available, location) => {
+  if (!available) {
+    // Stop loading and show the permission/GPS error state.
+    return;
+  }
+
+  if (
+    location &&
+    Number.isFinite(location.latitude) &&
+    Number.isFinite(location.longitude)
+  ) {
+    // Decode the native coordinates directly. Do not call navigator.geolocation.
+    fetchAddress(location.latitude, location.longitude);
+    return;
+  }
+
+  // Older Android SDKs and iOS use the existing browser fallback.
+  navigator.geolocation.getCurrentPosition(successCallback, failureCallback, {
+    timeout: 15000,
+  });
+};
+
+window.ReactNativeWebView.postMessage(
+  JSON.stringify({
+    method: 'GET_LOCATION_PERMISSIONS',
+    locationResponseVersion: 2,
+  })
+);
+```
+
+Define `window.checkTheGpsPermission` before posting the request. A successful
+Android v2 response has this shape:
+
+```js
+window.checkTheGpsPermission(true, {
+  latitude: 12.9716,
+  longitude: 77.5946,
+  accuracy: 8,
+  timestamp: 1788940000000,
+  precision: 'precise', // or 'approximate'
+  source: 'android-fused',
+});
+```
+
+When permission or the device location setting is unavailable, the SDK sends
+`window.checkTheGpsPermission(false)`. When native acquisition fails or times
+out, it sends `window.checkTheGpsPermission(true)` so v2 web builds can fall
+back to `navigator.geolocation`. Requests without `locationResponseVersion: 2`
+keep the legacy one-argument behavior and do not start a fused location request.
+
+The Android library declares foreground fine and coarse location permissions.
+It accepts approximate-only grants and uses a fused fix up to 60 seconds old,
+otherwise waiting up to 10 seconds for a high-accuracy fix. The default Google
+Play Services Location dependency is `21.3.0`; host apps can align it with their
+dependency set through the root Gradle extra property:
+
+```gradle
+ext {
+  playServicesLocationVersion = "21.3.0"
+}
+```
+
 ## Contributing
 
 See the [contributing guide](CONTRIBUTING.md) to learn how to contribute to the repository and the development workflow.

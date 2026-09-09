@@ -1,21 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Alert,
-  Linking,
-  Modal,
-  PermissionsAndroid,
-  SafeAreaView,
-  StyleSheet,
-} from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { Linking, Modal, SafeAreaView, StyleSheet } from 'react-native';
 import { EventRegister } from 'react-native-event-listeners';
 import WebView from 'react-native-webview';
-import LocationEnabler from 'react-native-location-enabler';
-
-const {
-  PRIORITIES: { HIGH_ACCURACY },
-  useLocationSettings,
-  addListener,
-} = LocationEnabler;
+import { requestAndroidLocation } from './androidLocation';
 
 const getHttpUrl = (url) => {
   const link = typeof url === 'string' ? url.trim() : '';
@@ -32,142 +19,27 @@ const runBeforeFirst = `
       true; // note: this is required, or you'll sometimes get silent failures
   `;
 
-export const checkSecondaryLocationPermissionAndSendCallback = async (
-  webviewRef,
-  isLoggingEnabled
-) => {
-  const isLocationPermissionAvailable = await PermissionsAndroid.check(
-    PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
-  );
-
-  if (isLoggingEnabled) {
-    console.log(
-      'checkLocationPermissionAndSendCallback() isLocationPermissionAvailable: ' +
-        isLocationPermissionAvailable +
-        'isGPSPermissionAvailabe: true'
-    );
-  }
-
-  if (isLocationPermissionAvailable) {
-    const finalString = 'window.checkTheGpsPermission(true)';
-    console.log('listener: ' + finalString);
-    webviewRef.current?.injectJavaScript(finalString);
-  }
-};
-
 const SecondaryWebView = ({ link, isLoggingEnabled, onClose }) => {
   const webviewRef = useRef(null);
+  const locationRequestInFlightRef = useRef(false);
   const [canGoBack, setCanGoBack] = useState(false);
-  const [
-    showPermissionAlreadyDeniedDialog,
-    setShowPermissionAlreadyDeniedDialog,
-  ] = useState(false);
 
-  const [enabled, requestResolution] = useLocationSettings(
-    {
-      priority: HIGH_ACCURACY,
-      alwaysShow: true,
-      needBle: true,
-    },
-    false
-  );
+  const requestLocationPermission = async (locationResponseVersion) => {
+    if (locationRequestInFlightRef.current) {
+      return;
+    }
 
-  const showLocationPermissionAlert = () => {
-    Alert.alert(
-      'Permission Required',
-      'Allow location permission from app settings',
-      [
-        {
-          text: 'Cancel',
-          onPress: () => {
-            console.log('Cancel clicked');
-          },
-        },
-        {
-          text: 'Go to Settings',
-          onPress: () => {
-            Linking.openSettings();
-          },
-        },
-      ]
-    );
-  };
-
-  const requestLocationPermission = async () => {
+    locationRequestInFlightRef.current = true;
     try {
-      console.log('requestLocationPermission called');
-
-      const isLocationPermissionPresent = await PermissionsAndroid.check(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
-      );
-
-      console.log(
-        'isLocationPermissionPresent: ' +
-          isLocationPermissionPresent +
-          ' showPermissionAlreadyDeniedDialog: ' +
-          showPermissionAlreadyDeniedDialog
-      );
-
-      if (!isLocationPermissionPresent && showPermissionAlreadyDeniedDialog) {
-        console.log('showLocationPermissionAlert() called');
-        showLocationPermissionAlert();
-      } else {
-        console.log('requesting location permission');
-
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: 'Need Location Permission',
-            message: 'Need access to location permission',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
-          }
-        );
-
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          if (isLoggingEnabled) {
-            console.log('Location permission granted');
-          }
-          setShowPermissionAlreadyDeniedDialog(false);
-
-          if (!enabled) {
-            requestResolution();
-          } else {
-            const finalString = 'window.checkTheGpsPermission(true)';
-            console.log('requestLocationPermission: ' + finalString);
-            webviewRef.current?.injectJavaScript(finalString);
-          }
-        } else {
-          setShowPermissionAlreadyDeniedDialog(true);
-          console.log('Location permission denied');
-
-          const finalString = 'window.checkTheGpsPermission(false)';
-          console.log('requestLocationPermission: ' + finalString);
-          webviewRef.current?.injectJavaScript(finalString);
-        }
-      }
-    } catch (error) {
-      console.error(error);
+      await requestAndroidLocation({
+        webviewRef,
+        locationResponseVersion,
+        isLoggingEnabled,
+      });
+    } finally {
+      locationRequestInFlightRef.current = false;
     }
   };
-
-  useEffect(() => {
-    const locationSub = addListener(({ locationEnabled }) => {
-      if (locationEnabled) {
-        checkSecondaryLocationPermissionAndSendCallback(
-          webviewRef,
-          isLoggingEnabled
-        );
-      }
-    });
-
-    return () => {
-      locationSub?.remove();
-    };
-    // This intentionally mirrors the existing primary WebView listener.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleMessage = (event) => {
     if (event.nativeEvent.data != null) {
@@ -180,7 +52,7 @@ const SecondaryWebView = ({ link, isLoggingEnabled, onClose }) => {
 
         switch (parsedObject.method) {
           case 'GET_LOCATION_PERMISSIONS':
-            requestLocationPermission();
+            requestLocationPermission(parsedObject.locationResponseVersion);
             break;
           case 'OPEN_PDF':
             Linking.openURL(parsedObject.url);

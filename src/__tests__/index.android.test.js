@@ -4,12 +4,11 @@ import ShallowRenderer from 'react-shallow-renderer';
 const mockInitiateSDK = jest.fn();
 const mockUpdateApiBaseUrl = jest.fn();
 const mockPermissionCheck = jest.fn();
-const mockPermissionRequest = jest.fn();
-const mockRequestResolution = jest.fn();
+const mockPermissionRequestMultiple = jest.fn();
+const mockRequestLocationSettings = jest.fn();
+const mockGetCurrentLocation = jest.fn();
 const mockLinkingOpenURL = jest.fn(() => Promise.resolve());
 const mockEmitEvent = jest.fn();
-
-let mockLocationEnabled = true;
 
 jest.mock('axios', () => ({
   create: jest.fn(() => ({ post: jest.fn() })),
@@ -28,12 +27,23 @@ jest.mock('react-native', () => ({
       requestActivityDataFromHealthConnect: jest.fn(),
       openHealthConnectApp: jest.fn(),
     },
+    VisitLocationModule: {
+      requestLocationSettings: mockRequestLocationSettings,
+      getCurrentLocation: mockGetCurrentLocation,
+    },
   },
   PermissionsAndroid: {
-    PERMISSIONS: { ACCESS_FINE_LOCATION: 'ACCESS_FINE_LOCATION' },
-    RESULTS: { GRANTED: 'granted' },
+    PERMISSIONS: {
+      ACCESS_FINE_LOCATION: 'ACCESS_FINE_LOCATION',
+      ACCESS_COARSE_LOCATION: 'ACCESS_COARSE_LOCATION',
+    },
+    RESULTS: {
+      GRANTED: 'granted',
+      DENIED: 'denied',
+      NEVER_ASK_AGAIN: 'never_ask_again',
+    },
     check: mockPermissionCheck,
-    request: mockPermissionRequest,
+    requestMultiple: mockPermissionRequestMultiple,
   },
   BackHandler: {
     addEventListener: jest.fn(() => ({ remove: jest.fn() })),
@@ -68,22 +78,6 @@ jest.mock(
 );
 
 jest.mock(
-  'react-native-location-enabler',
-  () => ({
-    __esModule: true,
-    default: {
-      PRIORITIES: { HIGH_ACCURACY: 'HIGH_ACCURACY' },
-      useLocationSettings: jest.fn(() => [
-        mockLocationEnabled,
-        mockRequestResolution,
-      ]),
-      addListener: jest.fn(() => ({ remove: jest.fn() })),
-    },
-  }),
-  { virtual: true }
-);
-
-jest.mock(
   'react-native-device-info',
   () => ({
     __esModule: true,
@@ -106,10 +100,11 @@ jest.mock(
   { virtual: true }
 );
 
+const { default: SecondaryWebView } = require('../SecondaryWebView.android');
 const {
-  default: SecondaryWebView,
-  checkSecondaryLocationPermissionAndSendCallback,
-} = require('../SecondaryWebView.android');
+  createGpsPermissionCallbackScript,
+  NATIVE_LOCATION_OPTIONS,
+} = require('../androidLocation');
 const VisitRnSdkView = require('../index.android').default;
 
 const primaryLink = 'https://sdk.getvisitapp.net/home';
@@ -122,9 +117,9 @@ const messageEvent = (method, properties = {}) => ({
 });
 
 const flushPromises = async () => {
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
+  for (let index = 0; index < 10; index += 1) {
+    await Promise.resolve();
+  }
 };
 
 const renderPrimary = () => {
@@ -173,9 +168,20 @@ describe('Android secondary WebView isolation', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockLocationEnabled = true;
-    mockPermissionCheck.mockResolvedValue(false);
-    mockPermissionRequest.mockResolvedValue('granted');
+    mockPermissionCheck.mockResolvedValue(true);
+    mockPermissionRequestMultiple.mockResolvedValue({
+      ACCESS_FINE_LOCATION: 'granted',
+      ACCESS_COARSE_LOCATION: 'granted',
+    });
+    mockRequestLocationSettings.mockResolvedValue(true);
+    mockGetCurrentLocation.mockResolvedValue({
+      latitude: 12.9716,
+      longitude: 77.5946,
+      accuracy: 8,
+      timestamp: 1788940000000,
+      precision: 'precise',
+      source: 'android-fused',
+    });
   });
 
   test('opens one secondary component while preserving the primary WebView', () => {
@@ -289,21 +295,89 @@ describe('Android secondary WebView isolation', () => {
     webView.props.onMessage(messageEvent('GET_LOCATION_PERMISSIONS'));
     await flushPromises();
 
+    expect(mockGetCurrentLocation).not.toHaveBeenCalled();
     expect(secondaryInstance.injectJavaScript).toHaveBeenCalledWith(
-      'window.checkTheGpsPermission(true)'
+      createGpsPermissionCallbackScript(true)
     );
   });
 
-  test('keeps the delayed GPS result targeted at the modal WebView', async () => {
-    const secondaryRef = {
-      current: { injectJavaScript: jest.fn() },
-    };
-    mockPermissionCheck.mockResolvedValue(true);
+  test('returns fused coordinates only to the v2 modal WebView requester', async () => {
+    const renderer = renderSecondary();
+    const webView = getSecondaryWebView(renderer);
+    const secondaryInstance = { injectJavaScript: jest.fn() };
+    webView.ref.current = secondaryInstance;
 
-    await checkSecondaryLocationPermissionAndSendCallback(secondaryRef, false);
+    webView.props.onMessage(
+      messageEvent('GET_LOCATION_PERMISSIONS', {
+        locationResponseVersion: 2,
+      })
+    );
+    await flushPromises();
 
-    expect(secondaryRef.current.injectJavaScript).toHaveBeenCalledWith(
-      'window.checkTheGpsPermission(true)'
+    expect(mockGetCurrentLocation).toHaveBeenCalledWith(
+      NATIVE_LOCATION_OPTIONS
+    );
+    expect(secondaryInstance.injectJavaScript).toHaveBeenCalledWith(
+      createGpsPermissionCallbackScript(true, {
+        latitude: 12.9716,
+        longitude: 77.5946,
+        accuracy: 8,
+        timestamp: 1788940000000,
+        precision: 'precise',
+        source: 'android-fused',
+      })
+    );
+  });
+
+  test('coalesces repeated location requests from the same modal WebView', async () => {
+    let resolveSettings;
+    mockRequestLocationSettings.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSettings = resolve;
+      })
+    );
+    const renderer = renderSecondary();
+    const webView = getSecondaryWebView(renderer);
+    const secondaryInstance = { injectJavaScript: jest.fn() };
+    webView.ref.current = secondaryInstance;
+    const request = messageEvent('GET_LOCATION_PERMISSIONS', {
+      locationResponseVersion: 2,
+    });
+
+    webView.props.onMessage(request);
+    webView.props.onMessage(request);
+    await flushPromises();
+
+    expect(mockRequestLocationSettings).toHaveBeenCalledTimes(1);
+
+    resolveSettings(true);
+    await flushPromises();
+    expect(secondaryInstance.injectJavaScript).toHaveBeenCalledTimes(1);
+  });
+
+  test('injects a v2 location result only into the primary WebView requester', async () => {
+    const renderer = renderPrimary();
+    const primaryWebView = getPrimaryChildren(renderer)[0];
+    const primaryInstance = { injectJavaScript: jest.fn() };
+    primaryWebView.ref.current = primaryInstance;
+
+    primaryWebView.props.onMessage(
+      messageEvent('GET_LOCATION_PERMISSIONS', {
+        locationResponseVersion: 2,
+      })
+    );
+    await flushPromises();
+
+    expect(primaryInstance.injectJavaScript).toHaveBeenCalledTimes(1);
+    expect(primaryInstance.injectJavaScript).toHaveBeenCalledWith(
+      createGpsPermissionCallbackScript(true, {
+        latitude: 12.9716,
+        longitude: 77.5946,
+        accuracy: 8,
+        timestamp: 1788940000000,
+        precision: 'precise',
+        source: 'android-fused',
+      })
     );
   });
 
