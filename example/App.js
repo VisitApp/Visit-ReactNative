@@ -87,19 +87,35 @@ function Home() {
 
   const {VisitRnSdkViewManager} = NativeModules;
 
-  const checkIosHealthKitStatus = async () => {
-    try {
-      const result = await VisitRnSdkViewManager.getHealthKitStatus();
-      if (result) {
-        setHealthTrackerConnectionStatus('CONNECTED');
-        setStepCount(result?.steps[0]);
-      } else {
-        setHealthTrackerConnectionStatus('NOT CONNECTED');
+  const checkIosHealthKitStatus = useCallback(
+    async () => {
+      try {
+        const result = await VisitRnSdkViewManager.getHealthKitStatus();
+        if (result) {
+          setHealthTrackerConnectionStatus('CONNECTED');
+          setStepCount(result?.steps[0]);
+        } else {
+          setHealthTrackerConnectionStatus('NOT CONNECTED');
+        }
+      } catch (error) {
+        console.error('Error checking HealthKit authorization:', error);
       }
-    } catch (error) {
-      console.error('Error checking HealthKit authorization:', error);
+    },
+    [VisitRnSdkViewManager],
+  );
+
+  const fetchTodaysStepCount = useCallback(async () => {
+    try {
+      const stepCount =
+        await NativeModules.VisitFitnessModule.getTodayStepCount();
+
+      console.log('fetchTodaysStepCount: ' + stepCount);
+
+      setStepCount(stepCount);
+    } catch (e) {
+      console.error(e);
     }
-  };
+  }, []);
 
   const checkAndroidHealthConnectStatus = useCallback(async () => {
     try {
@@ -120,20 +136,7 @@ function Home() {
       console.error(e);
       setHealthTrackerConnectionStatus('Error fetching health connect status');
     }
-  }, []);
-
-  const fetchTodaysStepCount = useCallback(async () => {
-    try {
-      const stepCount =
-        await NativeModules.VisitFitnessModule.getTodayStepCount();
-
-      console.log('fetchTodaysStepCount: ' + stepCount);
-
-      setStepCount(stepCount);
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
+  }, [fetchTodaysStepCount]);
 
   const initiateStepSync = useCallback(async () => {
     try {
@@ -145,7 +148,7 @@ function Home() {
     } catch (e) {
       console.error(e);
     }
-  }, []);
+  }, [VisitRnSdkViewManager]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -159,7 +162,7 @@ function Home() {
     }, [
       isAndroidSDKInitialized,
       checkAndroidHealthConnectStatus,
-      healthTrackerConnectionStatus,
+      checkIosHealthKitStatus,
     ]),
   );
 
