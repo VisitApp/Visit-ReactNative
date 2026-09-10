@@ -18,7 +18,7 @@ import {
 import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
 import DeviceInfo from 'react-native-device-info';
-import { getWebViewLink, httpClient } from './Services';
+import { createGeneratedSsoUrl, getWebViewLink, httpClient } from './Services';
 import constants from './constants';
 import SecondaryWebView from './SecondaryWebView';
 import { requestIosLocation } from './iosLocation';
@@ -140,24 +140,13 @@ const VisitRnSdkView = ({
               }
             }
             if (finalBaseUrl && magicCode) {
-              let finalUrl = `${finalBaseUrl}=${magicCode}`;
-              if (moduleName?.trim()) {
-                finalUrl += `&tab=${moduleName}`;
-              }
-
-              if (
-                typeof responseReferenceId === 'string' &&
-                responseReferenceId.trim().length > 0
-              ) {
-                finalUrl += `&responseReferenceId=${responseReferenceId}`;
-              }
-
-              if (
-                typeof otherValues === 'string' &&
-                otherValues.trim().length > 0
-              ) {
-                finalUrl += `&otherValues=${otherValues}`;
-              }
+              const finalUrl = createGeneratedSsoUrl({
+                baseUrl: finalBaseUrl,
+                magicCode,
+                moduleName,
+                responseReferenceId,
+                otherValues,
+              });
 
               setSource(finalUrl);
             }

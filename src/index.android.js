@@ -19,6 +19,7 @@ import axios from 'axios';
 import constants from './constants';
 import SecondaryWebView from './SecondaryWebView';
 import { requestAndroidLocation } from './androidLocation';
+import { createGeneratedSsoUrl } from './Services';
 
 export const httpClient = axios.create({
   timeout: 60000,
@@ -129,26 +130,14 @@ const VisitRnSdkView = ({
                 finalBaseUrl = constants.STAGE_BASE_URL;
               }
 
-              let finalUrl = `${finalBaseUrl}=${magicCode}`;
-
               if (data.message === 'success') {
-                if ((moduleName?.trim()?.length || 0) > 0) {
-                  finalUrl += `&tab=${moduleName}`;
-                }
-
-                if (
-                  typeof responseReferenceId === 'string' &&
-                  responseReferenceId.trim().length > 0
-                ) {
-                  finalUrl += `&responseReferenceId=${responseReferenceId}`;
-                }
-
-                if (
-                  typeof otherValues === 'string' &&
-                  otherValues.trim().length > 0
-                ) {
-                  finalUrl += `&otherValues=${otherValues}`;
-                }
+                const finalUrl = createGeneratedSsoUrl({
+                  baseUrl: finalBaseUrl,
+                  magicCode,
+                  moduleName,
+                  responseReferenceId,
+                  otherValues,
+                });
 
                 if (isLoggingEnabled) {
                   console.log('magicLink: ' + finalUrl);
