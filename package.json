@@ -1,6 +1,6 @@
 {
   "name": "react-native-visit-rn-sdk",
-  "version": "2.0.13",
+  "version": "2.0.14",
   "description": "a package to inject data into visit health pwa",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -17,6 +17,7 @@
     "!lib/typescript/example",
     "!ios/build",
     "!android/build",
+    "!android/bin",
     "!android/gradle",
     "!android/gradlew",
     "!android/gradlew.bat",
@@ -24,6 +25,7 @@
     "!**/__tests__",
     "!**/__fixtures__",
     "!**/__mocks__",
+    "!lib/typescript/**/*.test.*",
     "!**/.*"
   ],
   "scripts": {
