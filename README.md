@@ -12,13 +12,21 @@ The minimum supported iOS deployment target is `12.4`.
 
 ## Usage
 
-```js
+```tsx
 import VisitRnSdkView from 'react-native-visit-rn-sdk';
+import type { VisitRnSdkViewProps } from 'react-native-visit-rn-sdk';
 
-// ...
+const props: VisitRnSdkViewProps = {
+  ssoLink: 'pre-generated-sso-link',
+  // isLoggingEnabled is optional (boolean); defaults to false
+};
 
-<VisitRnSdkView ssoLink="pre-generated-sso-link" />;
+<VisitRnSdkView {...props} />;
 ```
+
+`isLoggingEnabled` is optional. When omitted it defaults to `false`; if you pass it, the value must be a `boolean`.
+
+`VisitRnSdkViewProps` is exported for host apps that want to type wrappers or prop maps.
 
 ## Location permissions
 

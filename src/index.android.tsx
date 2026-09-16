@@ -1,4 +1,10 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, {
+  useRef,
+  useEffect,
+  useState,
+  useCallback,
+  type ComponentType,
+} from 'react';
 import {
   Alert,
   AppState,
@@ -6,6 +12,8 @@ import {
   Linking,
   NativeModules,
   SafeAreaView,
+  type AppStateStatus,
+  type NativeModule,
 } from 'react-native';
 import {
   check,
@@ -14,25 +22,58 @@ import {
   request,
   RESULTS,
 } from 'react-native-permissions';
-import WebView from 'react-native-webview';
+import WebView, { type WebViewMessageEvent } from 'react-native-webview';
+import type { WebViewProgressEvent } from 'react-native-webview/lib/WebViewTypes';
 
-import VideoCallComponent from './components/VideoCallComponent';
+import VideoCallComponent, {
+  type VideoCallComponentHandle,
+} from './components/VideoCallComponent';
+import type { VisitRnSdkViewProps } from './types';
+
+// react-native-webview typings can collapse to `never` under React 17 @types.
+const SdkWebView = WebView as unknown as ComponentType<Record<string, unknown>>;
 
 const LOCATION_SOURCE_SETTINGS = 'android.settings.LOCATION_SOURCE_SETTINGS';
 const GENERAL_SETTINGS = 'android.settings.SETTINGS';
-const { VisitRnSdkLocation } = NativeModules;
 
-const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
+type VisitRnSdkLocationModule = NativeModule & {
+  isLocationServicesEnabled: () => Promise<boolean>;
+};
+
+type VisitRnSdkNativeModules = {
+  VisitRnSdkLocation?: VisitRnSdkLocationModule;
+};
+
+type PendingSettingsType = 'location-permission' | 'location-services' | null;
+
+type WebViewBridgePayload = {
+  method?: string;
+  url?: string;
+  roomName?: string;
+  token?: string;
+  doctorName?: string;
+  userName?: string;
+};
+
+const { VisitRnSdkLocation } = NativeModules as VisitRnSdkNativeModules;
+
+const VisitRnSdkView = ({
+  ssoLink = '',
+  isLoggingEnabled = false,
+}: VisitRnSdkViewProps) => {
   const source = typeof ssoLink === 'string' ? ssoLink.trim() : '';
-  const webviewRef = useRef(null);
-  const videoCallRef = useRef(null);
+  const webviewRef = useRef<{
+    injectJavaScript: (_script: string) => void;
+    goBack: () => void;
+  } | null>(null);
+  const videoCallRef = useRef<VideoCallComponentHandle>(null);
   const locationFlowInProgressRef = useRef(false);
-  const pendingSettingsRef = useRef(null);
-  const appStateRef = useRef(AppState.currentState);
+  const pendingSettingsRef = useRef<PendingSettingsType>(null);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const [canGoBack, setCanGoBack] = useState(false);
 
   const warn = useCallback(
-    (message, error) => {
+    (message: string, error?: unknown) => {
       if (isLoggingEnabled) {
         console.warn(message, error);
       }
@@ -40,7 +81,7 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
     [isLoggingEnabled]
   );
 
-  const finishLocationFlow = useCallback((granted) => {
+  const finishLocationFlow = useCallback((granted: boolean) => {
     locationFlowInProgressRef.current = false;
     pendingSettingsRef.current = null;
     webviewRef.current?.injectJavaScript(
@@ -94,7 +135,7 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
   }, [finishLocationFlow, warn]);
 
   const checkLocationServices = useCallback(
-    async ({ promptIfDisabled }) => {
+    async ({ promptIfDisabled }: { promptIfDisabled: boolean }) => {
       try {
         if (!VisitRnSdkLocation?.isLocationServicesEnabled) {
           throw new Error('VisitRnSdkLocation native module is unavailable.');
@@ -212,7 +253,7 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
     `;
 
   const startVideoConsultation = useCallback(
-    (parsedObject) => {
+    (parsedObject: WebViewBridgePayload) => {
       const roomName = parsedObject?.roomName;
       const accessToken = parsedObject?.token;
       const rawDoctorName = parsedObject?.doctorName;
@@ -242,10 +283,12 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
     [isLoggingEnabled]
   );
 
-  const handleMessage = (event) => {
+  const handleMessage = (event: WebViewMessageEvent) => {
     if (event.nativeEvent.data != null) {
       try {
-        const parsedObject = JSON.parse(event.nativeEvent.data);
+        const parsedObject = JSON.parse(
+          event.nativeEvent.data
+        ) as WebViewBridgePayload;
         if (isLoggingEnabled) {
           console.log('Received WebView method:', parsedObject.method);
         }
@@ -263,7 +306,9 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
               requestLocationPermission();
               break;
             case 'OPEN_PDF':
-              Linking.openURL(parsedObject.url);
+              if (parsedObject.url) {
+                Linking.openURL(parsedObject.url);
+              }
               break;
             case 'CLOSE_VIEW':
               break;
@@ -290,18 +335,21 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
       'hardwareBackPress',
       handleBack
     );
-    const appStateSub = AppState.addEventListener('change', (nextAppState) => {
-      const wasInBackground = /inactive|background/.test(appStateRef.current);
-      appStateRef.current = nextAppState;
+    const appStateSub = AppState.addEventListener(
+      'change',
+      (nextAppState: AppStateStatus) => {
+        const wasInBackground = /inactive|background/.test(appStateRef.current);
+        appStateRef.current = nextAppState;
 
-      if (
-        wasInBackground &&
-        nextAppState === 'active' &&
-        pendingSettingsRef.current
-      ) {
-        recheckAfterSettings();
+        if (
+          wasInBackground &&
+          nextAppState === 'active' &&
+          pendingSettingsRef.current
+        ) {
+          recheckAfterSettings();
+        }
       }
-    });
+    );
 
     return () => {
       backSub?.remove();
@@ -313,7 +361,7 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
     // eslint-disable-next-line react-native/no-inline-styles
     <SafeAreaView style={{ flex: 1 }}>
       {source ? (
-        <WebView
+        <SdkWebView
           ref={webviewRef}
           source={{
             uri: source,
@@ -324,8 +372,10 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
           onMessage={handleMessage}
           injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
           javaScriptEnabled={true}
-          onLoadProgress={(event) => setCanGoBack(event.nativeEvent.canGoBack)}
-          onError={(errorMessage) => {
+          onLoadProgress={(event: WebViewProgressEvent) =>
+            setCanGoBack(event.nativeEvent.canGoBack)
+          }
+          onError={(errorMessage: unknown) => {
             if (isLoggingEnabled) {
               console.warn('Webview error: ', errorMessage);
             }
@@ -355,8 +405,3 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
 };
 
 export default VisitRnSdkView;
-
-VisitRnSdkView.defaultProps = {
-  ssoLink: '',
-  isLoggingEnabled: false,
-};

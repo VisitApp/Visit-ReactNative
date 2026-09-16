@@ -1,7 +1,14 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, type ComponentType } from 'react';
 import { StyleSheet, SafeAreaView, Linking, Dimensions } from 'react-native';
-import { WebView } from 'react-native-webview';
-import VideoCallComponent from './components/VideoCallComponent';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+
+import VideoCallComponent, {
+  type VideoCallComponentHandle,
+} from './components/VideoCallComponent';
+import type { VisitRnSdkViewProps } from './types';
+
+// react-native-webview typings can collapse to `never` under React 17 @types.
+const SdkWebView = WebView as unknown as ComponentType<Record<string, unknown>>;
 
 const escapeChars = {
   lt: '<',
@@ -11,28 +18,42 @@ const escapeChars = {
   amp: '&',
 };
 
-const unescapeHTML = (str) =>
+type WebViewBridgePayload = {
+  method?: string;
+  url?: string;
+  roomName?: string;
+  token?: string;
+  doctorName?: string;
+  userName?: string;
+};
+
+const unescapeHTML = (str: string) =>
   // modified from underscore.string and string.js
   // eslint-disable-next-line no-useless-escape
   str.replace(/\&([^;]+);/g, (entity, entityCode) => {
     let match;
 
     if (entityCode in escapeChars) {
-      return escapeChars[entityCode];
+      return escapeChars[entityCode as keyof typeof escapeChars];
     } else if ((match = entityCode.match(/^#x([\da-fA-F]+)$/))) {
       return String.fromCharCode(parseInt(match[1], 16));
     } else if ((match = entityCode.match(/^#(\d+)$/))) {
-      return String.fromCharCode(match[1]);
+      return String.fromCharCode(match[1] as any);
     } else {
       return entity;
     }
   });
 
-const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
+const VisitRnSdkView = ({
+  ssoLink = '',
+  isLoggingEnabled = false,
+}: VisitRnSdkViewProps) => {
   const source = typeof ssoLink === 'string' ? ssoLink.trim() : '';
 
-  const webviewRef = useRef(null);
-  const videoCallRef = useRef(null);
+  const webviewRef = useRef<{
+    injectJavaScript: (_script: string) => void;
+  } | null>(null);
+  const videoCallRef = useRef<VideoCallComponentHandle>(null);
 
   const runBeforeFirst = `
   window.isNativeApp = true;
@@ -42,7 +63,7 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
   `;
 
   const startVideoConsultation = useCallback(
-    (payload) => {
+    (payload: WebViewBridgePayload) => {
       const roomName = payload?.roomName;
       const accessToken = payload?.token;
       const rawDoctorName = payload?.doctorName;
@@ -72,33 +93,43 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
     [isLoggingEnabled]
   );
 
-  const handleMessage = (event) => {
-    const data = JSON.parse(unescapeHTML(event.nativeEvent.data));
-    const { method, url } = data;
-    if (isLoggingEnabled) {
-      console.log('Received WebView method:', method);
-    }
-    switch (method) {
-      case 'startVideoCall':
-        startVideoConsultation(data);
-        break;
-      case 'UPDATE_PLATFORM':
-        webviewRef.current?.injectJavaScript('window.setSdkPlatform("IOS")');
-        break;
+  const handleMessage = (event: WebViewMessageEvent) => {
+    try {
+      const data = JSON.parse(
+        unescapeHTML(event.nativeEvent.data)
+      ) as WebViewBridgePayload;
+      const { method, url } = data;
+      if (isLoggingEnabled) {
+        console.log('Received WebView method:', method);
+      }
+      switch (method) {
+        case 'startVideoCall':
+          startVideoConsultation(data);
+          break;
+        case 'UPDATE_PLATFORM':
+          webviewRef.current?.injectJavaScript('window.setSdkPlatform("IOS")');
+          break;
 
-      case 'OPEN_PDF':
-        Linking.openURL(url);
-        break;
-      case 'CLOSE_VIEW':
-        break;
-      case 'GET_LOCATION_PERMISSIONS':
-        webviewRef.current?.injectJavaScript(
-          'window.checkTheGpsPermission(true)'
-        );
-        break;
+        case 'OPEN_PDF':
+          if (url) {
+            Linking.openURL(url);
+          }
+          break;
+        case 'CLOSE_VIEW':
+          break;
+        case 'GET_LOCATION_PERMISSIONS':
+          webviewRef.current?.injectJavaScript(
+            'window.checkTheGpsPermission(true)'
+          );
+          break;
 
-      default:
-        break;
+        default:
+          break;
+      }
+    } catch (error) {
+      if (isLoggingEnabled) {
+        console.warn('Unable to handle WebView message.', error);
+      }
     }
   };
 
@@ -107,14 +138,14 @@ const VisitRnSdkView = ({ ssoLink, isLoggingEnabled }) => {
     // eslint-disable-next-line react-native/no-inline-styles
     <SafeAreaView style={{ flex: 1, backgroundColor: 'white', height, width }}>
       {source ? (
-        <WebView
+        <SdkWebView
           ref={webviewRef}
           source={{ uri: source }}
           style={styles.webView}
-          javascriptEnabled
+          javaScriptEnabled
           onMessage={handleMessage}
           injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
-          onError={(errorMessage) => {
+          onError={(errorMessage: unknown) => {
             if (isLoggingEnabled) {
               console.warn('Webview error: ', errorMessage);
             }
@@ -148,10 +179,5 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-
-VisitRnSdkView.defaultProps = {
-  ssoLink: '',
-  isLoggingEnabled: false,
-};
 
 export default VisitRnSdkView;
