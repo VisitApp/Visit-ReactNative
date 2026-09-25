@@ -286,6 +286,28 @@ describe('iOS secondary WebView isolation', () => {
     expect(children[1].props.link).toBe(nextLink);
   });
 
+  test('releases the secondary slot after the native modal is dismissed', async () => {
+    const renderer = renderPrimary();
+    let children = getPrimaryChildren(renderer);
+
+    await children[0].props.onMessage(
+      messageEvent('OPEN_SECONDARY_WEB_VIEW', { link: secondaryLink })
+    );
+
+    getSecondaryContent(renderer).modal.props.onDismiss();
+    children = getPrimaryChildren(renderer);
+    expect(children).toHaveLength(1);
+
+    const nextLink = 'https://another.example.com';
+    await children[0].props.onMessage(
+      messageEvent('OPEN_SECONDARY_WEB_VIEW', { link: nextLink })
+    );
+
+    children = getPrimaryChildren(renderer);
+    expect(children).toHaveLength(2);
+    expect(children[1].props.link).toBe(nextLink);
+  });
+
   test.each([[undefined], [''], ['   ']])(
     'ignores missing or empty secondary link %p',
     async (link) => {

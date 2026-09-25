@@ -157,6 +157,7 @@ const SecondaryWebView = ({ link, isLoggingEnabled, onClose }) => {
   return (
     <Modal
       animationType="slide"
+      onDismiss={onClose}
       onRequestClose={handleBack}
       presentationStyle="fullScreen"
       visible={true}
