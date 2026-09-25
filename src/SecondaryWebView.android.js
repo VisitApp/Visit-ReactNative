@@ -132,6 +132,7 @@ const SecondaryWebView = ({ link, isLoggingEnabled, onClose }) => {
             if (isLoggingEnabled) {
               console.warn('Webview error: ', errorMessage);
             }
+            onClose();
           }}
         />
       </SafeAreaView>

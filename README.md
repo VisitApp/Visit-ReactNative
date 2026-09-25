@@ -45,6 +45,11 @@ WebView. On iOS, a rightward swipe beginning at the left screen edge performs
 the same history-first Back behavior and closes the secondary WebView when it
 is already at its root.
 
+If the secondary WebView has a transport or load failure, the SDK emits the
+existing `web-view-error` event and closes the modal, releasing the slot for a
+later `OPEN_SECONDARY_WEB_VIEW` request. HTTP error responses and errors
+rendered by the loaded application do not use this failure path.
+
 The secondary WebView handles these callbacks:
 
 - `OPEN_SECONDARY_WEB_VIEW` (ignored while the single secondary WebView is open)

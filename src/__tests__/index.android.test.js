@@ -211,6 +211,29 @@ describe('Android secondary WebView isolation', () => {
     expect(children[1].props.link).toBe(secondaryLink);
   });
 
+  test('releases the secondary slot after close so another link can open', () => {
+    const renderer = renderPrimary();
+    let children = getPrimaryChildren(renderer);
+
+    children[0].props.onMessage(
+      messageEvent('OPEN_SECONDARY_WEB_VIEW', { link: secondaryLink })
+    );
+
+    children = getPrimaryChildren(renderer);
+    children[1].props.onClose();
+    children = getPrimaryChildren(renderer);
+    expect(children).toHaveLength(1);
+
+    const nextLink = 'https://another.example.com';
+    children[0].props.onMessage(
+      messageEvent('OPEN_SECONDARY_WEB_VIEW', { link: nextLink })
+    );
+
+    children = getPrimaryChildren(renderer);
+    expect(children).toHaveLength(2);
+    expect(children[1].props.link).toBe(nextLink);
+  });
+
   test.each([
     [undefined],
     [''],
@@ -399,6 +422,29 @@ describe('Android secondary WebView isolation', () => {
     renderer.getRenderOutput().props.onRequestClose();
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test('emits a WebView error and closes without navigating history', () => {
+    const onClose = jest.fn();
+    const renderer = renderSecondary({ onClose });
+    let webView = getSecondaryWebView(renderer);
+    const secondaryInstance = { goBack: jest.fn() };
+    webView.ref.current = secondaryInstance;
+
+    webView.props.onLoadProgress({ nativeEvent: { canGoBack: true } });
+    webView = getSecondaryWebView(renderer);
+    const errorMessage = { nativeEvent: { description: 'load failed' } };
+    webView.props.onError(errorMessage);
+
+    expect(mockEmitEvent).toHaveBeenCalledWith('visit-event', {
+      message: 'web-view-error',
+      errorMessage,
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(secondaryInstance.goBack).not.toHaveBeenCalled();
+    expect(mockEmitEvent.mock.invocationCallOrder[0]).toBeLessThan(
+      onClose.mock.invocationCallOrder[0]
+    );
   });
 
   test('does not render the modal for an invalid direct link', () => {
