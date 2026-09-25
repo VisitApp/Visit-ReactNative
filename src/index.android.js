@@ -539,13 +539,9 @@ const VisitRnSdkView = ({
                     ? parsedObject.link.trim()
                     : '';
 
-                if (
-                  /^https?:\/\/[^\s/?#]+(?:[/?#][^\s]*)?$/i.test(secondaryLink)
-                ) {
-                  setSecondarySource(
-                    (currentSource) => currentSource || secondaryLink
-                  );
-                }
+                setSecondarySource(
+                  (currentSource) => currentSource || secondaryLink
+                );
               }
               break;
             case 'CLOSE_VIEW':

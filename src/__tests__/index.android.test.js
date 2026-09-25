@@ -234,21 +234,34 @@ describe('Android secondary WebView isolation', () => {
     expect(children[1].props.link).toBe(nextLink);
   });
 
+  test.each([[undefined], [''], ['   ']])(
+    'ignores missing or empty secondary link %p',
+    (link) => {
+      const renderer = renderPrimary();
+
+      getPrimaryChildren(renderer)[0].props.onMessage(
+        messageEvent('OPEN_SECONDARY_WEB_VIEW', { link })
+      );
+
+      expect(getPrimaryChildren(renderer)).toHaveLength(1);
+    }
+  );
+
   test.each([
-    [undefined],
-    [''],
     ['/relative'],
-    ['java' + 'script:alert(1)'],
+    ['custom://campaign/123'],
     ['https://'],
     ['https://example.com/has whitespace'],
-  ])('ignores invalid secondary link %p', (link) => {
+  ])('opens secondary link %p without URL format validation', (link) => {
     const renderer = renderPrimary();
 
     getPrimaryChildren(renderer)[0].props.onMessage(
       messageEvent('OPEN_SECONDARY_WEB_VIEW', { link })
     );
 
-    expect(getPrimaryChildren(renderer)).toHaveLength(1);
+    const children = getPrimaryChildren(renderer);
+    expect(children).toHaveLength(2);
+    expect(children[1].props.link).toBe(link);
   });
 
   test('keeps HTTP(S) navigation inside the modal WebView', () => {
