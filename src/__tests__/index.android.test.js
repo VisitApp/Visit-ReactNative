@@ -1,5 +1,7 @@
 import React from 'react';
-import ShallowRenderer from 'react-shallow-renderer';
+import TestRenderer, { act } from 'react-test-renderer';
+
+global.IS_REACT_ACT_ENVIRONMENT = true;
 
 const mockInitiateSDK = jest.fn();
 const mockUpdateApiBaseUrl = jest.fn();
@@ -100,6 +102,11 @@ jest.mock(
   { virtual: true }
 );
 
+jest.mock('../SecondaryWebView', () => ({
+  __esModule: true,
+  default: require('../SecondaryWebView.android').default,
+}));
+
 const { default: SecondaryWebView } = require('../SecondaryWebView.android');
 const {
   createGpsPermissionCallbackScript,
@@ -122,26 +129,45 @@ const flushPromises = async () => {
   }
 };
 
-const renderPrimary = () => {
-  const renderer = new ShallowRenderer();
-  renderer.render(
-    <VisitRnSdkView magicLink={primaryLink} isLoggingEnabled={false} />
-  );
-
-  // ShallowRenderer skips effects. Dispatch the source state hook to mirror
-  // the existing magicLink effect without changing production timing.
-  renderer._firstWorkInProgressHook.queue.dispatch(primaryLink);
+const render = (component) => {
+  let renderer;
+  act(() => {
+    renderer = TestRenderer.create(component, {
+      createNodeMock: () => ({}),
+    });
+  });
   return renderer;
 };
 
+const wrapInstance = (instance) => ({
+  type: instance.type,
+  props: Object.fromEntries(
+    Object.entries(instance.props).map(([name, value]) => [
+      name,
+      typeof value === 'function'
+        ? (...args) => {
+            let result;
+            act(() => {
+              result = value(...args);
+            });
+            return result;
+          }
+        : value,
+    ])
+  ),
+  ref: instance._fiber.ref,
+});
+
+const renderPrimary = () =>
+  render(<VisitRnSdkView magicLink={primaryLink} isLoggingEnabled={false} />);
+
 const getPrimaryChildren = (renderer) => {
-  const children = renderer.getRenderOutput().props.children;
-  return (Array.isArray(children) ? children : [children]).filter(Boolean);
+  const primaryContainer = renderer.root.findAllByType('SafeAreaView')[0];
+  return primaryContainer.children.filter(Boolean).map(wrapInstance);
 };
 
 const renderSecondary = (properties = {}) => {
-  const renderer = new ShallowRenderer();
-  renderer.render(
+  return render(
     <SecondaryWebView
       link={secondaryLink}
       isLoggingEnabled={false}
@@ -149,11 +175,13 @@ const renderSecondary = (properties = {}) => {
       {...properties}
     />
   );
-  return renderer;
 };
 
 const getSecondaryWebView = (renderer) =>
-  renderer.getRenderOutput().props.children.props.children;
+  wrapInstance(renderer.root.findByType('WebView'));
+
+const getSecondaryModal = (renderer) =>
+  wrapInstance(renderer.root.findByType('Modal'));
 
 describe('Android secondary WebView isolation', () => {
   let consoleLogSpy;
@@ -304,7 +332,7 @@ describe('Android secondary WebView isolation', () => {
       message: 'OPEN_FACE_SCAN_FLOW',
     });
     expect(mockUpdateApiBaseUrl).not.toHaveBeenCalled();
-    expect(renderer.getRenderOutput().props.visible).toBe(true);
+    expect(getSecondaryModal(renderer).props.visible).toBe(true);
   });
 
   test('closes immediately on CLOSE_VIEW without navigating WebView history', () => {
@@ -425,14 +453,14 @@ describe('Android secondary WebView isolation', () => {
     webView.ref.current = secondaryInstance;
 
     webView.props.onLoadProgress({ nativeEvent: { canGoBack: true } });
-    renderer.getRenderOutput().props.onRequestClose();
+    getSecondaryModal(renderer).props.onRequestClose();
 
     expect(secondaryInstance.goBack).toHaveBeenCalledTimes(1);
     expect(onClose).not.toHaveBeenCalled();
 
     webView = getSecondaryWebView(renderer);
     webView.props.onLoadProgress({ nativeEvent: { canGoBack: false } });
-    renderer.getRenderOutput().props.onRequestClose();
+    getSecondaryModal(renderer).props.onRequestClose();
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -462,6 +490,6 @@ describe('Android secondary WebView isolation', () => {
 
   test('does not render the modal for an invalid direct link', () => {
     const renderer = renderSecondary({ link: 'ftp://example.com' });
-    expect(renderer.getRenderOutput()).toBeNull();
+    expect(renderer.toJSON()).toBeNull();
   });
 });

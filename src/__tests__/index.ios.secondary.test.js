@@ -1,5 +1,7 @@
 import React from 'react';
-import ShallowRenderer from 'react-shallow-renderer';
+import TestRenderer, { act } from 'react-test-renderer';
+
+global.IS_REACT_ACT_ENVIRONMENT = true;
 
 const mockLinkingOpenURL = jest.fn(() => Promise.resolve());
 const mockLinkingOpenSettings = jest.fn(() => Promise.resolve());
@@ -121,9 +123,37 @@ const preciseLocation = {
   source: 'ios-core-location',
 };
 
-const renderPrimary = (properties = {}) => {
-  const renderer = new ShallowRenderer();
-  renderer.render(
+const render = (component) => {
+  let renderer;
+  act(() => {
+    renderer = TestRenderer.create(component, {
+      createNodeMock: () => ({}),
+    });
+  });
+  return renderer;
+};
+
+const wrapInstance = (instance) => ({
+  type: instance.type,
+  props: Object.fromEntries(
+    Object.entries(instance.props).map(([name, value]) => [
+      name,
+      typeof value === 'function'
+        ? (...args) => {
+            let result;
+            act(() => {
+              result = value(...args);
+            });
+            return result;
+          }
+        : value,
+    ])
+  ),
+  ref: instance._fiber.ref,
+});
+
+const renderPrimary = (properties = {}) =>
+  render(
     <VisitRnSdkView
       magicLink={primaryLink}
       isLoggingEnabled={false}
@@ -131,21 +161,13 @@ const renderPrimary = (properties = {}) => {
     />
   );
 
-  // ShallowRenderer skips effects. Mirror the existing magicLink effect by
-  // setting source and loading through their existing state hooks.
-  renderer._firstWorkInProgressHook.queue.dispatch(primaryLink);
-  renderer._firstWorkInProgressHook.next.queue.dispatch(false);
-  return renderer;
-};
-
 const getPrimaryChildren = (renderer) => {
-  const children = renderer.getRenderOutput().props.children;
-  return (Array.isArray(children) ? children : [children]).filter(Boolean);
+  const primaryContainer = renderer.root.findAllByType('SafeAreaView')[0];
+  return primaryContainer.children.filter(Boolean).map(wrapInstance);
 };
 
 const renderSecondary = (properties = {}) => {
-  const renderer = new ShallowRenderer();
-  renderer.render(
+  return render(
     <SecondaryWebView
       link={secondaryLink}
       isLoggingEnabled={false}
@@ -153,17 +175,16 @@ const renderSecondary = (properties = {}) => {
       {...properties}
     />
   );
-  return renderer;
 };
 
 const getSecondaryContent = (renderer) => {
-  const modal = renderer.getRenderOutput();
-  const safeAreaView = modal.props.children;
-  const [webView, backSwipeEdge] = safeAreaView.props.children;
+  const modal = renderer.root.findByType('Modal');
+  const safeAreaView = modal.findByType('SafeAreaView');
+  const [webView, backSwipeEdge] = safeAreaView.children;
   return {
-    modal,
-    webView,
-    backSwipeEdge,
+    modal: wrapInstance(modal),
+    webView: wrapInstance(webView),
+    backSwipeEdge: wrapInstance(backSwipeEdge),
   };
 };
 
@@ -583,6 +604,6 @@ describe('iOS secondary WebView isolation', () => {
 
   test('does not render the modal for an invalid direct link', () => {
     const renderer = renderSecondary({ link: 'ftp://example.com' });
-    expect(renderer.getRenderOutput()).toBeNull();
+    expect(renderer.toJSON()).toBeNull();
   });
 });
