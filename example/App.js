@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 
 import VisitRnSdkView from 'react-native-visit-rn-sdk';
 
@@ -81,6 +81,8 @@ function Home() {
   const [syncMessage, setSyncMessage] = useState('');
 
   const {VisitRnSdkViewManager} = NativeModules;
+  const automaticSyncAttemptedRef = useRef(false);
+  const syncFlowInFlightRef = useRef(false);
 
   const syncStatusStyle = useMemo(() => {
     if (syncStatus === 'success') {
@@ -101,7 +103,7 @@ function Home() {
         : VisitRnSdkViewManager;
 
     if (!nativeMetricsModule) {
-      return;
+      return false;
     }
 
     const [stepsResult, sleepResult, caloriesResult] = await Promise.allSettled(
@@ -132,81 +134,148 @@ function Home() {
     } else {
       console.error(caloriesResult.reason);
     }
+
+    return stepsResult.status === 'fulfilled';
   }, [VisitRnSdkViewManager]);
 
-  const checkIosHealthKitStatus = useCallback(async () => {
-    try {
-      const status = await VisitRnSdkViewManager?.getHealthKitConnectStatus();
-
-      console.log('getHealthKitConnectStatus: ' + status);
-
-      if (status === 'NOT_SUPPORTED') {
-      } else if (status === 'INSTALLED') {
-      } else if (status === 'CONNECTED') {
-        await fetchTodayHealthMetrics();
-      }
-
-      setHealthTrackerConnectionStatus(status);
-    } catch (e) {
-      console.error(e);
-      setHealthTrackerConnectionStatus('Error fetching health kit status');
-    }
-  }, [VisitRnSdkViewManager, fetchTodayHealthMetrics]);
-
-  const checkAndroidHealthConnectStatus = useCallback(async () => {
-    try {
-      const status =
-        await NativeModules.VisitFitnessModule.getHealthConnectStatus();
-
-      console.log('getHealthConnectStatus: ' + status);
-
-      if (status === 'NOT_SUPPORTED') {
-      } else if (status === 'NOT_INSTALLED') {
-      } else if (status === 'INSTALLED') {
-      } else if (status === 'CONNECTED') {
-        fetchTodayHealthMetrics();
-      }
-
-      setHealthTrackerConnectionStatus(status);
-    } catch (e) {
-      console.error(e);
-      setHealthTrackerConnectionStatus('Error fetching health connect status');
-    }
-  }, [fetchTodayHealthMetrics]);
-
-  const initiateStepSync = useCallback(async () => {
+  const performStepSync = useCallback(async () => {
     setSyncStatus('syncing');
     setSyncMessage('Syncing in progress...');
 
     try {
-      const syncResult =
+      const nativeSyncModule =
         Platform.OS === 'android'
-          ? await NativeModules.VisitFitnessModule.triggerManualSync()
-          : await VisitRnSdkViewManager?.triggerManualSync();
+          ? NativeModules.VisitFitnessModule
+          : VisitRnSdkViewManager;
+
+      if (!nativeSyncModule?.triggerManualSync) {
+        throw new Error('Visit health sync module is unavailable');
+      }
+
+      const syncResult = await nativeSyncModule.triggerManualSync();
 
       console.log('triggerManualSync resolved:', syncResult);
       setSyncStatus('success');
       setSyncMessage('Syncing has been done successfully');
+      return true;
     } catch (e) {
       console.error('triggerManualSync failed:', e?.code, e?.message);
       setSyncStatus('error');
       setSyncMessage(e?.message || 'Syncing failed');
+      return false;
     }
   }, [VisitRnSdkViewManager]);
 
+  const initiateStepSync = useCallback(async () => {
+    if (syncFlowInFlightRef.current) {
+      return false;
+    }
+
+    syncFlowInFlightRef.current = true;
+
+    try {
+      return await performStepSync();
+    } finally {
+      syncFlowInFlightRef.current = false;
+    }
+  }, [performStepSync]);
+
+  const runHealthStatusFlow = useCallback(
+    async shouldTriggerAutomaticSync => {
+      let ownsAutomaticSyncLock = false;
+
+      if (shouldTriggerAutomaticSync) {
+        if (syncFlowInFlightRef.current) {
+          return;
+        }
+
+        syncFlowInFlightRef.current = true;
+        ownsAutomaticSyncLock = true;
+        setSyncStatus('preparing');
+        setSyncMessage("Checking permissions and today's steps...");
+      }
+
+      try {
+        const nativeHealthModule =
+          Platform.OS === 'android'
+            ? NativeModules.VisitFitnessModule
+            : VisitRnSdkViewManager;
+
+        if (!nativeHealthModule) {
+          throw new Error('Visit health module is unavailable');
+        }
+
+        const status =
+          Platform.OS === 'android'
+            ? await nativeHealthModule.getHealthConnectStatus()
+            : await nativeHealthModule.getHealthKitConnectStatus();
+
+        console.log(
+          (Platform.OS === 'android'
+            ? 'getHealthConnectStatus'
+            : 'getHealthKitConnectStatus') +
+            ': ' +
+            status,
+        );
+
+        setHealthTrackerConnectionStatus(status);
+
+        if (status !== 'CONNECTED') {
+          if (shouldTriggerAutomaticSync) {
+            setSyncStatus('idle');
+            setSyncMessage('');
+          }
+          return;
+        }
+
+        const didFetchTodaySteps = await fetchTodayHealthMetrics();
+
+        if (!shouldTriggerAutomaticSync) {
+          return;
+        }
+
+        if (!didFetchTodaySteps) {
+          setSyncStatus('error');
+          setSyncMessage(
+            "Today's step count could not be fetched. Sync was not started.",
+          );
+          return;
+        }
+
+        await performStepSync();
+      } catch (e) {
+        console.error('Health status flow failed:', e);
+
+        const statusErrorMessage =
+          Platform.OS === 'android'
+            ? 'Error fetching health connect status'
+            : 'Error fetching health kit status';
+
+        setHealthTrackerConnectionStatus(statusErrorMessage);
+
+        if (shouldTriggerAutomaticSync) {
+          setSyncStatus('error');
+          setSyncMessage(e?.message || statusErrorMessage);
+        }
+      } finally {
+        if (ownsAutomaticSyncLock) {
+          syncFlowInFlightRef.current = false;
+        }
+      }
+    },
+    [VisitRnSdkViewManager, fetchTodayHealthMetrics, performStepSync],
+  );
+
   useFocusEffect(
     React.useCallback(() => {
-      if (isAndroidSDKInitialized) {
-        checkAndroidHealthConnectStatus();
+      if (Platform.OS === 'android' && !isAndroidSDKInitialized) {
+        return;
       }
-      if (Platform.OS === 'ios') {
-        checkIosHealthKitStatus();
-      }
-    }, [
-      isAndroidSDKInitialized,
-      checkAndroidHealthConnectStatus,
-      checkIosHealthKitStatus,
-    ]),
+
+      const shouldTriggerAutomaticSync = !automaticSyncAttemptedRef.current;
+      automaticSyncAttemptedRef.current = true;
+      runHealthStatusFlow(shouldTriggerAutomaticSync);
+    }, [isAndroidSDKInitialized, runHealthStatusFlow]),
   );
 
   useEffect(() => {
@@ -300,9 +369,16 @@ function Home() {
         </View>
 
         <Button
-          title={syncStatus === 'syncing' ? 'Syncing...' : 'Start Step Sync'}
+          title={
+            syncStatus === 'preparing'
+              ? 'Preparing Sync...'
+              : syncStatus === 'syncing'
+              ? 'Syncing...'
+              : 'Start Step Sync'
+          }
           color="#7e55fa"
           disabled={
+            syncStatus === 'preparing' ||
             syncStatus === 'syncing' ||
             healthTrackerConnectionStatus !== 'CONNECTED'
           }

@@ -84,9 +84,11 @@ To see the full usage code for getting Health Connect/HealthKit connection statu
 
 ## **Example App SDK Initialization and Manual Step Sync**
 
-The example app separates health SDK setup, WebView-driven sync setup, and a
-user-triggered manual sync. These are related, but they do not happen at the
-same time.
+The example app separates health SDK setup, WebView-driven sync setup, and the
+sync request itself. On the first eligible `Home` focus, it automatically
+checks the platform connection, fetches today's metrics, and starts manual
+sync only if the step read succeeds. The button remains available for later
+manual retries.
 
 ```mermaid
 flowchart TD
@@ -97,8 +99,13 @@ flowchart TD
     B -->|iOS| F["Home focus checks HealthKit status<br/>No explicit initiateSDK call"]
     F --> G{"Health status"}
     E --> G
-    G -->|CONNECTED| H["Load today's metrics and enable<br/>Start Step Sync"]
-    G -->|Any other status| I["Keep Start Step Sync disabled"]
+    G -->|CONNECTED| H["Fetch today's metrics"]
+    G -->|Any other status| I["Do not sync and keep<br/>Start Step Sync disabled"]
+    H --> Y{"Today step count fetched?"}
+    Y -->|No| Z["Show an error and do not sync"]
+    Y -->|Yes| AA{"First eligible Home focus?"}
+    AA -->|Yes| R["Start automatic manual sync"]
+    AA -->|No| Q["Refresh metrics and keep<br/>Start Step Sync available"]
 
     A --> J["User selects Go to next page"]
     J --> K["VisitPage mounts VisitRnSdkView"]
@@ -109,8 +116,8 @@ flowchart TD
     O --> P["User returns to Home"]
     P --> G
 
-    H --> Q["User selects Start Step Sync"]
-    Q --> R["App sets syncStatus to syncing"]
+    Q --> AB["User selects Start Step Sync"]
+    AB --> R
     R --> S{"Platform"}
     S -->|Android| T["VisitFitnessModule.triggerManualSync()"]
     S -->|iOS| U["VisitRnSdkViewManager.triggerManualSync()"]
@@ -133,14 +140,21 @@ this React state does not confirm that native initialization succeeded. If
 another opportunity to initialize with an available Activity.
 
 Once the Android React flag is true and `Home` is focused,
-`checkAndroidHealthConnectStatus()` calls `getHealthConnectStatus()`. On iOS,
-there is no equivalent `initiateSDK` call in `App.js`; each `Home` focus calls
+`runHealthStatusFlow()` calls `getHealthConnectStatus()`. On iOS, there is no
+equivalent `initiateSDK` call in `App.js`; each `Home` focus calls
 `VisitRnSdkViewManager.getHealthKitConnectStatus()` directly.
 
 For either platform, a `CONNECTED` result triggers
 `fetchTodayHealthMetrics()`, which requests today's steps, sleep minutes, and
-calories from the platform-native module. It also enables **Start Step Sync**.
-All other connection states leave the button disabled.
+calories from the platform-native module. The helper reports whether the step
+request succeeded. On the first eligible `Home` focus, a successful step read
+continues directly into manual sync; a failed step read shows an error and
+blocks that automatic attempt. Other connection states do not fetch metrics or
+start sync.
+
+An in-memory ref records the first automatic attempt. Later `Home` focuses
+refresh connection status and metrics but do not automatically sync again
+during the same component lifetime.
 
 ### **2. WebView Setup and Initial Sync**
 
@@ -163,30 +177,35 @@ The SDK handles that message as follows:
 
 The initial sync and the manual sync share the same native in-progress guard.
 Returning to `Home` while the initial sync is still running can therefore make
-a manual attempt reject with `SYNC_IN_PROGRESS`.
+an explicit button attempt reject with `SYNC_IN_PROGRESS`.
 
 > **Ordering requirement:** `CONNECTED` only represents Health Connect or
 > HealthKit access. It does not mean that the Visit API credentials and sync
 > timestamps are ready. On a fresh install or after clearing app data, mount
-> `VisitRnSdkView` and allow it to process `UPDATE_API_BASE_URL` before using
-> **Start Step Sync**. Otherwise, manual sync can reject with
-> `MISSING_SYNC_CREDENTIALS` or `MISSING_SYNC_TIMESTAMPS` even though the
-> button is enabled.
+> `VisitRnSdkView` and allow it to process `UPDATE_API_BASE_URL` before either
+> automatic or button-driven sync. Otherwise, sync can reject with
+> `MISSING_SYNC_CREDENTIALS` or `MISSING_SYNC_TIMESTAMPS` even though health
+> access is connected. The automatic attempt runs only once per `Home` mount,
+> so after visiting `VisitPage`, use **Start Step Sync** to retry.
 
-### **3. Manual Step Sync**
+### **3. Automatic and Button-Driven Step Sync**
 
-The button is enabled only when the health connection status is `CONNECTED`
-and no manual request is currently awaiting completion. When selected,
-`initiateStepSync()`:
+The first eligible `Home` focus uses a shared in-flight lock while it checks
+the connection and fetches today's metrics. This disables **Start Step Sync**
+during preparation and prevents the button from overlapping the automatic
+request. A successful step read calls the shared native sync executor.
 
-1. Sets `syncStatus` to `syncing` and shows **Syncing in progress...**.
-2. Calls `VisitFitnessModule.triggerManualSync()` on Android or
+The button remains enabled when the health connection status is `CONNECTED`
+and no sync flow is running. Automatic and button-driven requests both:
+
+1. Set `syncStatus` to `syncing` and show **Syncing in progress...**.
+2. Call `VisitFitnessModule.triggerManualSync()` on Android or
    `VisitRnSdkViewManager.triggerManualSync()` on iOS.
-3. Lets the native module validate its prerequisites and then collect and
+3. Let the native module validate its prerequisites and then collect and
    upload the hourly and daily step data using the stored timestamps,
    credentials, and Visit endpoints.
-4. On resolution, sets the status to `success` and shows **Syncing has been
-   done successfully**. On rejection, sets the status to `error` and shows
+4. On resolution, set the status to `success` and show **Syncing has been
+   done successfully**. On rejection, set the status to `error` and show
    the native error message.
 
 The resolved native status string is written to the console, but the example
