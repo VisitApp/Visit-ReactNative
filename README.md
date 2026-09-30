@@ -82,6 +82,137 @@ export default App;
 
 To see the full usage code for getting Health Connect/HealthKit connection status and retrieving health data, refer [here](https://github.com/VisitApp/Visit-ReactNative/blob/mchi-rn-sdk-3x/example/App.js).
 
+## **Example App SDK Initialization and Manual Step Sync**
+
+The example app separates health SDK setup, WebView-driven sync setup, and a
+user-triggered manual sync. These are related, but they do not happen at the
+same time.
+
+```mermaid
+flowchart TD
+    A["App opens on Home"] --> B{"Platform"}
+    B -->|Android| C["Home useEffect calls<br/>VisitFitnessModule.initiateSDK(true)"]
+    C --> D["Native module creates the Health Connect utility,<br/>step-sync helper, and session storage"]
+    D --> E["Home focus checks Health Connect status"]
+    B -->|iOS| F["Home focus checks HealthKit status<br/>No explicit initiateSDK call"]
+    F --> G{"Health status"}
+    E --> G
+    G -->|CONNECTED| H["Load today's metrics and enable<br/>Start Step Sync"]
+    G -->|Any other status| I["Keep Start Step Sync disabled"]
+
+    A --> J["User selects Go to next page"]
+    J --> K["VisitPage mounts VisitRnSdkView"]
+    K --> L["Visit WebView loads the SSO URL"]
+    L --> M["PWA posts UPDATE_API_BASE_URL"]
+    M --> N["Native layer stores API credentials<br/>and daily/hourly timestamps"]
+    N --> O["Native layer attempts the initial sync<br/>when its platform preconditions pass"]
+    O --> P["User returns to Home"]
+    P --> G
+
+    H --> Q["User selects Start Step Sync"]
+    Q --> R["App sets syncStatus to syncing"]
+    R --> S{"Platform"}
+    S -->|Android| T["VisitFitnessModule.triggerManualSync()"]
+    S -->|iOS| U["VisitRnSdkViewManager.triggerManualSync()"]
+    T --> V["Validate state, collect hourly/daily steps,<br/>and send them to Visit"]
+    U --> V
+    V -->|Resolved| W["Show the success message"]
+    V -->|Rejected| X["Show the native error message"]
+```
+
+### **1. Home Mount and Health Status**
+
+On Android, the `Home` component's mount effect calls
+`NativeModules.VisitFitnessModule.initiateSDK(true)`. The native method uses
+the current Activity to create `HealthConnectUtil`, `VisitStepSyncHelper`, and
+`VisitSessionStorage`. `App.js` then immediately sets
+`isAndroidSDKInitialized` to `true`; `initiateSDK` is a void bridge call, so
+this React state does not confirm that native initialization succeeded. If
+`currentActivity` is `null`, the native method skips initialization. Mounting
+`VisitRnSdkView` on Android calls `initiateSDK` again, which gives the SDK
+another opportunity to initialize with an available Activity.
+
+Once the Android React flag is true and `Home` is focused,
+`checkAndroidHealthConnectStatus()` calls `getHealthConnectStatus()`. On iOS,
+there is no equivalent `initiateSDK` call in `App.js`; each `Home` focus calls
+`VisitRnSdkViewManager.getHealthKitConnectStatus()` directly.
+
+For either platform, a `CONNECTED` result triggers
+`fetchTodayHealthMetrics()`, which requests today's steps, sleep minutes, and
+calories from the platform-native module. It also enables **Start Step Sync**.
+All other connection states leave the button disabled.
+
+### **2. WebView Setup and Initial Sync**
+
+Selecting **Go to next page** navigates to `VisitPage` and mounts
+`VisitRnSdkView` with the entered SSO URL. After the Visit PWA loads, it must
+post an `UPDATE_API_BASE_URL` message containing `apiBaseUrl`, `authtoken`,
+`googleFitLastSync`, and `gfHourlyLastSync`.
+
+The SDK handles that message as follows:
+
+* Android calls `VisitFitnessModule.updateApiBaseUrl()`, which stores the
+  values in `VisitSessionStorage` and starts the initial sync once per native
+  module lifecycle, unless a sync is already running. A failed initial sync
+  can be attempted again when the values are updated later.
+* iOS calls `VisitRnSdkViewManager.updateApiUrl()` once per mounted
+  `VisitRnSdkView`, stores the available non-empty credentials and positive
+  timestamps in `NSUserDefaults`, and attempts the initial sync when HealthKit
+  is available, credentials are present, permission is available, and no
+  other sync is running.
+
+The initial sync and the manual sync share the same native in-progress guard.
+Returning to `Home` while the initial sync is still running can therefore make
+a manual attempt reject with `SYNC_IN_PROGRESS`.
+
+> **Ordering requirement:** `CONNECTED` only represents Health Connect or
+> HealthKit access. It does not mean that the Visit API credentials and sync
+> timestamps are ready. On a fresh install or after clearing app data, mount
+> `VisitRnSdkView` and allow it to process `UPDATE_API_BASE_URL` before using
+> **Start Step Sync**. Otherwise, manual sync can reject with
+> `MISSING_SYNC_CREDENTIALS` or `MISSING_SYNC_TIMESTAMPS` even though the
+> button is enabled.
+
+### **3. Manual Step Sync**
+
+The button is enabled only when the health connection status is `CONNECTED`
+and no manual request is currently awaiting completion. When selected,
+`initiateStepSync()`:
+
+1. Sets `syncStatus` to `syncing` and shows **Syncing in progress...**.
+2. Calls `VisitFitnessModule.triggerManualSync()` on Android or
+   `VisitRnSdkViewManager.triggerManualSync()` on iOS.
+3. Lets the native module validate its prerequisites and then collect and
+   upload the hourly and daily step data using the stored timestamps,
+   credentials, and Visit endpoints.
+4. On resolution, sets the status to `success` and shows **Syncing has been
+   done successfully**. On rejection, sets the status to `error` and shows
+   the native error message.
+
+The resolved native status string is written to the console, but the example
+shows its own fixed success message. A completed manual sync also does not
+automatically reload the three metric cards; those are refreshed the next
+time the focused-screen status flow calls `fetchTodayHealthMetrics()`.
+
+### **Manual Sync Preflight and Failures**
+
+| Platform | Code | When it occurs |
+| --- | --- | --- |
+| Android | `SDK_NOT_INITIALIZED` | Session storage, the Health Connect utility, or the step-sync helper was not initialized. |
+| iOS | `HEALTH_DATA_UNAVAILABLE` | HealthKit is unavailable on the device. |
+| Both | `SYNC_IN_PROGRESS` | The initial WebView-driven sync or another manual sync is still running. |
+| Both | `MISSING_SYNC_CREDENTIALS` | The WebView has not stored a non-empty Visit API base URL and auth token. |
+| Android | `MISSING_SYNC_TIMESTAMPS` | Either the stored daily or hourly timestamp is negative. |
+| iOS | `MISSING_SYNC_TIMESTAMPS` | Both stored timestamps are zero or missing. |
+| iOS | `PERMISSION_DENIED` | HealthKit access is not available when the manual sync starts. |
+| Both | `SYNC_FAILED` | The native sync pipeline reports a failure; on iOS this contains the first network or non-2xx Visit response. |
+
+After the preflight passes, Android delegates the hourly and daily work to
+`VisitStepSyncHelper`. iOS runs both flows through its shared sync executor.
+The iOS executor posts hourly batches to `/users/embellish-sync` and daily
+data to `/users/data-sync`; the manual promise resolves only after both flows
+finish.
+
 ## **Health Connect Connection Flow (Android)**
 
 Version `3.0.15` uses AndroidSDK `v3.13` and routes the PWA's Health Connect request according to the Health Connect installation status and the device's native step-tracking capability.
