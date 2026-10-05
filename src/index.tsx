@@ -1,6 +1,11 @@
-import type { VisitRnSdkViewProps } from './types';
+import type { Ref } from 'react';
+import type { VisitRnSdkViewHandle, VisitRnSdkViewProps } from './types';
 
-export type { VisitRnSdkViewProps } from './types';
+export type {
+  VisitEventProperties,
+  VisitRnSdkViewHandle,
+  VisitRnSdkViewProps,
+} from './types';
 
 /**
  * Platform-neutral entry used by TypeScript and react-native-builder-bob.
@@ -11,6 +16,10 @@ export type { VisitRnSdkViewProps } from './types';
  * `@types/react` versions can use this as a JSX component without
  * conflicting ReactElement definitions.
  */
-declare function VisitRnSdkView(props: VisitRnSdkViewProps): any;
+declare const VisitRnSdkView: (
+  props: VisitRnSdkViewProps & {
+    ref?: Ref<VisitRnSdkViewHandle>;
+  }
+) => any;
 
 export default VisitRnSdkView;

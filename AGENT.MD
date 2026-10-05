@@ -8,6 +8,8 @@ The supported public component API is intentionally small:
 
 - `ssoLink`: the pre-generated Visit SSO URL.
 - `isLoggingEnabled`: optional diagnostic logging flag; defaults to `false`.
+- `onEvent`: optional host callback for PWA messages that the SDK does not handle internally.
+- `sendEvent(eventName, properties)` on the component ref: injects `window.sendEventToVisit` into the Visit PWA.
 
 Do not reintroduce removed authentication, environment, Apple Health, or Health Connect props without an explicit product requirement.
 

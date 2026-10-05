@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useRef, useState} from 'react';
 import {
   SafeAreaView,
   View,
@@ -15,6 +15,7 @@ import {
   type NativeStackScreenProps,
 } from '@react-navigation/native-stack';
 import VisitRnSdkView, {
+  type VisitRnSdkViewHandle,
   type VisitRnSdkViewProps,
 } from 'react-native-visit-rn-sdk';
 
@@ -25,10 +26,16 @@ export type RootStackParamList = {
   };
 };
 
+type VisitStackParamList = {
+  VisitWeb: undefined;
+  PaymentGateway: undefined;
+};
+
 type HomeNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 type VisitPageProps = NativeStackScreenProps<RootStackParamList, 'VisitPage'>;
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const VisitStack = createNativeStackNavigator<VisitStackParamList>();
 
 function App() {
   return (
@@ -116,16 +123,59 @@ function Home() {
   );
 }
 
-function VisitPage({ route }: VisitPageProps) {
-  const props: VisitRnSdkViewProps = {
-    ssoLink: route.params.ssoLink,
-    isLoggingEnabled: true,
-  };
+function VisitPage({route}: VisitPageProps) {
+  const sdkRef = useRef<VisitRnSdkViewHandle>(null);
 
   return (
-    // eslint-disable-next-line react-native/no-inline-styles
-    <SafeAreaView style={{ flex: 1 }}>
-      <VisitRnSdkView {...props} />
+    <VisitStack.Navigator>
+      <VisitStack.Screen name="VisitWeb" options={{headerShown: false}}>
+        {({navigation}) => (
+          // eslint-disable-next-line react-native/no-inline-styles
+          <SafeAreaView style={{flex: 1}}>
+            <VisitRnSdkView
+              ref={sdkRef}
+              ssoLink={route.params.ssoLink}
+              isLoggingEnabled
+              onEvent={(eventName, properties) => {
+                if (eventName === 'INITIATE_PAYMENT') {
+                  navigation.navigate('PaymentGateway');
+                  return;
+                }
+              }}
+            />
+          </SafeAreaView>
+        )}
+      </VisitStack.Screen>
+      <VisitStack.Screen
+        name="PaymentGateway"
+        options={{
+          title: 'Host payment PWA (demo)',
+          presentation: 'modal',
+          headerBackButtonDisplayMode: 'minimal',
+        }}>
+        {({navigation}) => (
+          <PaymentGateway
+            onFinish={status => {
+              sdkRef.current?.sendEvent('PAYMENT_STATUS', {status});
+              navigation.goBack();
+            }}
+          />
+        )}
+      </VisitStack.Screen>
+    </VisitStack.Navigator>
+  );
+}
+
+function PaymentGateway({
+  onFinish,
+}: {
+  onFinish: (status: 'success' | 'error') => void;
+}) {
+  return (
+    <SafeAreaView style={styles.paymentScreen}>
+      <Text style={styles.paymentTitle}>Host payment PWA (demo)</Text>
+      <Button title="Payment success" onPress={() => onFinish('success')} />
+      <Button title="Payment error" onPress={() => onFinish('error')} />
     </SafeAreaView>
   );
 }
@@ -151,6 +201,18 @@ const styles = StyleSheet.create({
   text: {
     paddingTop: 12,
     fontSize: 16,
+    color: 'black',
+  },
+  paymentScreen: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#fff',
+    gap: 8,
+  },
+  paymentTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
     color: 'black',
   },
 });

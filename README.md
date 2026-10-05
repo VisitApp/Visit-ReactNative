@@ -13,20 +13,55 @@ The minimum supported iOS deployment target is `12.4`.
 ## Usage
 
 ```tsx
-import VisitRnSdkView from 'react-native-visit-rn-sdk';
-import type { VisitRnSdkViewProps } from 'react-native-visit-rn-sdk';
+import { useRef } from 'react';
+import VisitRnSdkView, {
+  type VisitRnSdkViewHandle,
+  type VisitRnSdkViewProps,
+} from 'react-native-visit-rn-sdk';
+
+const sdkRef = useRef<VisitRnSdkViewHandle>(null);
 
 const props: VisitRnSdkViewProps = {
   ssoLink: 'pre-generated-sso-link',
   // isLoggingEnabled is optional (boolean); defaults to false
+  onEvent: (eventName, properties) => {
+    if (eventName === 'INITIATE_PAYMENT') {
+      // Open the host payment PWA. Keep VisitRnSdkView mounted.
+    }
+  },
 };
 
-<VisitRnSdkView {...props} />;
+<VisitRnSdkView {...props} ref={sdkRef} />;
+
+// After the host payment PWA finishes:
+sdkRef.current?.sendEvent('PAYMENT_STATUS', { status: 'success' });
 ```
 
 `isLoggingEnabled` is optional. When omitted it defaults to `false`; if you pass it, the value must be a `boolean`.
 
-`VisitRnSdkViewProps` is exported for host apps that want to type wrappers or prop maps.
+`VisitRnSdkViewProps` and `VisitRnSdkViewHandle` are exported for host apps that want to type wrappers or prop maps.
+
+### Host ↔ Visit PWA events
+
+Keep `VisitRnSdkView` mounted while the host payment UI is open.
+
+- **PWA → host:** the PWA posts a WebView message with method `sendEventToHost` which is forwarded to `onEvent`.
+
+```js
+window.ReactNativeWebView.postMessage(JSON.stringify({
+  method: 'sendEventToHost',
+  eventName: 'INITIATE_PAYMENT',
+  ...otherParams
+}));
+```
+
+- **Host → PWA:** call `sendEvent` on the SDK ref. The Visit PWA must implement:
+
+```js
+window.sendEventToVisit = function (eventName, properties) {
+  // TODO
+};
+```
 
 ## Location permissions
 
