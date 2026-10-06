@@ -76,7 +76,6 @@ jest.mock('@react-navigation/native-stack', () => ({
 }));
 
 jest.mock('react-native-visit-rn-sdk', () => {
-  const MockReact = require('react');
   const { View } = require('react-native');
   return {
     __esModule: true,

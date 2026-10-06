@@ -276,7 +276,7 @@ const VisitRnSdkView = forwardRef<VisitRnSdkViewHandle, VisitRnSdkViewProps>(
           )}, ${JSON.stringify(properties ?? {})}); true;`
         );
       },
-      [warn]
+      [isLoggingEnabled]
     );
 
     useImperativeHandle(ref, () => ({ sendEvent }), [sendEvent]);
