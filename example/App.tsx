@@ -8,7 +8,7 @@ import {
   Button,
   Platform,
 } from 'react-native';
-import { NavigationContainer, useNavigation } from '@react-navigation/native';
+import {NavigationContainer, useNavigation} from '@react-navigation/native';
 import {
   createNativeStackNavigator,
   type NativeStackNavigationProp,
@@ -53,8 +53,7 @@ function App() {
           contentStyle: {
             backgroundColor: '#e8e4f3',
           },
-        }}
-      >
+        }}>
         <Stack.Screen
           name="Home"
           component={Home}
@@ -85,7 +84,7 @@ function App() {
 function Home() {
   const navigation = useNavigation<HomeNavigationProp>();
   const [ssoLink, setSsoLink] = useState(
-    'https://digit-visit.getvisitapp.com/sso?userParams=AogPOG-g1eeEKvpBJanqsy9uytwIdeBx1drCEvgZbsrELVgkcSvYWYGYAt0LGbtX2iPW9PUkYaZYjwnUaLhvcDPB7EXUI27dkmkCO0YT_XvaZwt8DQSK_Ihpx4aodWMPAO3wkH61iqvHgBOMQnLbE6yfwenopFWOaZTLfQcH3uEOFUzsf7s8SDNTl2LrUyY5ia-EM4O0ZlokeUjaaqdOadR0xWyMkcVZS_ynkUlJ0quNcNSf1aE3PcxIX6YATj2lftQZbC0BBASPc6DszEAttY5a-duv32yEgkZ53vSTaoK57i33S6rbGzlZ_bOa-p22&clientId=digit-777&consultationId=6703526&redirectTo=video-call&sessionId=265432'
+    'https://onecard.getvisitapp.net/sso?userParams=M9ZeUxvRXaJKqa8zv7d_GSvXzcud_Nu27jGjRuSYUVDWYNW86yhLKu7lTx2uRYCCy2H8lXRDYAr9NXHfrQPrJsGJPXyMZOGsvvXbboovrpiolyS-djGQfxieXU-3g8ktGE_kXhBiqBc3_a106KO_ImeKLjqOtWZKGShLy5vYsORzaY-DrkWbTZ2Ynjs2U20IUxGt5OGANRAgpsHS-hIBig&clientId=mchi-ds-we-09',
   );
 
   return (
@@ -136,7 +135,8 @@ function VisitPage({route}: VisitPageProps) {
               ref={sdkRef}
               ssoLink={route.params.ssoLink}
               isLoggingEnabled
-              onEvent={(eventName, properties) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+              onEvent={(eventName, properties) => {
+                // eslint-disable-line @typescript-eslint/no-unused-vars
                 if (eventName === 'INITIATE_PAYMENT') {
                   navigation.navigate('PaymentGateway');
                   return;
