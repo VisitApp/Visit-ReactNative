@@ -338,26 +338,6 @@ describe('iOS secondary WebView isolation', () => {
     expect(children[1].props.link).toBe(link);
   });
 
-  test('keeps HTTP(S) navigation inside and sends other schemes to iOS', () => {
-    const renderer = renderSecondary();
-    const { webView } = getSecondaryContent(renderer);
-    const shouldLoad = webView.props.onShouldStartLoadWithRequest;
-
-    expect(
-      shouldLoad({ url: 'http://other.example.com', isTopFrame: true })
-    ).toBe(true);
-    expect(
-      shouldLoad({ url: 'https://redirect.example.org', isTopFrame: true })
-    ).toBe(true);
-    expect(
-      shouldLoad({ url: 'blob:https://example.com/id', isTopFrame: true })
-    ).toBe(true);
-    expect(shouldLoad({ url: 'tel:+911234567890', isTopFrame: true })).toBe(
-      false
-    );
-    expect(mockLinkingOpenURL).toHaveBeenCalledWith('tel:+911234567890');
-  });
-
   test('handles location, PDF, and face scan while ignoring other callbacks', () => {
     const onClose = jest.fn();
     const renderer = renderSecondary({ onClose });

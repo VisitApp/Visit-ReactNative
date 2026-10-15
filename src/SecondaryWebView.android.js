@@ -9,9 +9,6 @@ const getHttpUrl = (url) => {
   return /^https?:\/\/[^\s/?#]+(?:[/?#][^\s]*)?$/i.test(link) ? link : '';
 };
 
-const isWebViewLocalUrl = (url) =>
-  /^(about|data|blob):/i.test(typeof url === 'string' ? url.trim() : '');
-
 const runBeforeFirst = `
       window.isNativeApp = true;
       window.platform = "ANDROID";
@@ -104,20 +101,6 @@ const SecondaryWebView = ({ link, isLoggingEnabled, onClose }) => {
             headers: {
               platform: 'ANDROID',
             },
-          }}
-          onShouldStartLoadWithRequest={(request) => {
-            if (request.isTopFrame === false) {
-              return true;
-            }
-            if (getHttpUrl(request.url) || isWebViewLocalUrl(request.url)) {
-              return true;
-            }
-            Linking.openURL(request.url).catch((error) => {
-              if (isLoggingEnabled) {
-                console.warn('Linking.openURL error: ', error);
-              }
-            });
-            return false;
           }}
           onMessage={handleMessage}
           injectedJavaScriptBeforeContentLoaded={runBeforeFirst}

@@ -41,9 +41,6 @@ const getHttpUrl = (url) => {
   return /^https?:\/\/[^\s/?#]+(?:[/?#][^\s]*)?$/i.test(link) ? link : '';
 };
 
-const isWebViewLocalUrl = (url) =>
-  /^(about|data|blob):/i.test(typeof url === 'string' ? url.trim() : '');
-
 const BACK_SWIPE_EDGE_WIDTH = 24;
 const BACK_SWIPE_DISTANCE = 60;
 const BACK_SWIPE_FAST_DISTANCE = 24;
@@ -168,20 +165,6 @@ const SecondaryWebView = ({ link, isLoggingEnabled, onClose }) => {
           source={{ uri: source }}
           style={styles.webView}
           webviewDebuggingEnabled={Boolean(isLoggingEnabled)}
-          onShouldStartLoadWithRequest={(request) => {
-            if (request.isTopFrame === false) {
-              return true;
-            }
-            if (getHttpUrl(request.url) || isWebViewLocalUrl(request.url)) {
-              return true;
-            }
-            Linking.openURL(request.url).catch((error) => {
-              if (isLoggingEnabled) {
-                console.warn('Linking.openURL error: ', error);
-              }
-            });
-            return false;
-          }}
           onMessage={handleMessage}
           injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
           javaScriptEnabled={true}

@@ -292,24 +292,6 @@ describe('Android secondary WebView isolation', () => {
     expect(children[1].props.link).toBe(link);
   });
 
-  test('keeps HTTP(S) navigation inside the modal WebView', () => {
-    const renderer = renderSecondary();
-    const shouldLoad =
-      getSecondaryWebView(renderer).props.onShouldStartLoadWithRequest;
-
-    expect(
-      shouldLoad({ url: 'http://other.example.com', isTopFrame: true })
-    ).toBe(true);
-    expect(
-      shouldLoad({ url: 'https://redirect.example.org', isTopFrame: true })
-    ).toBe(true);
-    expect(shouldLoad({ url: 'about:blank', isTopFrame: true })).toBe(true);
-    expect(shouldLoad({ url: 'tel:+911234567890', isTopFrame: true })).toBe(
-      false
-    );
-    expect(mockLinkingOpenURL).toHaveBeenCalledWith('tel:+911234567890');
-  });
-
   test('handles PDF and face-scan callbacks and ignores other bridges', () => {
     const renderer = renderSecondary();
     const webView = getSecondaryWebView(renderer);
