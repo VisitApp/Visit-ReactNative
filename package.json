@@ -94,7 +94,8 @@
     "@twilio/video-react-native-sdk": "3.5.0",
     "react": "*",
     "react-native": "*",
-    "react-native-permissions": "^4.1.5"
+    "react-native-permissions": "^4.1.5",
+    "react-native-webview": "*"
   },
   "engines": {
     "node": ">= 16.0.0"
@@ -175,9 +176,6 @@
         }
       ]
     ]
-  },
-  "dependencies": {
-    "react-native-webview": "^13.12.1"
   },
   "directories": {
     "example": "example"

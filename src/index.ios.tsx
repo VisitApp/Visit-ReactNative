@@ -70,7 +70,7 @@ const VisitRnSdkView = forwardRef<VisitRnSdkViewHandle, VisitRnSdkViewProps>(
     const runBeforeFirst = `
   window.isNativeApp = true;
   window.platform = "IOS";
-  window.setSdkPlatform('IOS');
+  window.setSdkPlatform?.('IOS');
   true; // note: this is required, or you'll sometimes get silent failures
   `;
 

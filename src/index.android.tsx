@@ -257,7 +257,7 @@ const VisitRnSdkView = forwardRef<VisitRnSdkViewHandle, VisitRnSdkViewProps>(
     const runBeforeFirst = `
         window.isNativeApp = true;
         window.platform = "ANDROID";
-        window.setSdkPlatform('ANDROID');
+        window.setSdkPlatform?.('ANDROID');
         true; // note: this is required, or you'll sometimes get silent failures
     `;
 
