@@ -135,8 +135,7 @@ function VisitPage({route}: VisitPageProps) {
               ref={sdkRef}
               ssoLink={route.params.ssoLink}
               isLoggingEnabled
-              onEvent={(eventName, properties) => {
-                // eslint-disable-line @typescript-eslint/no-unused-vars
+              onEvent={(eventName) => {
                 if (eventName === 'INITIATE_PAYMENT') {
                   navigation.navigate('PaymentGateway');
                   return;

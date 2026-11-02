@@ -6,12 +6,12 @@ between the PWA and its host app.
 ## Installation
 
 ```sh
-npm install react-native-visit-rn-sdk@6.0.3 @twilio/video-react-native-sdk@3.5.0 react-native-permissions@4.1.5
+npm install react-native-visit-rn-sdk@6.0.4 @twilio/video-react-native-sdk@3.5.0 react-native-permissions@4.1.5 react-native-webview@^13.16.0
 ```
 
-`@twilio/video-react-native-sdk` and `react-native-permissions` are required
-peer dependencies; they are not bundled in the SDK. `react-native-webview` is
-a regular SDK dependency and does not need to be installed separately.
+`@twilio/video-react-native-sdk`, `react-native-permissions`, and
+`react-native-webview` are required peer dependencies; they are not bundled
+in the SDK. Install them in the host app as shown above.
 
 The Twilio `3.5.0` peer metadata requires React `^19.1.0` and React Native
 `^0.81.0`. If an existing project has npm peer-resolution errors, first verify
@@ -20,7 +20,7 @@ that its React and React Native versions are compatible. Use
 allows npm to skip peer-dependency enforcement; the flag does not make
 incompatible native versions compatible.
 
-SDK `6.0.3` requires Node.js `16` or newer, Android API `21` or newer, and an
+SDK `6.0.4` requires Node.js `16` or newer, Android API `21` or newer, and an
 iOS deployment target of `12.4` or newer. React Native and other native
 dependencies may impose higher platform minimums. After installing or changing
 iOS native dependencies, run:
@@ -66,7 +66,7 @@ no WebView.
 exported for host apps that want to type wrappers, refs, callbacks, or event
 payloads.
 
-### Host ↔ Visit PWA events (6.0.3)
+### Host ↔ Visit PWA events (6.0.4)
 
 The event bridge works the same way on Android and iOS. Keep
 `VisitRnSdkView` mounted while the React Native client app displays any
@@ -201,12 +201,12 @@ for this package.
 
 The SDK no longer accepts `cpsid`, `baseUrl`, `errorBaseUrl`, `token`,
 `moduleName`, or `environment`, and it no longer generates magic links
-internally. The current `6.0.3` component props are `ssoLink`,
+internally. The current `6.0.4` component props are `ssoLink`,
 `isLoggingEnabled`, and `onEvent`; its ref exposes `sendEvent`.
 
 ## Video calling
 
-`react-native-visit-rn-sdk@6.0.3` declares
+`react-native-visit-rn-sdk@6.0.4` declares
 [`@twilio/video-react-native-sdk`](https://www.npmjs.com/package/@twilio/video-react-native-sdk)
 `3.5.0` as an exact peer dependency. Install it with the SDK as shown in the
 [Installation](#installation) section.
