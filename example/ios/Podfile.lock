@@ -1835,7 +1835,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-visit-rn-sdk (6.0.3):
+  - react-native-visit-rn-sdk (6.0.4):
     - boost
     - DoubleConversion
     - fast_float
@@ -2775,7 +2775,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 8f8bba0802f49d7926602c5c276f2a2083a5ac55
   React-microtasksnativemodule: 1e4d3178ba5d5000b351b902c603fb0c9d60649e
   react-native-safe-area-context: c6e2edd1c1da07bdce287fa9d9e60c5f7b514616
-  react-native-visit-rn-sdk: d8c380d082d956f355cefccc0863c47f5f9b9c51
+  react-native-visit-rn-sdk: 4ff22e9665cc7b2163023201a09beb121475d87a
   react-native-webview: 654f794a7686b47491cf43aa67f7f428bea00eed
   React-NativeModulesApple: 183f9bd5b20a51a8b016e90be78ed6c1538da4a7
   React-oscompat: d5e3366fbd6c7150e17c1bda85eab583a6fa9fce
