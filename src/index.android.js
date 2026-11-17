@@ -18,21 +18,18 @@ import LocationEnabler from '@visit-health/react-native-location-enabler';
 
 const messageEmitter = new NativeEventEmitter(NativeModules.VisitFitnessModule);
 
-const {
-  PRIORITIES: { HIGH_ACCURACY },
-  useLocationSettings,
-  addListener,
-} = LocationEnabler;
+const locationSettings = {
+  priority: LocationEnabler.PRIORITIES.HIGH_ACCURACY,
+  alwaysShow: true,
+  needBle: true,
+};
 
 /** @param {{ ssoURL: string, isLoggingEnabled?: boolean }} props */
 const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
   const source = ssoURL?.trim();
   const [appState, setAppState] = useState(AppState.currentState);
 
-  const [
-    showPermissionAlreadyDeniedDialog,
-    setShowPermissionAlreadyDeniedDialog,
-  ] = useState(false);
+  const locationRequestInFlight = useRef(false);
 
   useEffect(() => {
     if (isLoggingEnabled) {
@@ -86,96 +83,60 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
     };
   }, [appState, isLoggingEnabled]);
 
-  const [enabled, requestResolution] = useLocationSettings(
-    {
-      priority: HIGH_ACCURACY, // default BALANCED_POWER_ACCURACY
-      alwaysShow: true, // default false
-      needBle: true, // default false
-    },
-    false /* optional: default undefined */
-  );
-
   const webviewRef = useRef(null);
 
-  const showLocationPermissionAlert = () => {
-    Alert.alert(
-      'Permission Required',
-      'Allow location permission from app settings',
-      [
-        {
-          text: 'Cancel',
-          onPress: () => {
-            console.log('Cancel clicked');
+  const showLocationPermissionAlert = () =>
+    new Promise((resolve, reject) => {
+      Alert.alert(
+        'Permission Required',
+        'Allow location permission from app settings',
+        [
+          { text: 'Cancel', onPress: resolve },
+          {
+            text: 'Go to Settings',
+            onPress: () => Linking.openSettings().then(resolve, reject),
           },
-        },
-        {
-          text: 'Go to Settings',
-          onPress: () => {
-            Linking.openSettings();
-          },
-        },
-      ]
-    );
-  };
+        ],
+        { onDismiss: resolve }
+      );
+    });
 
   const requestLocationPermission = async () => {
+    if (locationRequestInFlight.current) return;
+    locationRequestInFlight.current = true;
+    let locationEnabled = false;
+
     try {
-      console.log('requestLocationPermission called');
-
-      const isLocationPermissionPresent = await PermissionsAndroid.check(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+      const { ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION } =
+        PermissionsAndroid.PERMISSIONS;
+      const { GRANTED, NEVER_ASK_AGAIN } = PermissionsAndroid.RESULTS;
+      let preciseLocationGranted = await PermissionsAndroid.check(
+        ACCESS_FINE_LOCATION
       );
-
-      console.log(
-        'isLocationPermissionPresent: ' +
-          isLocationPermissionPresent +
-          ' showPermissionAlreadyDeniedDialog: ' +
-          showPermissionAlreadyDeniedDialog
-      );
-
-      if (!isLocationPermissionPresent && showPermissionAlreadyDeniedDialog) {
-        console.log('showLocationPermissionAlert() called');
-
-        showLocationPermissionAlert();
-      } else {
-        console.log('requesting location permission');
-
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: 'Need Location Permission',
-            message: 'Need access to location permission',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
-          }
-        );
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          if (isLoggingEnabled) {
-            console.log('Location permission granted');
-          }
-          setShowPermissionAlreadyDeniedDialog(false);
-
-          if (!enabled) {
-            requestResolution();
-          } else {
-            var finalString = `window.checkTheGpsPermission(true)`;
-            console.log('requestLocationPermission: ' + finalString);
-
-            webviewRef.current?.injectJavaScript(finalString);
-          }
-        } else {
-          setShowPermissionAlreadyDeniedDialog(true);
-          console.log('Location permission denied');
-
-          var finalString = `window.checkTheGpsPermission(false)`;
-          console.log('requestLocationPermission: ' + finalString);
-
-          webviewRef.current?.injectJavaScript(finalString);
+      if (!preciseLocationGranted) {
+        const permissions = await PermissionsAndroid.requestMultiple([
+          ACCESS_COARSE_LOCATION,
+          ACCESS_FINE_LOCATION,
+        ]);
+        const precisePermission = permissions[ACCESS_FINE_LOCATION];
+        preciseLocationGranted = precisePermission === GRANTED;
+        if (precisePermission === NEVER_ASK_AGAIN) {
+          await showLocationPermissionAlert();
         }
       }
-    } catch (e) {
-      console.error(e);
+
+      if (preciseLocationGranted) {
+        locationEnabled = await LocationEnabler.ensureLocationSettings(
+          locationSettings
+        );
+      }
+    } catch (error) {
+      if (isLoggingEnabled) console.warn('Location request failed:', error);
+    } finally {
+      locationRequestInFlight.current = false;
+      webviewRef.current?.injectJavaScript(
+        `window.checkTheGpsPermission(${locationEnabled === true})`
+      );
     }
   };
 
@@ -343,7 +304,7 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
         true; // note: this is required, or you'll sometimes get silent failures
     `;
 
-  const handleMessage = (event) => {
+  const handleMessage = async (event) => {
     if (event.nativeEvent.data != null) {
       try {
         if (isLoggingEnabled) {
@@ -413,8 +374,7 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
               }
               break;
             case 'GET_LOCATION_PERMISSIONS':
-              console.log('GET_LOCATION_PERMISSIONS');
-              requestLocationPermission();
+              await requestLocationPermission();
               break;
             case 'OPEN_PDF':
               {
@@ -453,47 +413,12 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
   }, [canGoBack]);
 
   useEffect(() => {
-    const checkLocationPermissionAndSendCallback = async () => {
-      const isLocationPermissionAvailable = await PermissionsAndroid.check(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
-      );
-
-      if (isLoggingEnabled) {
-        console.log(
-          'checkLocationPermissionAndSendCallback() isLocationPermissionAvailable: ' +
-            isLocationPermissionAvailable +
-            'isGPSPermissionAvailabe: true'
-        );
-      }
-
-      if (isLocationPermissionAvailable) {
-        var finalString = `window.checkTheGpsPermission(true)`;
-
-        console.log('listener: ' + finalString);
-
-        webviewRef.current?.injectJavaScript(finalString);
-      }
-    };
-
-    // Subscribe to GPS/location setting changes
-    const locationSub = addListener(({ locationEnabled }) => {
-      if (locationEnabled) {
-        checkLocationPermissionAndSendCallback();
-      }
-    });
-
-    // Subscribe to Android hardware back press
     const backSub = BackHandler.addEventListener(
       'hardwareBackPress',
       handleBack
     );
-
-    // Cleanup subscriptions on unmount
-    return () => {
-      backSub?.remove();
-      locationSub?.remove();
-    };
-  }, [handleBack, isLoggingEnabled]);
+    return () => backSub.remove();
+  }, [handleBack]);
 
   return (
     // eslint-disable-next-line react-native/no-inline-styles

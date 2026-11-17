@@ -1,6 +1,6 @@
 {
   "name": "react-native-visit-rn-sdk",
-  "version": "7.1.1",
+  "version": "7.1.2",
   "description": "a package to inject data into visit health pwa",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -84,8 +84,14 @@
     "@types/react": "17.0.21"
   },
   "peerDependencies": {
+    "@visit-health/react-native-location-enabler": "1.0.2",
     "react": "*",
     "react-native": "*"
+  },
+  "peerDependenciesMeta": {
+    "@visit-health/react-native-location-enabler": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">= 16.0.0"

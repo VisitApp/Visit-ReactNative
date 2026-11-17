@@ -12,13 +12,13 @@
   "dependencies": {
     "@react-navigation/native": "^7.1.17",
     "@react-navigation/native-stack": "^7.3.26",
-    "@visit-health/react-native-location-enabler": "1.0.1",
+    "@visit-health/react-native-location-enabler": "1.0.2",
     "react": "19.2.3",
     "react-native": "0.86.2",
     "react-native-event-listeners": "^1.0.7",
     "react-native-safe-area-context": "^5.6.1",
     "react-native-screens": "4.26.0",
-    "react-native-visit-rn-sdk": "file:..",
+    "react-native-visit-rn-sdk": "7.1.2",
     "react-native-webview": "^13.16.0"
   },
   "devDependencies": {

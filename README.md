@@ -1,10 +1,13 @@
-## PMLI SDK `7.1.1`
+## PMLI SDK `7.1.2`
 
 Install the release and shared host app dependencies.
 
 ```sh
-npm install react-native-visit-rn-sdk@7.1.1 react-native-event-listeners react-native-webview
+npm install react-native-visit-rn-sdk@7.1.2 react-native-event-listeners react-native-webview
 ```
+
+For Android, add `@visit-health/react-native-location-enabler@1.0.2` to the same
+command so both packages upgrade together.
 
 When upgrading from `7.0.0`, rename the `magicLink` prop to `ssoURL` and pass the
 SSO URL issued for the current session. Remove the legacy URL-generation props.
@@ -12,7 +15,7 @@ Remove `react-native-device-info` from the host app if the Visit SDK was its onl
 
 ### **Instructions for configuring your Android Project**
 
-* Install `@visit-health/react-native-location-enabler@1.0.1` directly in the host app for Android autolinking.
+* Install `@visit-health/react-native-location-enabler@1.0.2` directly in the host app for Android autolinking. Rebuild the Android app after upgrading the package.
 * When upgrading from `7.1.0`, update any host app imports to the scoped location package and remove the previous dependency. Remove the Kotlin patch and any patch setup added solely for it.
 * Add `https://jitpack.io` to the host app’s Gradle repositories for `com.github.VisitApp:AndroidSDK`.
 * Enable code desugaring in your app, or there add the dependency. 
@@ -266,6 +269,11 @@ distance by day, week, and month, and for sleep by day and week. The SDK
 delivers the existing `DetailedGraph` callbacks and supplies steps and sleep
 minutes to `updateFitnessPermissions` on connection.
 
+### **7.1.2**
+
+* After the Android app receives precise location permission, show the device Location prompt from the same WebView request when needed.
+* Use `@visit-health/react-native-location-enabler@1.0.2` to wait for the device settings result before responding to the WebView.
+
 ### **7.1.1**
 
 * Use the published Visit location enabler for Android and remove the example's Kotlin patch.
@@ -332,8 +340,8 @@ minutes to `updateFitnessPermissions` on connection.
 
 ### **Sample Project**
 
-The [example app](example) uses React Native `0.86.2` and links the SDK from this
-checkout. In the `example` directory, run `npm ci`, then start Metro with
+The [example app](example) uses React Native `0.86.2` and installs SDK `7.1.2`
+from npm. In the `example` directory, run `npm ci`, then start Metro with
 `npm start`. For Android, run `npm run android` in another terminal. For iOS, run
 `npx pod-install` and then `npm run ios`. Enter an SSO URL in the running example.
 
