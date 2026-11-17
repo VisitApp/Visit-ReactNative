@@ -1,9 +1,9 @@
-## PMLI SDK `7.1.5`
+## PMLI SDK `7.1.6`
 
 Install the release and shared host app dependencies.
 
 ```sh
-npm install react-native-visit-rn-sdk@7.1.5 react-native-event-listeners react-native-webview
+npm install react-native-visit-rn-sdk@7.1.6 react-native-event-listeners react-native-webview
 ```
 
 For Android, add `@visit-health/react-native-location-enabler@1.0.2` to the same
@@ -288,9 +288,18 @@ The SDK also accepts the Flutter `name` field over that transport.
 | `OPEN_DAILER` | Takes `number` and opens the system dialer. |
 | `CLOSE_VIEW` | Emits `{ message: 'CLOSE_VIEW' }` on `visit-event`. Subscribe from the host's Visit route and pop or dismiss that route. |
 
-On iOS the SDK also checks fitness status when the dashboard is ready and after
-returning from Settings. HealthKit permission stays tied to the host app identity.
+On iOS the WebView sends `GET_HEALTH_CONNECT_STATUS` each time the dashboard
+opens to refresh Apple Health data. The SDK also refreshes status when the app
+returns to the foreground after the dashboard has requested fitness. HealthKit
+permission stays tied to the host app identity.
 The WebView supplies a fresh sync configuration for each SSO session.
+
+### **7.1.6**
+
+* Refresh Apple Health steps and sleep on reopen through `GET_HEALTH_CONNECT_STATUS`.
+* Handle WebView messages independently on Android and iOS.
+* Forward the sync URL to the native client and use string and character checks
+  for phone formatting, HTML entities, and Android PDF filenames.
 
 ### **7.1.5**
 
