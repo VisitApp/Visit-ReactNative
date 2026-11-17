@@ -37,11 +37,7 @@ internal class VisitDocumentShare(private val context: Context) {
           val mimeType = connection.contentType?.substringBefore(';') ?: "application/octet-stream"
           val directory = createShareDirectory()
           try {
-            val filename = Uri.parse(url.toString()).lastPathSegment.orEmpty()
-              .replace(Regex("[^a-zA-Z0-9._ -]"), "_")
-              .trim('.', ' ')
-              .take(150)
-              .ifBlank { "document" }
+            val filename = sanitizeFilename(Uri.parse(url.toString()).lastPathSegment.orEmpty())
             val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
             val file = File(directory, if ('.' in filename || extension == null) filename else "$filename.$extension")
             connection.inputStream.use { input -> file.outputStream().use { input.copyTo(it) } }
@@ -56,6 +52,21 @@ internal class VisitDocumentShare(private val context: Context) {
       }
     }
     error("The document exceeded the redirect limit")
+  }
+
+  private fun sanitizeFilename(segment: String): String {
+    val sanitized = buildString {
+      var index = 0
+      while (index < segment.length) {
+        val character = segment[index]
+        append(
+          if (character in 'a'..'z' || character in 'A'..'Z' ||
+            character in '0'..'9' || character in "._ -") character else '_'
+        )
+        index += Character.charCount(segment.codePointAt(index))
+      }
+    }
+    return sanitized.trim('.', ' ').take(150).ifBlank { "document" }
   }
 
   fun share(activity: Activity, file: File, mimeType: String) {

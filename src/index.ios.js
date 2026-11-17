@@ -1,4 +1,10 @@
-import React, { useRef, useEffect, useMemo, useCallback } from 'react';
+import React, {
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useCallback,
+} from 'react';
 import {
   StyleSheet,
   SafeAreaView,
@@ -11,14 +17,6 @@ import {
 } from 'react-native';
 import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
-import {
-  handleWebAction,
-  readMessage,
-  refreshCalorieCard,
-  syncConfiguration,
-  timestampOrNull,
-  useWebDocument,
-} from './webBridge';
 
 const LINKING_ERROR =
   `The package 'react-native-visit-rn-sdk' doesn't seem to be linked. Make sure: \n\n` +
@@ -34,24 +32,50 @@ const escapeChars = {
   amp: '&',
 };
 
-const unescapeHTML = (str) =>
-  // modified from underscore.string and string.js
-  // eslint-disable-next-line no-useless-escape
-  str.replace(/\&([^;]+);/g, (entity, entityCode) => {
-    let match;
+function decodeEntity(entity) {
+  if (Object.prototype.hasOwnProperty.call(escapeChars, entity)) {
+    return escapeChars[entity];
+  }
+  if (!entity.startsWith('#')) return null;
 
-    if (entityCode in escapeChars) {
-      return escapeChars[entityCode];
-    } else if ((match = entityCode.match(/^#x([\da-fA-F]+)$/))) {
-      return String.fromCharCode(parseInt(match[1], 16));
-    } else if ((match = entityCode.match(/^#(\d+)$/))) {
-      return String.fromCharCode(match[1]);
-    } else {
-      return entity;
-    }
-  });
+  const isHex = entity.startsWith('#x');
+  const digits = entity.slice(isHex ? 2 : 1);
+  const alphabet = isHex ? '0123456789abcdef' : '0123456789';
+  if (
+    !digits ||
+    !Array.from(digits.toLowerCase()).every((digit) => alphabet.includes(digit))
+  ) {
+    return null;
+  }
+  return String.fromCharCode(Number.parseInt(digits, isHex ? 16 : 10));
+}
+
+function unescapeHTML(text) {
+  let decoded = '';
+  let cursor = 0;
+  let start = text.indexOf('&');
+  while (start !== -1) {
+    const end = text.indexOf(';', start + 1);
+    if (end === -1) break;
+    decoded += text.slice(cursor, start);
+    decoded +=
+      decodeEntity(text.slice(start + 1, end)) ?? text.slice(start, end + 1);
+    cursor = end + 1;
+    start = text.indexOf('&', cursor);
+  }
+  return decoded + text.slice(cursor);
+}
 
 const visitEvent = 'visit-event';
+
+function readTimestamp(value, fallback) {
+  const timestamp =
+    typeof value === 'string' ? Number(value.trim() || NaN) : value;
+  return Number.isSafeInteger(timestamp) &&
+    Math.abs(timestamp) <= 8640000000000000
+    ? timestamp
+    : fallback;
+}
 
 /** @param {{ ssoURL: string, isLoggingEnabled?: boolean }} props */
 const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
@@ -71,14 +95,37 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
     []
   );
 
-  const bridge = useWebDocument(source);
+  const webView = useRef(null);
+  const currentPage = useRef(null);
+  const pageId = useRef(0);
   const connecting = useRef(false);
   const connectionRevision = useRef(0);
+  const locationRequestInFlight = useRef(false);
+
+  const resetPage = useCallback(() => {
+    currentPage.current = { id: ++pageId.current };
+  }, []);
+
+  useLayoutEffect(() => {
+    resetPage();
+    return () => {
+      currentPage.current = null;
+    };
+  }, [resetPage, source]);
+
+  const inject = useCallback((page, script) => {
+    if (page === currentPage.current) webView.current?.injectJavaScript(script);
+  }, []);
+
+  const logMessageError = useCallback(() => {
+    if (isLoggingEnabled)
+      console.warn('Could not handle Visit WebView request');
+  }, [isLoggingEnabled]);
 
   const sendUnsupported = useCallback(
-    (document) => {
-      bridge.inject(
-        document,
+    (page) => {
+      inject(
+        page,
         `if (typeof window.unsupportedHealthKitDevice === 'function') {
           window.unsupportedHealthKitDevice(true);
         } else {
@@ -87,83 +134,74 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
         } true;`
       );
     },
-    [bridge]
+    [inject]
   );
 
   const refreshHealthKitPermissionState = useCallback(
-    (document) => {
-      if (!bridge.isCurrent(document) || connecting.current) return;
-      return bridge.run(document, 'status', async () => {
-        if (connecting.current) return;
-        if (Platform.isPad) {
-          sendUnsupported(document);
+    async (page) => {
+      if (connecting.current || page.statusPending) return;
+      if (Platform.isPad) {
+        sendUnsupported(page);
+        return;
+      }
+
+      page.statusPending = true;
+      const revision = connectionRevision.current;
+      try {
+        const status = await VisitRnSdkViewManager.getHealthKitConnectStatus();
+        if (
+          page !== currentPage.current ||
+          revision !== connectionRevision.current
+        ) {
           return;
         }
-        const revision = connectionRevision.current;
-        try {
-          const status =
-            await VisitRnSdkViewManager.getHealthKitConnectStatus();
-          if (
-            revision !== connectionRevision.current ||
-            !bridge.isCurrent(document)
-          )
-            return;
-          if (status === 'NOT_SUPPORTED') {
-            sendUnsupported(document);
-            return;
-          }
-          if (status === 'CONNECTED') {
-            const [steps, sleep] = await Promise.allSettled([
-              VisitRnSdkViewManager.getTodayStepCount(),
-              VisitRnSdkViewManager.getTodaySleepMinutes(),
-            ]);
-            if (revision !== connectionRevision.current) return;
-            const stepCount =
-              steps.status === 'fulfilled' ? Number(steps.value) || 0 : 0;
-            const sleepMinutes =
-              sleep.status === 'fulfilled' ? Number(sleep.value) || 0 : 0;
-            bridge.inject(
-              document,
-              `window.updateFitnessPermissions(true,${stepCount},${sleepMinutes})`
-            );
-          } else if (status === 'INSTALLED') {
-            bridge.inject(
-              document,
-              "if (typeof window.healthConnectAvailable === 'function') window.healthConnectAvailable(); true;"
-            );
-            bridge.inject(
-              document,
-              'window.updateFitnessPermissions(false,0,0)'
-            );
-          }
-        } catch {
-          if (isLoggingEnabled) console.warn('HealthKit status refresh failed');
+        if (status === 'NOT_SUPPORTED') {
+          sendUnsupported(page);
+        } else if (status === 'CONNECTED') {
+          const [steps, sleep] = await Promise.allSettled([
+            VisitRnSdkViewManager.getTodayStepCount(),
+            VisitRnSdkViewManager.getTodaySleepMinutes(),
+          ]);
+          if (revision !== connectionRevision.current) return;
+          inject(
+            page,
+            `window.updateFitnessPermissions(true,${Number(steps.value) || 0},${
+              Number(sleep.value) || 0
+            })`
+          );
+        } else if (status === 'INSTALLED') {
+          inject(
+            page,
+            "if (typeof window.healthConnectAvailable === 'function') window.healthConnectAvailable(); true;"
+          );
+          inject(page, 'window.updateFitnessPermissions(false,0,0)');
         }
-      });
+      } finally {
+        page.statusPending = false;
+      }
     },
-    [bridge, isLoggingEnabled, sendUnsupported, VisitRnSdkViewManager]
+    [inject, sendUnsupported, VisitRnSdkViewManager]
   );
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
-      const document = bridge.current.current;
-      if (source && nextAppState === 'active' && document?.fitnessReady) {
-        refreshHealthKitPermissionState(document);
+      const page = currentPage.current;
+      if (source && nextAppState === 'active' && page?.fitnessReady) {
+        refreshHealthKitPermissionState(page).catch(logMessageError);
       }
     });
     return () => subscription.remove();
-  }, [bridge, refreshHealthKitPermissionState, source]);
+  }, [logMessageError, refreshHealthKitPermissionState, source]);
 
   const watchForDashboard = () => {
-    const document = bridge.current.current;
-    if (!document || document.fitnessReady || document.watchingDashboard)
-      return;
-    document.watchingDashboard = true;
-    bridge.inject(
-      document,
+    const page = currentPage.current;
+    if (!page || page.fitnessReady || page.watchingDashboard) return;
+    page.watchingDashboard = true;
+    inject(
+      page,
       `(function waitForDashboard(attempts) {
         if (typeof window.updateFitnessPermissions === 'function') {
-          window.ReactNativeWebView.postMessage(JSON.stringify({ method: 'VISIT_FITNESS_READY', documentId: ${document.id} }));
+          window.ReactNativeWebView.postMessage(JSON.stringify({ method: 'VISIT_FITNESS_READY', documentId: ${page.id} }));
         } else if (attempts > 0) {
           setTimeout(function () { waitForDashboard(attempts - 1); }, 100);
         }
@@ -171,34 +209,31 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
     );
   };
 
-  const connect = async (document) => {
+  const connect = async (page) => {
     if (Platform.isPad) {
-      sendUnsupported(document);
+      sendUnsupported(page);
       return;
     }
     if (connecting.current) return;
     connecting.current = true;
     connectionRevision.current++;
-    document.fitnessReady = true;
+    page.fitnessReady = true;
     try {
       const result = await new Promise((resolve) => {
         VisitRnSdkViewManager.connectToAppleHealth(resolve);
       });
-      if (!bridge.isCurrent(document)) return;
+      if (page !== currentPage.current) return;
       if (result?.authStatus === 'GRANTED') {
         const steps = Number(result.numberOfSteps) || 0;
         const sleep = Number(result.sleepTime) || 0;
-        bridge.inject(
-          document,
-          `window.updateFitnessPermissions(true,${steps},${sleep})`
-        );
-        if (document.syncConfiguration) {
-          VisitRnSdkViewManager.updateApiUrl(document.syncConfiguration);
+        inject(page, `window.updateFitnessPermissions(true,${steps},${sleep})`);
+        if (page.syncConfiguration) {
+          VisitRnSdkViewManager.updateApiUrl(page.syncConfiguration);
         }
         return;
       }
 
-      bridge.inject(document, 'window.updateFitnessPermissions(false,0,0)');
+      inject(page, 'window.updateFitnessPermissions(false,0,0)');
       if (result?.authStatus === 'DENIED') {
         Alert.alert(
           'Permission Denied',
@@ -212,10 +247,9 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
             {
               text: 'Open Settings',
               onPress: () => {
-                VisitRnSdkViewManager.openAppleHealthApp?.().catch(() => {
-                  if (isLoggingEnabled)
-                    console.warn('Could not open Apple Health settings');
-                });
+                VisitRnSdkViewManager.openAppleHealthApp?.().catch(
+                  logMessageError
+                );
               },
             },
           ]
@@ -223,103 +257,161 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
       }
     } finally {
       connecting.current = false;
-      const current = bridge.current.current;
-      if (current !== document && current?.fitnessReady) {
-        refreshHealthKitPermissionState(current);
+      const current = currentPage.current;
+      if (current !== page && current?.fitnessReady) {
+        refreshHealthKitPermissionState(current).catch(logMessageError);
       }
     }
   };
 
-  const requestLocation = (document) =>
-    bridge.run(document, 'location', async () => {
-      let status;
-      try {
-        status = await VisitRnSdkViewManager.requestWebLocationPermission();
-      } catch {
-        if (isLoggingEnabled) console.warn('Location authorization failed');
-      }
-      if (!bridge.isCurrent(document)) return;
-      bridge.inject(
-        document,
-        `window.checkTheGpsPermission(${status === 'GRANTED'})`
+  const requestLocation = async (page) => {
+    if (locationRequestInFlight.current) return;
+    locationRequestInFlight.current = true;
+    let status;
+    try {
+      status = await VisitRnSdkViewManager.requestWebLocationPermission();
+    } finally {
+      locationRequestInFlight.current = false;
+      inject(page, `window.checkTheGpsPermission(${status === 'GRANTED'})`);
+    }
+    if (page !== currentPage.current) return;
+    if (status === 'SERVICES_DISABLED') {
+      Alert.alert(
+        'Turn on Location Services',
+        'Open Settings → Privacy & Security → Location Services, then try again.'
       );
-      if (status === 'SERVICES_DISABLED') {
-        Alert.alert(
-          'Turn on Location Services',
-          'Open Settings → Privacy & Security → Location Services, then try again.'
-        );
-      } else if (status === 'DENIED') {
-        Alert.alert(
-          'Allow Location Access',
-          'Allow location access in Settings, then try again.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Open Settings',
-              onPress: () => {
-                Linking.openSettings().catch(() => {});
-              },
-            },
-          ]
-        );
-      }
-    });
+    } else if (status === 'DENIED') {
+      Alert.alert(
+        'Allow Location Access',
+        'Allow location access in Settings, then try again.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Open Settings',
+            onPress: () => Linking.openSettings().catch(logMessageError),
+          },
+        ]
+      );
+    }
+  };
 
   const handleMessage = async (event) => {
-    const data = readMessage(event.nativeEvent.data, unescapeHTML);
-    const document = bridge.current.current;
-    if (!data || !bridge.isCurrent(document)) return;
+    const page = currentPage.current;
+    if (!page) return;
+
     try {
-      switch (data.method) {
+      const raw = event.nativeEvent.data;
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        data = JSON.parse(unescapeHTML(raw));
+      }
+      const method = data?.method ?? data?.name;
+      switch (method) {
         case 'UPDATE_PLATFORM':
-          bridge.inject(document, 'window.setSdkPlatform("IOS")');
+          inject(page, 'window.setSdkPlatform("IOS")');
           break;
         case 'VISIT_FITNESS_READY':
-          if (data.documentId !== document.id || document.fitnessReady) break;
-          document.fitnessReady = true;
-          await refreshHealthKitPermissionState(document);
+          if (data.documentId !== page.id || page.fitnessReady) break;
+          page.fitnessReady = true;
+          await refreshHealthKitPermissionState(page);
           break;
         case 'GET_HEALTH_CONNECT_STATUS':
-          document.fitnessReady = true;
-          await refreshHealthKitPermissionState(document);
+          page.fitnessReady = true;
+          await refreshHealthKitPermissionState(page);
           break;
         case 'CONNECT_TO_GOOGLE_FIT':
-          await connect(document);
+          await connect(page);
           break;
-        case 'GET_CALORIE_BURNED':
-          if (!Platform.isPad)
-            await refreshCalorieCard(bridge, document, VisitRnSdkViewManager);
+        case 'GET_CALORIE_BURNED': {
+          if (Platform.isPad) break;
+          const calories = await VisitRnSdkViewManager.getTodayCaloriesForWeb();
+          if (Number.isFinite(calories)) {
+            inject(
+              page,
+              `if (typeof window.updateCalorieBurned === 'function') window.updateCalorieBurned(${calories}); true;`
+            );
+          }
           break;
+        }
         case 'GET_DATA_TO_GENERATE_GRAPH': {
           const { type, frequency } = data;
           if (typeof type !== 'string' || typeof frequency !== 'string') break;
-          const timestamp = timestampOrNull(data.timestamp) ?? Date.now();
+          const timestamp = readTimestamp(data.timestamp, Date.now());
           VisitRnSdkViewManager.renderGraph(
             { type, frequency, timestamp },
             (err, results) => {
-              if (!err && results?.[0])
-                bridge.inject(document, `window.${results[0]}`);
+              if (!err && results?.[0]) inject(page, `window.${results[0]}`);
             }
           );
           break;
         }
         case 'UPDATE_API_BASE_URL': {
-          const configuration = syncConfiguration(data);
-          if (configuration) {
-            document.syncConfiguration = configuration;
-            VisitRnSdkViewManager.updateApiUrl(configuration);
+          const apiBaseUrl = data.apiBaseUrl?.trim();
+          const authToken = data.authtoken ?? data.authToken;
+          if (!apiBaseUrl || !authToken?.trim()) {
+            break;
           }
+          page.syncConfiguration = {
+            apiBaseUrl,
+            authToken,
+            googleFitLastSync: Math.max(
+              -1,
+              readTimestamp(data.googleFitLastSync, -1)
+            ),
+            gfHourlyLastSync: Math.max(
+              -1,
+              readTimestamp(data.gfHourlyLastSync, -1)
+            ),
+          };
+          VisitRnSdkViewManager.updateApiUrl(page.syncConfiguration);
           break;
         }
         case 'GET_LOCATION_PERMISSIONS':
-          await requestLocation(document);
+          await requestLocation(page);
           break;
-        default:
-          await handleWebAction(data, VisitRnSdkViewManager, bridge, document);
+        case 'CLOSE_VIEW':
+        case 'OPEN_FACE_SCAN_FLOW':
+          EventRegister.emitEvent(visitEvent, { message: method });
+          break;
+        case 'OPEN_PDF':
+          if (data.url) await Linking.openURL(data.url);
+          break;
+        case 'OPEN_DAILER': {
+          const value = data.number;
+          if (typeof value !== 'string' && !Number.isSafeInteger(value)) break;
+          const number =
+            typeof value === 'string'
+              ? Array.from(value)
+                  .filter(
+                    (character) =>
+                      character.trim() && !'()-'.includes(character)
+                  )
+                  .join('')
+              : String(value);
+          const digits = number.startsWith('+') ? number.slice(1) : number;
+          if (
+            digits &&
+            Array.from(digits).every((digit) => digit >= '0' && digit <= '9')
+          ) {
+            await Linking.openURL(`tel:${number}`);
+          }
+          break;
+        }
+        case 'DOWNLOAD_PDF': {
+          const link = data.link?.trim();
+          if (link) {
+            await VisitRnSdkViewManager.downloadAndShare(
+              link,
+              typeof data.authToken === 'string' ? data.authToken : null
+            );
+          }
+          break;
+        }
       }
     } catch {
-      if (isLoggingEnabled)
-        console.warn('Could not handle Visit WebView request');
+      logMessageError();
     }
   };
 
@@ -330,12 +422,12 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
       {source ? (
         <WebView
           key={source}
-          ref={bridge.webviewRef}
+          ref={webView}
           source={{ uri: source }}
           style={styles.webView}
           javascriptEnabled
           onMessage={handleMessage}
-          onLoadStart={bridge.reset}
+          onLoadStart={resetPage}
           onLoad={watchForDashboard}
           onError={(errorMessage) => {
             EventRegister.emitEvent(visitEvent, {

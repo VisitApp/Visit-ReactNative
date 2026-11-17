@@ -5,9 +5,6 @@ const projectRoot = __dirname;
 const appNodeModules = path.join(projectRoot, 'node_modules');
 const defaultConfig = getDefaultConfig(projectRoot);
 
-const escapePathForRegex = value =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
 const resolvePackageRoot = packageName => {
   try {
     return path.dirname(
@@ -37,12 +34,27 @@ const appDependencies = [
   '@visit-health/react-native-location-enabler',
   'react-native-webview',
 ];
-const linkedPackageBlockList = isLinkedVisitRnSdk
-  ? appDependencies.map(packageName => {
-      const packagePath = path.join(visitRnSdkRoot, 'node_modules', packageName);
-      return new RegExp(`${escapePathForRegex(packagePath)}\\/.*`);
-    })
-  : [];
+const resolveLinkedDependency = (context, moduleName, platform) => {
+  if (
+    context.originModulePath.startsWith(
+      `${path.join(visitRnSdkRoot, 'src')}${path.sep}`,
+    ) &&
+    appDependencies.some(
+      name => moduleName === name || moduleName.startsWith(`${name}/`),
+    )
+  ) {
+    return context.resolveRequest(
+      {
+        ...context,
+        disableHierarchicalLookup: true,
+        nodeModulesPaths: [appNodeModules],
+      },
+      moduleName,
+      platform,
+    );
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
 
 /**
  * Metro configuration
@@ -54,10 +66,9 @@ const config = {
   watchFolders: isLinkedVisitRnSdk ? [visitRnSdkRoot] : [],
   resolver: {
     ...defaultConfig.resolver,
-    blockList: [].concat(
-      defaultConfig.resolver.blockList ?? [],
-      linkedPackageBlockList,
-    ),
+    resolveRequest: isLinkedVisitRnSdk
+      ? resolveLinkedDependency
+      : defaultConfig.resolver.resolveRequest,
     nodeModulesPaths: isLinkedVisitRnSdk
       ? [appNodeModules, ...defaultConfig.resolver.nodeModulesPaths]
       : defaultConfig.resolver.nodeModulesPaths,

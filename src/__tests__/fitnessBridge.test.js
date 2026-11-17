@@ -386,7 +386,9 @@ function openFixture() {
     resolvePath(__dirname, '../../example/fixtures/webview/index.html'),
     'utf8'
   );
-  const fixtureScript = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const scriptStart = html.indexOf('<script>') + '<script>'.length;
+  const scriptEnd = html.indexOf('</script>', scriptStart);
+  const fixtureScript = html.slice(scriptStart, scriptEnd);
   runInNewContext(fixtureScript, {
     window,
     document: { getElementById: node, createElement: () => ({}) },
@@ -451,6 +453,159 @@ it.each(['android', 'ios'])(
         -1
       );
     }
+  }
+);
+
+it.each(['android', 'ios'])(
+  'forwards the %s sync URL without validating its format',
+  async (platform) => {
+    const message = {
+      method: 'UPDATE_API_BASE_URL',
+      apiBaseUrl: '  malformed base address  ',
+      authToken: 'test-token',
+      googleFitLastSync: String(day),
+      gfHourlyLastSync: null,
+    };
+    const View =
+      platform === 'ios'
+        ? require('../index.ios').default
+        : require('../index.android').default;
+    mount(View);
+    await act(async () => {
+      await send(message);
+    });
+    if (platform === 'ios') {
+      expect(
+        NativeModules.VisitRnSdkViewManager.updateApiUrl
+      ).toHaveBeenCalledWith({
+        apiBaseUrl: 'malformed base address',
+        authToken: 'test-token',
+        googleFitLastSync: day,
+        gfHourlyLastSync: -1,
+      });
+    } else {
+      expect(
+        NativeModules.VisitFitnessModule.updateApiBaseUrl
+      ).toHaveBeenCalledWith('malformed base address', 'test-token', day, -1);
+    }
+  }
+);
+
+it.each(['android', 'ios'])(
+  'opens the %s dialer for a formatted number with a country code',
+  async (platform) => {
+    const View =
+      platform === 'ios'
+        ? require('../index.ios').default
+        : require('../index.android').default;
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    mount(View);
+    await act(async () => {
+      await send({ name: 'OPEN_DAILER', number: ' +1 (555)\t0100 ' });
+      await send({ name: 'OPEN_DAILER', number: '+15550100;123' });
+      await send({ name: 'OPEN_DAILER', number: -123 });
+    });
+    expect(openURL).toHaveBeenCalledTimes(1);
+    expect(openURL).toHaveBeenCalledWith('tel:+15550100');
+  }
+);
+
+it('decodes named and numeric entities in an escaped iOS message once', async () => {
+  mount(require('../index.ios').default);
+  await act(async () => {
+    await app.root.findByType(WebView).props.onMessage({
+      nativeEvent: {
+        data:
+          '{&quot;name&quot;:&quot;DOWNLOAD_PDF&quot;,' +
+          '&quot;link&quot;:&quot;https://example.test/report.pdf&quot;,' +
+          '&quot;authToken&quot;:&quot;&#65;&#x42;&amp;quot;&unknown;&quot;}',
+      },
+    });
+  });
+  expect(
+    NativeModules.VisitRnSdkViewManager.downloadAndShare
+  ).toHaveBeenCalledWith(
+    'https://example.test/report.pdf',
+    'AB&quot;&unknown;'
+  );
+});
+
+it.each(['android', 'ios'])(
+  'keeps %s graph results separate and drops results from a previous SSO',
+  async (platform) => {
+    const pending = {};
+    let View;
+    if (platform === 'ios') {
+      View = require('../index.ios').default;
+      NativeModules.VisitRnSdkViewManager.renderGraph.mockImplementation(
+        ({ type }, callback) => {
+          pending[type] = (graph) => callback(null, [graph]);
+        }
+      );
+    } else {
+      View = require('../index.android').default;
+      NativeModules.VisitFitnessModule.requestActivityDataFromHealthConnect.mockImplementation(
+        (type) =>
+          new Promise((resolve) => {
+            pending[type] = resolve;
+          })
+      );
+    }
+    const graphRequest = (type) =>
+      send({ name: 'GET_DATA_TO_GENERATE_GRAPH', type, frequency: 'day' });
+    mount(View);
+
+    let requests;
+    await act(async () => {
+      requests = ['sleep', 'calories', 'steps'].map(graphRequest);
+    });
+    await act(async () => {
+      pending.calories(calorieGraph);
+      await requests[1];
+      pending.sleep(sleepGraph);
+      await requests[0];
+    });
+    act(() => app.update(<View ssoURL="https://example.test/next-sso" />));
+    await act(async () => {
+      pending.steps('DetailedGraph.updateData([],[])');
+      await requests[2];
+    });
+    expect(mockInject.mock.calls).toEqual([
+      [`window.${calorieGraph}`],
+      [`window.${sleepGraph}`],
+    ]);
+  }
+);
+
+it.each(['android', 'ios'])(
+  'handles a rejected PDF download on %s without interrupting the next action',
+  async (platform) => {
+    const View =
+      platform === 'ios'
+        ? require('../index.ios').default
+        : require('../index.android').default;
+    const native =
+      platform === 'ios'
+        ? NativeModules.VisitRnSdkViewManager
+        : NativeModules.VisitFitnessModule;
+    native.downloadAndShare.mockRejectedValueOnce(new Error('Download failed'));
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    mount(View);
+    await act(async () => {
+      await send({
+        name: 'DOWNLOAD_PDF',
+        link: 'https://example.test/test.pdf',
+      });
+      await send({ method: 'CLOSE_VIEW' });
+    });
+    expect(native.downloadAndShare).toHaveBeenCalledWith(
+      'https://example.test/test.pdf',
+      null
+    );
+    expect(alert).not.toHaveBeenCalled();
+    expect(mockEmit).toHaveBeenCalledWith('visit-event', {
+      message: 'CLOSE_VIEW',
+    });
   }
 );
 

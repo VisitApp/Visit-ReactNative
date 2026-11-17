@@ -1,4 +1,10 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, {
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useCallback,
+} from 'react';
 import { EventRegister } from 'react-native-event-listeners';
 
 import {
@@ -15,14 +21,6 @@ import {
 import WebView from 'react-native-webview';
 
 import LocationEnabler from '@visit-health/react-native-location-enabler';
-import {
-  handleWebAction,
-  readMessage,
-  refreshCalorieCard,
-  syncConfiguration,
-  timestampOrNull,
-  useWebDocument,
-} from './webBridge';
 
 const messageEmitter = new NativeEventEmitter(NativeModules.VisitFitnessModule);
 
@@ -32,6 +30,15 @@ const locationSettings = {
   needBle: true,
 };
 
+function readTimestamp(value, fallback) {
+  const timestamp =
+    typeof value === 'string' ? Number(value.trim() || NaN) : value;
+  return Number.isSafeInteger(timestamp) &&
+    Math.abs(timestamp) <= 8640000000000000
+    ? timestamp
+    : fallback;
+}
+
 /** @param {{ ssoURL: string, isLoggingEnabled?: boolean }} props */
 const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
   const source = ssoURL?.trim();
@@ -39,7 +46,25 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
   const [webGeolocationEnabled, setWebGeolocationEnabled] = useState(false);
   const [locationResult, setLocationResult] = useState(null);
 
+  const webView = useRef(null);
+  const currentPage = useRef(null);
+  const connectingPage = useRef(null);
   const locationRequestInFlight = useRef(false);
+
+  const resetPage = useCallback(() => {
+    currentPage.current = { connectionRevision: 0 };
+  }, []);
+
+  useLayoutEffect(() => {
+    resetPage();
+    return () => {
+      currentPage.current = null;
+    };
+  }, [resetPage, source]);
+
+  const inject = useCallback((page, script) => {
+    if (page === currentPage.current) webView.current?.injectJavaScript(script);
+  }, []);
 
   useEffect(() => {
     if (isLoggingEnabled) {
@@ -83,8 +108,6 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
     };
   }, []);
 
-  const bridge = useWebDocument(source);
-
   useEffect(() => {
     if (!source || appState === 'background' || appState === 'inactive') {
       return;
@@ -109,13 +132,13 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
   useEffect(() => {
     if (locationResult === null) return;
     // The WebView must have the updated geolocation setting before it retries.
-    bridge.inject(
-      locationResult.document,
+    inject(
+      locationResult.page,
       `window.checkTheGpsPermission(${locationResult.enabled})`
     );
     setLocationResult(null);
     locationRequestInFlight.current = false;
-  }, [bridge, locationResult]);
+  }, [inject, locationResult]);
 
   const showLocationPermissionAlert = () =>
     new Promise((resolve, reject) => {
@@ -133,7 +156,7 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
       );
     });
 
-  const requestLocationPermission = async (document) => {
+  const requestLocationPermission = async (page) => {
     if (locationRequestInFlight.current) return;
     locationRequestInFlight.current = true;
     let locationEnabled = false;
@@ -145,28 +168,29 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
       let preciseLocationGranted = await PermissionsAndroid.check(
         ACCESS_FINE_LOCATION
       );
+      let blocked = false;
       if (!preciseLocationGranted) {
+        if (page !== currentPage.current) return;
         const permissions = await PermissionsAndroid.requestMultiple([
           ACCESS_COARSE_LOCATION,
           ACCESS_FINE_LOCATION,
         ]);
         const precisePermission = permissions[ACCESS_FINE_LOCATION];
         preciseLocationGranted = precisePermission === GRANTED;
-        if (precisePermission === NEVER_ASK_AGAIN) {
-          if (bridge.isCurrent(document)) await showLocationPermissionAlert();
-        }
+        blocked = precisePermission === NEVER_ASK_AGAIN;
       }
 
       setWebGeolocationEnabled(preciseLocationGranted);
-      if (preciseLocationGranted && bridge.isCurrent(document)) {
+      if (page !== currentPage.current) return;
+      if (preciseLocationGranted) {
         locationEnabled = await LocationEnabler.ensureLocationSettings(
           locationSettings
         );
+      } else if (blocked) {
+        await showLocationPermissionAlert();
       }
-    } catch (error) {
-      if (isLoggingEnabled) console.warn('Location request failed:', error);
     } finally {
-      setLocationResult({ document, enabled: locationEnabled === true });
+      setLocationResult({ page, enabled: locationEnabled === true });
     }
   };
 
@@ -195,60 +219,56 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
     NativeModules.VisitFitnessModule.openHealthConnectApp();
   };
 
-  const getHealthConnectStatus = (document) => {
-    if (document.connecting) return;
-    const revision = document.connectionRevision;
-    const isCurrent = () =>
-      bridge.isCurrent(document) && document.connectionRevision === revision;
-    return bridge.run(document, `status:${revision}`, async () => {
-      const native = NativeModules.VisitFitnessModule;
-      if (!isCurrent()) return;
-      const status = await native.getHealthConnectStatus();
-      if (!isCurrent()) return;
-      switch (status) {
-        case 'NOT_SUPPORTED':
-          bridge.inject(document, 'window.healthConnectNotSupported()');
-          break;
-        case 'NOT_INSTALLED':
-        case 'INSTALLED':
-          bridge.inject(
-            document,
-            status === 'NOT_INSTALLED'
-              ? 'window.healthConnectNotInstall()'
-              : 'window.healthConnectAvailable()'
-          );
-          bridge.inject(document, 'window.updateFitnessPermissions(false,0,0)');
-          break;
-        case 'CONNECTED': {
-          const dailyFitnessData = await native.requestDailyFitnessData();
-          if (dailyFitnessData && isCurrent()) {
-            bridge.inject(document, dailyFitnessData);
-          }
-          break;
-        }
+  const getHealthConnectStatus = async (page) => {
+    if (connectingPage.current === page) return;
+    const revision = page.connectionRevision;
+    const native = NativeModules.VisitFitnessModule;
+    const status = await native.getHealthConnectStatus();
+    if (page !== currentPage.current || page.connectionRevision !== revision) {
+      return;
+    }
+
+    switch (status) {
+      case 'NOT_SUPPORTED':
+        inject(page, 'window.healthConnectNotSupported()');
+        break;
+      case 'NOT_INSTALLED':
+      case 'INSTALLED':
+        inject(
+          page,
+          status === 'NOT_INSTALLED'
+            ? 'window.healthConnectNotInstall()'
+            : 'window.healthConnectAvailable()'
+        );
+        inject(page, 'window.updateFitnessPermissions(false,0,0)');
+        break;
+      case 'CONNECTED': {
+        const data = await native.requestDailyFitnessData();
+        if (data && page.connectionRevision === revision) inject(page, data);
+        break;
       }
-    });
+    }
   };
 
-  const askForHealthConnectPermission = (document) =>
-    bridge.run(document, 'connect', async () => {
-      document.connecting = true;
-      document.connectionRevision = (document.connectionRevision || 0) + 1;
-      let permission;
-      try {
-        permission =
-          await NativeModules.VisitFitnessModule.askForFitnessPermission();
-      } finally {
-        document.connecting = false;
-      }
-      if (!bridge.isCurrent(document)) return;
-      if (permission === 'GRANTED') {
-        await getHealthConnectStatus(document);
-      } else if (permission === 'CANCELLED') {
-        bridge.inject(document, 'window.updateFitnessPermissions(false,0,0)');
-        showHealthConnectPermissionDeniedDialog();
-      }
-    });
+  const askForHealthConnectPermission = async (page) => {
+    if (connectingPage.current) return;
+    connectingPage.current = page;
+    page.connectionRevision++;
+    let permission;
+    try {
+      permission =
+        await NativeModules.VisitFitnessModule.askForFitnessPermission();
+    } finally {
+      connectingPage.current = null;
+    }
+    if (page !== currentPage.current) return;
+    if (permission === 'GRANTED') {
+      await getHealthConnectStatus(page);
+    } else if (permission === 'CANCELLED') {
+      inject(page, 'window.updateFitnessPermissions(false,0,0)');
+      showHealthConnectPermissionDeniedDialog();
+    }
+  };
 
   const runBeforeFirst = `
     window.isNativeApp = true;
@@ -258,32 +278,42 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
   `;
 
   const handleMessage = async (event) => {
-    const data = readMessage(event.nativeEvent.data);
-    const document = bridge.current.current;
-    if (!data || !bridge.isCurrent(document)) return;
-    const native = NativeModules.VisitFitnessModule;
+    const page = currentPage.current;
+    if (!page) return;
+
     try {
-      switch (data.method) {
+      const data = JSON.parse(event.nativeEvent.data);
+      const method = data?.method ?? data?.name;
+      const native = NativeModules.VisitFitnessModule;
+      switch (method) {
         case 'GET_HEALTH_CONNECT_STATUS':
-          await getHealthConnectStatus(document);
+          await getHealthConnectStatus(page);
           break;
         case 'CONNECT_TO_GOOGLE_FIT':
-          await askForHealthConnectPermission(document);
+          await askForHealthConnectPermission(page);
           break;
         case 'UPDATE_PLATFORM':
-          bridge.inject(document, 'window.setSdkPlatform("ANDROID")');
+          inject(page, 'window.setSdkPlatform("ANDROID")');
           break;
-        case 'GET_CALORIE_BURNED':
-          await refreshCalorieCard(bridge, document, native);
+        case 'GET_CALORIE_BURNED': {
+          const calories = await native.getTodayCaloriesForWeb();
+          if (Number.isFinite(calories)) {
+            inject(
+              page,
+              `if (typeof window.updateCalorieBurned === 'function') window.updateCalorieBurned(${calories}); true;`
+            );
+          }
           break;
+        }
         case 'UPDATE_API_BASE_URL': {
-          const configuration = syncConfiguration(data);
-          if (configuration) {
+          const apiBaseUrl = data.apiBaseUrl?.trim();
+          const authToken = data.authtoken ?? data.authToken;
+          if (apiBaseUrl && authToken?.trim()) {
             await native.updateApiBaseUrl(
-              configuration.apiBaseUrl,
-              configuration.authToken,
-              configuration.googleFitLastSync,
-              configuration.gfHourlyLastSync
+              apiBaseUrl,
+              authToken,
+              Math.max(-1, readTimestamp(data.googleFitLastSync, -1)),
+              Math.max(-1, readTimestamp(data.gfHourlyLastSync, -1))
             );
           }
           break;
@@ -291,20 +321,56 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
         case 'GET_DATA_TO_GENERATE_GRAPH': {
           const { type, frequency } = data;
           if (typeof type !== 'string' || typeof frequency !== 'string') break;
-          const timestamp = timestampOrNull(data.timestamp) ?? Date.now();
+          const timestamp = readTimestamp(data.timestamp, Date.now());
           const graph = await native.requestActivityDataFromHealthConnect(
             type,
             frequency,
             timestamp
           );
-          if (graph) bridge.inject(document, `window.${graph}`);
+          if (graph) inject(page, `window.${graph}`);
           break;
         }
         case 'GET_LOCATION_PERMISSIONS':
-          await requestLocationPermission(document);
+          await requestLocationPermission(page);
           break;
-        default:
-          await handleWebAction(data, native, bridge, document);
+        case 'CLOSE_VIEW':
+        case 'OPEN_FACE_SCAN_FLOW':
+          EventRegister.emitEvent('visit-event', { message: method });
+          break;
+        case 'OPEN_PDF':
+          if (data.url) await Linking.openURL(data.url);
+          break;
+        case 'OPEN_DAILER': {
+          const value = data.number;
+          if (typeof value !== 'string' && !Number.isSafeInteger(value)) break;
+          const number =
+            typeof value === 'string'
+              ? Array.from(value)
+                  .filter(
+                    (character) =>
+                      character.trim() && !'()-'.includes(character)
+                  )
+                  .join('')
+              : String(value);
+          const digits = number.startsWith('+') ? number.slice(1) : number;
+          if (
+            digits &&
+            Array.from(digits).every((digit) => digit >= '0' && digit <= '9')
+          ) {
+            await Linking.openURL(`tel:${number}`);
+          }
+          break;
+        }
+        case 'DOWNLOAD_PDF': {
+          const link = data.link?.trim();
+          if (link) {
+            await native.downloadAndShare(
+              link,
+              typeof data.authToken === 'string' ? data.authToken : null
+            );
+          }
+          break;
+        }
       }
     } catch {
       if (isLoggingEnabled)
@@ -315,12 +381,12 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
   const [canGoBack, setCanGoBack] = useState(false);
 
   const handleBack = useCallback(() => {
-    if (canGoBack && bridge.webviewRef.current) {
-      bridge.webviewRef.current?.goBack();
+    if (canGoBack && webView.current) {
+      webView.current.goBack();
       return true;
     }
     return false;
-  }, [bridge, canGoBack]);
+  }, [canGoBack]);
 
   useEffect(() => {
     const backSub = BackHandler.addEventListener(
@@ -336,7 +402,7 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
       {source ? (
         <WebView
           key={source}
-          ref={bridge.webviewRef}
+          ref={webView}
           source={{
             uri: source,
             headers: {
@@ -344,7 +410,7 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
             },
           }}
           onMessage={handleMessage}
-          onLoadStart={bridge.reset}
+          onLoadStart={resetPage}
           injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
           javaScriptEnabled={true}
           geolocationEnabled={webGeolocationEnabled}
