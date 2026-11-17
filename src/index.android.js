@@ -14,7 +14,7 @@ import {
 
 import WebView from 'react-native-webview';
 
-import LocationEnabler from 'react-native-location-enabler';
+import LocationEnabler from '@visit-health/react-native-location-enabler';
 
 const messageEmitter = new NativeEventEmitter(NativeModules.VisitFitnessModule);
 

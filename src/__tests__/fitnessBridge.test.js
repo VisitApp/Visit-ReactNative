@@ -15,7 +15,7 @@ jest.mock('react-native-webview', () => {
 });
 
 jest.mock(
-  'react-native-location-enabler',
+  '@visit-health/react-native-location-enabler',
   () => ({
     PRIORITIES: { HIGH_ACCURACY: 1 },
     useLocationSettings: () => [true, jest.fn()],

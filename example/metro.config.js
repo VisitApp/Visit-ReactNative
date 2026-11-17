@@ -34,7 +34,7 @@ const appDependencies = [
   'react',
   'react-native',
   'react-native-event-listeners',
-  'react-native-location-enabler',
+  '@visit-health/react-native-location-enabler',
   'react-native-webview',
 ];
 const linkedPackageBlockList = isLinkedVisitRnSdk

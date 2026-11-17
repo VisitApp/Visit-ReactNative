@@ -1,6 +1,10 @@
-## PMLI SDK `7.1.0`
+## PMLI SDK `7.1.1`
 
-Install the release with `npm install react-native-visit-rn-sdk@7.1.0`.
+Install the release and shared host app dependencies.
+
+```sh
+npm install react-native-visit-rn-sdk@7.1.1 react-native-event-listeners react-native-webview
+```
 
 When upgrading from `7.0.0`, rename the `magicLink` prop to `ssoURL` and pass the
 SSO URL issued for the current session. Remove the legacy URL-generation props.
@@ -8,10 +12,8 @@ Remove `react-native-device-info` from the host app if the Visit SDK was its onl
 
 ### **Instructions for configuring your Android Project**
 
-* Install the host app dependencies used by the Visit SDK.
-  `npm install https://github.com/sashko9807/react-native-location-enabler`  
-  `npm install react-native-event-listeners`   
-  `npm install react-native-webview`
+* Install `@visit-health/react-native-location-enabler@1.0.1` directly in the host app for Android autolinking.
+* When upgrading from `7.1.0`, update any host app imports to the scoped location package and remove the previous dependency. Remove the Kotlin patch and any patch setup added solely for it.
 * Add `https://jitpack.io` to the host app’s Gradle repositories for `com.github.VisitApp:AndroidSDK`.
 * Enable code desugaring in your app, or there add the dependency. 
 
@@ -32,17 +34,14 @@ android {
 }
 ```
 
-* In the `AndroidManifest.xml` file, add the metadata tag to serve the privacy manifest URL
+* Add the Health Connect privacy-policy metadata inside `<application>` in the host app's `AndroidManifest.xml`. Replace the example URL with the app's approved HTTPS privacy-policy URL.
 
     ```
      <meta-data
                 android:name="visit_android_sdk.health_connect_privacy_policy_url"
-                android:value="https://www.google.com" />
+                android:value="https://example.com/privacy-policy" />
     ```
-* Version Requirement:  
-  AGP: `8.13.2` or higher  
-  Kotlin: `1.9.25`or higher  
-  `compileSdkVersion`: 36 or higher  
+* The React Native `0.86.2` example uses Gradle `8.14.5`, AGP `8.12.0`, Kotlin `2.1.20`, and Android compile SDK `36`. The scoped location package uses `jcenter()`, which is available in the sample's Gradle version.
 
 ‌
 
@@ -67,9 +66,6 @@ android {
 The SDK accepts `ssoURL`, a required string containing the SSO URL supplied
 at runtime, and `isLoggingEnabled`, an optional boolean that defaults to `false`.
 The component renders without a WebView until it receives a nonblank URL.
-Install `react-native-event-listeners` and `react-native-webview` for both
-platforms and `react-native-location-enabler` for Android. The Android and iOS
-native setup above still applies.
 
 ```jsx
 import React from 'react';
@@ -269,6 +265,10 @@ Both platforms accept `GET_DATA_TO_GENERATE_GRAPH` for steps, calories, and
 distance by day, week, and month, and for sleep by day and week. The SDK
 delivers the existing `DetailedGraph` callbacks and supplies steps and sleep
 minutes to `updateFitnessPermissions` on connection.
+
+### **7.1.1**
+
+* Use the published Visit location enabler for Android and remove the example's Kotlin patch.
 
 ### **7.1.0**
 
