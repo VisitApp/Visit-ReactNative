@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppState, NativeModules } from 'react-native';
+import { AppState, NativeModules, Platform } from 'react-native';
 import { act, create } from 'react-test-renderer';
 import { WebView } from 'react-native-webview';
 
@@ -23,10 +23,6 @@ jest.mock(
   }),
   { virtual: true }
 );
-jest.mock('axios', () => ({ create: jest.fn() }), { virtual: true });
-jest.mock('react-native-device-info', () => ({ getModel: () => 'iPhone' }), {
-  virtual: true,
-});
 jest.mock('react-native-event-listeners', () => ({ EventRegister: {} }), {
   virtual: true,
 });
@@ -73,9 +69,9 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-function mount(View) {
+function mount(View, props = { ssoURL: 'https://example.test/sso' }) {
   act(() => {
-    app = create(<View magicLink="https://example.test" />);
+    app = create(<View {...props} />);
   });
 }
 
@@ -84,6 +80,27 @@ function send(message) {
     nativeEvent: { data: JSON.stringify(message) },
   });
 }
+
+it.each(['android', 'ios'])(
+  'loads and updates the supplied SSO URL on %s',
+  (platform) => {
+    const View = require(`../index.${platform}`).default;
+    const firstUrl = 'https://example.test/sso?session=first&clientId=example';
+    const nextUrl = 'https://example.test/sso?session=next';
+
+    mount(View, {});
+    expect(app.root.findAllByType(WebView)).toHaveLength(0);
+
+    act(() => app.update(<View ssoURL={firstUrl} />));
+    expect(app.root.findByType(WebView).props.source.uri).toBe(firstUrl);
+
+    act(() => app.update(<View ssoURL={nextUrl} />));
+    expect(app.root.findByType(WebView).props.source.uri).toBe(nextUrl);
+
+    act(() => app.update(<View ssoURL="   " />));
+    expect(app.root.findAllByType(WebView)).toHaveLength(0);
+  }
+);
 
 it('starts Android permissions directly, accepts the old message, and delivers independent graph callbacks', async () => {
   mount(require('../index.android').default);
@@ -114,6 +131,22 @@ it('starts Android permissions directly, accepts the old message, and delivers i
   expect(mockInject).toHaveBeenCalledWith('window.' + sleepGraph);
   expect(mockInject.mock.calls.flat().join('\n')).not.toContain(
     'showHealthConnectDisclaimer'
+  );
+});
+
+it('reports iPad as unsupported when connecting to Apple Health', async () => {
+  jest.spyOn(Platform, 'isPad', 'get').mockReturnValue(true);
+  mount(require('../index.ios').default);
+
+  await act(async () => {
+    await send({ method: 'CONNECT_TO_GOOGLE_FIT' });
+  });
+
+  expect(
+    NativeModules.VisitRnSdkViewManager.connectToAppleHealth
+  ).not.toHaveBeenCalled();
+  expect(mockInject).toHaveBeenCalledWith(
+    'window.unsupportedHealthKitDevice(true)'
   );
 });
 

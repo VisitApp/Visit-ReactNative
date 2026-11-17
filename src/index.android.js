@@ -16,16 +16,6 @@ import WebView from 'react-native-webview';
 
 import LocationEnabler from 'react-native-location-enabler';
 
-import DeviceInfo from 'react-native-device-info';
-
-import axios from 'axios';
-
-import constants from './constants';
-
-export const httpClient = axios.create({
-  timeout: 60000,
-});
-
 const messageEmitter = new NativeEventEmitter(NativeModules.VisitFitnessModule);
 
 const {
@@ -34,17 +24,9 @@ const {
   addListener,
 } = LocationEnabler;
 
-const VisitRnSdkView = ({
-  cpsid,
-  baseUrl,
-  errorBaseUrl,
-  token,
-  moduleName,
-  environment,
-  magicLink,
-  isLoggingEnabled,
-}) => {
-  const [source, setSource] = useState('');
+/** @param {{ ssoURL: string, isLoggingEnabled?: boolean }} props */
+const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
+  const source = ssoURL?.trim();
   const [appState, setAppState] = useState(AppState.currentState);
 
   const [
@@ -58,161 +40,7 @@ const VisitRnSdkView = ({
     }
 
     NativeModules.VisitFitnessModule.initiateSDK(isLoggingEnabled);
-
-    if ((magicLink?.trim()?.length || 0) > 0) {
-      setSource(magicLink);
-    } else {
-      DeviceInfo.getAndroidId()
-        .then((deviceId) => {
-          var buildNumber = DeviceInfo.getBuildNumber();
-          let systemVersion = DeviceInfo.getSystemVersion();
-          let version = DeviceInfo.getVersion();
-
-          if (isLoggingEnabled) {
-            console.log(
-              ' baseUrl : ' +
-                baseUrl +
-                'token: ' +
-                token +
-                ' cpsid: ' +
-                cpsid +
-                ' environment: ' +
-                environment +
-                'buildNumber:' +
-                buildNumber +
-                ' systemVersion:' +
-                systemVersion +
-                ' version : ' +
-                version +
-                ' deviceId',
-              deviceId
-            );
-          }
-
-          var finalEndPoint = `${baseUrl}/partners/v3/generate-magic-link-star-health`;
-
-          if (isLoggingEnabled) {
-            console.log('finalEndPoint: ' + finalEndPoint);
-          }
-
-          httpClient
-            .post(finalEndPoint, {
-              cpsid: cpsid,
-              token: token,
-              srcClientId: 'Android',
-              deviceId: deviceId,
-              appVersion: version,
-              deviceVersion: systemVersion,
-              userEnv: environment,
-            })
-            .then((response) => {
-              let data = response.data;
-              // let visitMagicLink = data.result; //@Deprecated. Superseded by magic code usage.
-              const errorMessage = data.errorMessage;
-              const magicCode = data.magicCode;
-              const responseReferenceId = data.responseReferenceId;
-              const otherValues = data.otherValues;
-
-              let finalBaseUrl = '';
-
-              if (environment.toUpperCase() === 'PROD') {
-                finalBaseUrl = constants.PROD_BASE_URL;
-              } else {
-                finalBaseUrl = constants.STAGE_BASE_URL;
-              }
-
-              let finalUrl = `${finalBaseUrl}=${magicCode}`;
-
-              if (data.message === 'success') {
-                if ((moduleName?.trim()?.length || 0) > 0) {
-                  finalUrl += `&tab=${moduleName}`;
-                }
-
-                if (
-                  typeof responseReferenceId === 'string' &&
-                  responseReferenceId.trim().length > 0
-                ) {
-                  finalUrl += `&responseReferenceId=${responseReferenceId}`;
-                }
-
-                if (
-                  typeof otherValues === 'string' &&
-                  otherValues.trim().length > 0
-                ) {
-                  finalUrl += `&otherValues=${otherValues}`;
-                }
-
-                if (isLoggingEnabled) {
-                  console.log('magicLink: ' + finalUrl);
-                }
-
-                setSource(finalUrl);
-              } else {
-                var errorUrl = `${errorBaseUrl}/star-health?error=${errorMessage}`;
-                setSource(errorUrl);
-
-                if (errorMessage != null) {
-                  if (errorMessage === 'Please login again') {
-                    EventRegister.emitEvent('visit-event', {
-                      message: 'unauthorized-wellness-access',
-                      errorMessage: errorMessage,
-                    });
-                  } else if (errorMessage.includes('External Server Error')) {
-                    EventRegister.emitEvent('visit-event', {
-                      message: 'external-server-error',
-                      errorMessage: errorMessage,
-                    });
-                  }
-                }
-
-                if (isLoggingEnabled) {
-                  console.log(
-                    'erorMessage: ' +
-                      data.errorMessage +
-                      ' errorUrl: ' +
-                      errorUrl
-                  );
-                }
-              }
-            })
-            .catch((error) => {
-              var errorUrl = `${errorBaseUrl}/star-health?error=${error}`;
-              setSource(errorUrl);
-
-              EventRegister.emitEvent('visit-event', {
-                message: 'generate-magic-link-failed',
-                errorMessage: `${error}`,
-              });
-
-              if (isLoggingEnabled) {
-                console.log('error: ' + error);
-              }
-            });
-        })
-        .catch((err) => {
-          var errorUrl = `${errorBaseUrl}/star-health?error=${err}`;
-          setSource(errorUrl);
-
-          EventRegister.emitEvent('visit-event', {
-            message: 'getDeviceInfo-failed',
-            errorMessage: `${err}`,
-          });
-
-          if (isLoggingEnabled) {
-            console.log('getDeviceInfo err', err);
-          }
-        });
-    }
-  }, [
-    cpsid,
-    token,
-    baseUrl,
-    errorBaseUrl,
-    moduleName,
-    environment,
-    magicLink,
-    isLoggingEnabled,
-  ]);
+  }, [isLoggingEnabled]);
 
   useEffect(() => {
     const subscription = messageEmitter.addListener('onMessage', (message) => {
@@ -239,35 +67,24 @@ const VisitRnSdkView = ({
   }, []);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener(
-      'change',
-      handleAppStateChange
-    );
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (appState?.match(/inactive|background/) && nextAppState === 'active') {
+        if (isLoggingEnabled) {
+          console.log('App has come to the foreground!');
+        }
+        console.log(
+          'getHealthConnectStatus commented out, because it it not required for MCHI since we rely on callback from the web to get the health connect status.'
+        );
+      }
+
+      setAppState(nextAppState);
+    });
     console.log(`AppState.addEventListener added, current state: ${appState}`);
 
     return () => {
       subscription.remove();
     };
-  }, [appState]); // Include appState in the dependency array to ensure it's up to date.
-
-  const handleAppStateChange = (nextAppState) => {
-    // console.log(
-    //   "nextAppState: " + nextAppState + ", previousState: " + appState
-    // );
-
-    // Instead of relying on the old appState, use the nextAppState directly
-    if (appState.match(/inactive|background/) && nextAppState === 'active') {
-      if (isLoggingEnabled) {
-        console.log('App has come to the foreground!');
-      }
-      console.log(
-        'getHealthConnectStatus commented out, because it it not required for MCHI since we rely on callback from the web to get the health connect status.'
-      );
-      // getHealthConnectStatus();
-    }
-
-    setAppState(nextAppState); // Update the state with the new app state
-  };
+  }, [appState, isLoggingEnabled]);
 
   const [enabled, requestResolution] = useLocationSettings(
     {
@@ -636,6 +453,28 @@ const VisitRnSdkView = ({
   }, [canGoBack]);
 
   useEffect(() => {
+    const checkLocationPermissionAndSendCallback = async () => {
+      const isLocationPermissionAvailable = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+      );
+
+      if (isLoggingEnabled) {
+        console.log(
+          'checkLocationPermissionAndSendCallback() isLocationPermissionAvailable: ' +
+            isLocationPermissionAvailable +
+            'isGPSPermissionAvailabe: true'
+        );
+      }
+
+      if (isLocationPermissionAvailable) {
+        var finalString = `window.checkTheGpsPermission(true)`;
+
+        console.log('listener: ' + finalString);
+
+        webviewRef.current?.injectJavaScript(finalString);
+      }
+    };
+
     // Subscribe to GPS/location setting changes
     const locationSub = addListener(({ locationEnabled }) => {
       if (locationEnabled) {
@@ -654,29 +493,7 @@ const VisitRnSdkView = ({
       backSub?.remove();
       locationSub?.remove();
     };
-  }, [handleBack]);
-
-  const checkLocationPermissionAndSendCallback = async () => {
-    const isLocationPermissionAvailable = await PermissionsAndroid.check(
-      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
-    );
-
-    if (isLoggingEnabled) {
-      console.log(
-        'checkLocationPermissionAndSendCallback() isLocationPermissionAvailable: ' +
-          isLocationPermissionAvailable +
-          'isGPSPermissionAvailabe: true'
-      );
-    }
-
-    if (isLocationPermissionAvailable) {
-      var finalString = `window.checkTheGpsPermission(true)`;
-
-      console.log('listener: ' + finalString);
-
-      webviewRef.current?.injectJavaScript(finalString);
-    }
-  };
+  }, [handleBack, isLoggingEnabled]);
 
   return (
     // eslint-disable-next-line react-native/no-inline-styles
@@ -760,14 +577,3 @@ export const fetchHourlyFitnessData = (startTimeStamp, isLoggingEnabled) => {
 // }
 
 export default VisitRnSdkView;
-
-VisitRnSdkView.defaultProps = {
-  cpsid: '',
-  token: '',
-  baseUrl: '',
-  errorBaseUrl: '',
-  moduleName: '',
-  environment: '',
-  magicLink: '',
-  isLoggingEnabled: false,
-};

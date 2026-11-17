@@ -286,13 +286,6 @@ function Home() {
   }, []);
 
   useEffect(() => {
-    const unauthorizedListener = EventRegister.addEventListener(
-      'unauthorized-wellness-access',
-      () => {
-        Alert.alert('unauthorized-wellness-access');
-      },
-    );
-
     const visitEventListener = EventRegister.addEventListener(
       'visit-event',
       data => {
@@ -310,7 +303,6 @@ function Home() {
     );
 
     return () => {
-      EventRegister.removeEventListener(unauthorizedListener);
       EventRegister.removeEventListener(visitEventListener);
     };
   }, []);
@@ -463,9 +455,7 @@ function VisitPage({route, navigation}) {
   return (
     // eslint-disable-next-line react-native/no-inline-styles
     <SafeAreaView style={{flex: 1}}>
-      {/* <VisitRnSdkView isLoggingEnabled={true} magicLink={ssoUrl} /> */}
-
-      <VisitRnSdkView isLoggingEnabled={true} magicLink={ssoUrl} />
+      <VisitRnSdkView isLoggingEnabled={true} ssoURL={ssoUrl} />
     </SafeAreaView>
   );
 }

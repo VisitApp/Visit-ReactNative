@@ -11,16 +11,12 @@ import {
   NativeModules,
   Linking,
   Platform,
-  ActivityIndicator,
   Dimensions,
   Alert,
   AppState,
 } from 'react-native';
 import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
-import DeviceInfo from 'react-native-device-info';
-import { getWebViewLink } from './Services';
-import constants from './constants';
 
 const LINKING_ERROR =
   `The package 'react-native-visit-rn-sdk' doesn't seem to be linked. Make sure: \n\n` +
@@ -55,119 +51,9 @@ const unescapeHTML = (str) =>
 
 const visitEvent = 'visit-event';
 
-const VisitRnSdkView = ({
-  cpsid,
-  baseUrl,
-  errorBaseUrl,
-  token,
-  moduleName,
-  environment,
-  magicLink,
-  isLoggingEnabled,
-}) => {
-  const [source, setSource] = useState('');
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    if (magicLink?.trim()?.length) {
-      setSource(magicLink);
-      setLoading(false);
-    } else {
-      const systemVersion = DeviceInfo.getSystemVersion();
-      const version = DeviceInfo.getVersion();
-      DeviceInfo.getUniqueId()
-        .then((uniqueId) =>
-          getWebViewLink(
-            baseUrl,
-            token,
-            cpsid,
-            'iPhone',
-            uniqueId,
-            version,
-            systemVersion,
-            environment
-          )
-        )
-        .then((res) => {
-          if (res.data?.errorMessage) {
-            const { errorMessage } = res.data;
-            const errorUrl = `${errorBaseUrl}/star-health?error=${errorMessage}`;
-            setSource(errorUrl);
-            if (res.data?.errorMessage === 'Please login again') {
-              EventRegister.emitEvent(visitEvent, {
-                message: 'unauthorized-wellness-access',
-                errorMessage: errorMessage,
-              });
-            }
-            if (res.data?.errorMessage.includes('External Server Error')) {
-              EventRegister.emitEvent('visit-event', {
-                message: 'external-server-error',
-                errorMessage: errorMessage,
-              });
-            }
-          } else if (res.data.message === 'success') {
-            const magicCode = res.data?.magicCode;
-            const responseReferenceId = res.data?.responseReferenceId;
-            const otherValues = res.data?.otherValues;
-
-            let finalBaseUrl = '';
-            if (magicCode) {
-              if (environment.toUpperCase() === 'PROD') {
-                finalBaseUrl = constants.PROD_BASE_URL;
-              } else {
-                finalBaseUrl = constants.STAGE_BASE_URL;
-              }
-            }
-            if (finalBaseUrl && magicCode) {
-              let finalUrl = `${finalBaseUrl}=${magicCode}`;
-              if (moduleName?.trim()) {
-                finalUrl += `&tab=${moduleName}`;
-              }
-
-              if (
-                typeof responseReferenceId === 'string' &&
-                responseReferenceId.trim().length > 0
-              ) {
-                finalUrl += `&responseReferenceId=${responseReferenceId}`;
-              }
-
-              if (
-                typeof otherValues === 'string' &&
-                otherValues.trim().length > 0
-              ) {
-                finalUrl += `&otherValues=${otherValues}`;
-              }
-
-              setSource(finalUrl);
-            }
-          } else {
-            EventRegister.emitEvent('visit-event', {
-              message: 'generate-magic-link-failed',
-              errorMessage: `${res.data}`,
-            });
-          }
-        })
-        .catch((err) => {
-          console.log('getWebViewLink err', { err });
-          EventRegister.emitEvent('visit-event', {
-            message: 'generate-magic-link-failed',
-            errorMessage: `${err}`,
-          });
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    }
-  }, [
-    cpsid,
-    token,
-    baseUrl,
-    errorBaseUrl,
-    moduleName,
-    environment,
-    magicLink,
-    isLoggingEnabled,
-  ]);
-
+/** @param {{ ssoURL: string, isLoggingEnabled?: boolean }} props */
+const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
+  const source = ssoURL?.trim();
   const VisitRnSdkViewManager = useMemo(
     () =>
       NativeModules.VisitRnSdkViewManager
@@ -258,7 +144,7 @@ const VisitRnSdkView = ({
         webviewRef.current?.injectJavaScript('window.setSdkPlatform("IOS")');
         break;
       case 'CONNECT_TO_GOOGLE_FIT':
-        if (DeviceInfo.getModel() === 'iPad') {
+        if (Platform.isPad) {
           console.log('unsupportedHealthKitDevice triggered');
           webviewRef.current?.injectJavaScript(
             'window.unsupportedHealthKitDevice(true)'
@@ -363,9 +249,7 @@ const VisitRnSdkView = ({
   return (
     // eslint-disable-next-line react-native/no-inline-styles
     <SafeAreaView style={{ flex: 1, backgroundColor: 'white', height, width }}>
-      {loading ? (
-        <LoadingIndicator />
-      ) : (
+      {source ? (
         <WebView
           ref={webviewRef}
           source={{ uri: source }}
@@ -382,7 +266,7 @@ const VisitRnSdkView = ({
             }
           }}
         />
-      )}
+      ) : null}
     </SafeAreaView>
   );
 };
@@ -397,33 +281,4 @@ const styles = StyleSheet.create({
   },
 });
 
-VisitRnSdkView.defaultProps = {
-  id: '',
-  token: '',
-  baseUrl: '',
-  errorBaseUrl: '',
-  moduleName: '',
-};
-
 export default VisitRnSdkView;
-
-const LoadingIndicator = () => {
-  return (
-    <ActivityIndicator
-      color="#000"
-      size="small"
-      // eslint-disable-next-line react-native/no-inline-styles
-      style={{
-        flex: 1,
-        zIndex: 100,
-        position: 'absolute',
-        backgroundColor: '#fff',
-        opacity: 0.4,
-        width: '100%',
-        height: '100%',
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}
-    />
-  );
-};

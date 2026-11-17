@@ -30,19 +30,18 @@ const visitRnSdkRoot = resolvePackageRoot('react-native-visit-rn-sdk');
 const isLinkedVisitRnSdk =
   visitRnSdkRoot != null && isOutsideProjectRoot(visitRnSdkRoot);
 
+const appDependencies = [
+  'react',
+  'react-native',
+  'react-native-event-listeners',
+  'react-native-location-enabler',
+  'react-native-webview',
+];
 const linkedPackageBlockList = isLinkedVisitRnSdk
-  ? [
-      new RegExp(
-        `${escapePathForRegex(
-          path.join(visitRnSdkRoot, 'node_modules', 'react'),
-        )}\\/.*`,
-      ),
-      new RegExp(
-        `${escapePathForRegex(
-          path.join(visitRnSdkRoot, 'node_modules', 'react-native'),
-        )}\\/.*`,
-      ),
-    ]
+  ? appDependencies.map(packageName => {
+      const packagePath = path.join(visitRnSdkRoot, 'node_modules', packageName);
+      return new RegExp(`${escapePathForRegex(packagePath)}\\/.*`);
+    })
   : [];
 
 /**
@@ -55,7 +54,13 @@ const config = {
   watchFolders: isLinkedVisitRnSdk ? [visitRnSdkRoot] : [],
   resolver: {
     ...defaultConfig.resolver,
-    blockList: [].concat(defaultConfig.resolver.blockList ?? [], linkedPackageBlockList),
+    blockList: [].concat(
+      defaultConfig.resolver.blockList ?? [],
+      linkedPackageBlockList,
+    ),
+    nodeModulesPaths: isLinkedVisitRnSdk
+      ? [appNodeModules, ...defaultConfig.resolver.nodeModulesPaths]
+      : defaultConfig.resolver.nodeModulesPaths,
     extraNodeModules: {
       ...defaultConfig.resolver.extraNodeModules,
       react: path.join(appNodeModules, 'react'),

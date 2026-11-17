@@ -1495,7 +1495,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-visit-rn-sdk (7.0.0):
+  - react-native-visit-rn-sdk (7.1.0):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -1936,8 +1936,6 @@ PODS:
     - React-utils (= 0.86.2)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.86.2)
-  - RNDeviceInfo (14.1.1):
-    - React-Core
   - RNScreens (4.26.0):
     - hermes-engine
     - RCTRequired
@@ -2066,7 +2064,6 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios/ReactCodegen`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
-  - RNDeviceInfo (from `../node_modules/react-native-device-info`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
@@ -2226,8 +2223,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   ReactNativeDependencies:
     :podspec: "../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
-  RNDeviceInfo:
-    :path: "../node_modules/react-native-device-info"
   RNScreens:
     :path: "../node_modules/react-native-screens"
   Yoga:
@@ -2274,7 +2269,7 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: f413ee411341fb3c34d20e85e9f6f524921fab15
   React-mutationobservernativemodule: 58f6d2adf7d98e72b241608dfa2ddce414d2a4e7
   react-native-safe-area-context: fb5c8ee9f6dd62ef710611b3d370c501f42a4ac0
-  react-native-visit-rn-sdk: 97daa75f1a26efa606300ec82cc9788f62f4ffda
+  react-native-visit-rn-sdk: f7ecf232a64fd4fbf2df04c040f17dbde70de555
   react-native-webview: 4b1217071d94a56a6f749e25c751e51a1cec25b6
   React-NativeModulesApple: 167e532fb9bae30f3c66636b8ee0092bab263667
   React-networking: 89f6b69755a3176f30e56ba1ba8e214b1518ecfb
@@ -2311,7 +2306,6 @@ SPEC CHECKSUMS:
   ReactCodegen: 3bbb7de19774794a7428ef623a7b777106cf3737
   ReactCommon: 9002f006f571256348994183f7d4387aa7cf84e8
   ReactNativeDependencies: 2bd6854ade79bf1b60586d1ab7813a389df1b6bf
-  RNDeviceInfo: bcce8752b5043a623fe3c26789679b473f705d3c
   RNScreens: 62693e770c4b73093c018aa7845b691f5ba9988d
   Yoga: 9891cfb1c680f64de9c41b09e7453dea33454d2b
 

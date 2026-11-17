@@ -1,9 +1,14 @@
+## PMLI SDK `7.1.0`
+
+Install the release with `npm install react-native-visit-rn-sdk@7.1.0`.
+
+When upgrading from `7.0.0`, rename the `magicLink` prop to `ssoURL` and pass the
+SSO URL issued for the current session. Remove the legacy URL-generation props.
+Remove `react-native-device-info` from the host app if the Visit SDK was its only consumer.
+
 ### **Instructions for configuring your Android Project**
 
-* Install Visit React Native Plugin   
-  `npm install react-native-visit-rn-sdk@7.0.0`
-* Install these transitive plugins that Visit Plugin requires internally:   
-  `npm install react-native-device-info`   
+* Install the host app dependencies used by the Visit SDK.
   `npm install https://github.com/sashko9807/react-native-location-enabler`  
   `npm install react-native-event-listeners`   
   `npm install react-native-webview`
@@ -43,7 +48,7 @@ android {
 
 ### **Instructions for configuring Plugin in iOS project** 
 
-* Add the plugin `npm install react-native-visit-rn-sdk@7.0.0 && npx pod-install`
+* Run `npx pod-install` after installing the SDK.
 * Install pods(for M1 processors running build on `x86_64` hardware)
 
     `arch -x86_64 pod install`
@@ -57,31 +62,33 @@ android {
 <string>Visit requires your permission to read health and fitness data.</string>
 ```
 
-# **Usage**
+## SDK usage
 
-```
+The SDK accepts `ssoURL`, a required string containing the SSO URL supplied
+at runtime, and `isLoggingEnabled`, an optional boolean that defaults to `false`.
+The component renders without a WebView until it receives a nonblank URL.
+Install `react-native-event-listeners` and `react-native-webview` for both
+platforms and `react-native-location-enabler` for Android. The Android and iOS
+native setup above still applies.
+
+```jsx
 import React from 'react';
 import VisitRnSdkView from 'react-native-visit-rn-sdk';
-import {EventRegister} from 'react-native-event-listeners';
-import {SafeAreaView, Alert} from 'react-native';
+import {View} from 'react-native';
 
-function App() {
-
+export default function VisitScreen({sessionSsoUrl}) {
   return (
-    <SafeAreaView style={{flex: 1}}>
+    <View style={{flex: 1}}>
       <VisitRnSdkView
-        magicLink={<Enter the sso link here>}
-        isLoggingEnabled={true}
-        }
+        ssoURL={sessionSsoUrl}
+        isLoggingEnabled={false}
       />
-    </SafeAreaView>
+    </View>
   );
 }
-
-export default App;
 ```
 
-To see the full usage code for getting Health Connect/HealthKit connection status and retrieving health data, refer [here](https://github.com/VisitApp/Visit-ReactNative/blob/mchi-rn-sdk-3x/example/App.js).
+See the [example app](example/App.js) for connection status and manual sync usage.
 
 ## **Example App SDK Initialization and Manual Step Sync**
 
@@ -263,6 +270,11 @@ distance by day, week, and month, and for sleep by day and week. The SDK
 delivers the existing `DetailedGraph` callbacks and supplies steps and sleep
 minutes to `updateFitnessPermissions` on connection.
 
+### **7.1.0**
+
+* Accept the host app's SSO URL through the `ssoURL` prop and default `isLoggingEnabled` to `false`.
+* Remove the legacy SSO-generation props and the DeviceInfo and Axios dependencies.
+
 ### **7.0.0**
 
 * Restore steps, calories, distance, and sleep on Android and iOS.
@@ -320,7 +332,10 @@ minutes to `updateFitnessPermissions` on connection.
 
 ### **Sample Project**
 
-Please use the below project which demonstrates how to use the SDK. `https://github.com/VisitApp/Visit-ReactNative/tree/mchi-rn-sdk-3x/example`  
+The [example app](example) uses React Native `0.86.2` and links the SDK from this
+checkout. In the `example` directory, run `npm ci`, then start Metro with
+`npm start`. For Android, run `npm run android` in another terminal. For iOS, run
+`npx pod-install` and then `npm run ios`. Enter an SSO URL in the running example.
 
 **Permission Usage Declaration:**
 
