@@ -9,7 +9,11 @@ import android.util.Log
 import androidx.annotation.Keep
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.ActivityResultRegistryOwner
+import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
+import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.request.AggregateRequest
+import androidx.health.connect.client.time.TimeRangeFilter
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContext
@@ -18,6 +22,7 @@ import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.getvisitapp.visit.HealthConnectListener
 import com.getvisitapp.visit.data.VisitStepSyncHelper
+import com.getvisitapp.visit.healthConnect.TimeUtil
 import com.getvisitapp.visit.healthConnect.activity.HealthConnectUtil
 import com.getvisitapp.visit.healthConnect.contants.Contants.previouslyRevoked
 import com.getvisitapp.visit.healthConnect.enums.HealthConnectConnectionState
@@ -27,7 +32,10 @@ import com.getvisitapp.visit.healthConnect.enums.HealthConnectConnectionState.NO
 import com.getvisitapp.visit.healthConnect.enums.HealthConnectConnectionState.NOT_INSTALLED
 import com.getvisitapp.visit.healthConnect.enums.HealthConnectConnectionState.NOT_SUPPORTED
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -46,7 +54,7 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
 
   private var promise: Promise? = null
 
-  private var healthConnectStatusPromise: Promise? = null
+  private val documentScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private var permissionPromise: Promise? = null
   private var isLoggingEnabled = false
 
@@ -89,36 +97,19 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
-  fun getHealthConnectStatus(healthConnectStatusPromise: Promise) {
-    this.healthConnectStatusPromise = healthConnectStatusPromise
-
-    Timber.d("mytag: getHealthConnectStatus called")
-
-    healthConnectUtil?.scope?.launch {
-      val status: HealthConnectConnectionState = healthConnectUtil!!.checkAvailability()
-
-      withContext(Dispatchers.Main) {
-        when (status) {
-          NOT_SUPPORTED -> {
-            healthConnectStatusPromise.resolve("NOT_SUPPORTED")
-          }
-
-          NOT_INSTALLED -> {
-            healthConnectStatusPromise.resolve("NOT_INSTALLED")
-          }
-
-          INSTALLED -> {
-            healthConnectStatusPromise.resolve("INSTALLED")
-          }
-
-          CONNECTED -> {
-            healthConnectStatusPromise.resolve("CONNECTED")
-          }
-
-          NONE -> {
-
-          }
-        }
+  fun getHealthConnectStatus(promise: Promise) {
+    val util = healthConnectUtil
+    if (util == null) {
+      promise.reject("SDK_NOT_INITIALIZED", "Initialize the SDK before checking Health Connect")
+      return
+    }
+    util.scope.launch {
+      try {
+        promise.resolve(util.checkAvailability().name)
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Exception) {
+        promise.reject("HEALTH_CONNECT_STATUS_ERROR", error)
       }
     }
   }
@@ -225,24 +216,27 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
     gfHourlyLastSync: Double,
     promise: Promise?
   ) {
-    if (isLoggingEnabled) {
-      Log.d(
-        "mytag",
-        "GoogleFitPermissionModule syncDataWithServer(): baseUrl: " + apiBaseUrl + " googleFitLastSync: " + googleFitLastSync + "  gfHourlyLastSync:" + gfHourlyLastSync
-      )
-    }
-
     if (!::visitSessionStorage.isInitialized) {
       promise?.resolve("Health SDK Not Initialized")
       return
     }
 
     val normalizedBaseUrl = normalizeBaseUrl(apiBaseUrl)
-
+    val sessionChanged = visitSessionStorage.getBaseURL() != normalizedBaseUrl ||
+      visitSessionStorage.getVisitAuthToken() != authToken
+    val dailyCursor = if (googleFitLastSync >= 0) Math.round(googleFitLastSync)
+      else if (sessionChanged) 0L else visitSessionStorage.getDailyLastSyncTimestamp().coerceAtLeast(0)
+    val hourlyCursor = if (gfHourlyLastSync >= 0) Math.round(gfHourlyLastSync)
+      else if (sessionChanged) 0L else visitSessionStorage.getHourlyLastSyncTimeStamp().coerceAtLeast(0)
     visitSessionStorage.saveBaseUrl(normalizedBaseUrl)
     visitSessionStorage.saveVisitAuthToken(authToken)
-    visitSessionStorage.saveDailyLastSyncTimeStamp(Math.round(googleFitLastSync))
-    visitSessionStorage.saveHourlyLastSyncTimeStamp(Math.round(gfHourlyLastSync))
+    visitSessionStorage.saveDailyLastSyncTimeStamp(dailyCursor)
+    visitSessionStorage.saveHourlyLastSyncTimeStamp(hourlyCursor)
+    if (sessionChanged) syncDataWithServer = false
+    if (dailyCursor == 0L && hourlyCursor == 0L) {
+      promise?.resolve("Health Sync Configuration Updated")
+      return
+    }
 
     val healthConnectUtil = healthConnectUtil
     val visitStepSyncHelper = visitStepSyncHelper
@@ -432,6 +426,56 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
     }
   }
 
+
+  @ReactMethod
+  fun getTodayCaloriesForWeb(promise: Promise) {
+    val util = healthConnectUtil
+    if (util == null) {
+      promise.resolve(null)
+      return
+    }
+    util.scope.launch {
+      try {
+        if (util.checkAvailability() != CONNECTED) {
+          promise.resolve(null)
+          return@launch
+        }
+        val (start, end) = TimeUtil.getTodayElapsedTimeRangeInstant()
+        val metric = TotalCaloriesBurnedRecord.ENERGY_TOTAL
+        val result = HealthConnectClient.getOrCreate(reactApplicationContext).aggregate(
+          AggregateRequest(setOf(metric), TimeRangeFilter.between(start, end))
+        )
+        promise.resolve(result[metric]?.inKilocalories?.toInt())
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Exception) {
+        promise.reject("CALORIE_QUERY_FAILED", error)
+      }
+    }
+  }
+
+  @ReactMethod
+  fun downloadAndShare(link: String, authToken: String?, promise: Promise) {
+    documentScope.launch {
+      val share = VisitDocumentShare(reactApplicationContext)
+      var file: java.io.File? = null
+      try {
+        val (downloaded, mimeType) = share.download(link, authToken)
+        file = downloaded
+        withContext(Dispatchers.Main) {
+          val activity = checkNotNull(currentActivityOrCached())
+          share.share(activity, downloaded, mimeType)
+        }
+        promise.resolve(null)
+      } catch (error: CancellationException) {
+        file?.delete()
+        throw error
+      } catch (error: Exception) {
+        file?.delete()
+        promise.reject("DOCUMENT_SHARE_FAILED", "The document could not be shared.")
+      }
+    }
+  }
 
   @ReactMethod
   fun triggerManualSync(promise: Promise?) {
@@ -634,6 +678,7 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
   }
 
   override fun invalidate() {
+    documentScope.cancel()
     requestPermissionsLauncher?.unregister()
     requestPermissionsLauncher = null
     requestPermissionsLauncherActivity = null

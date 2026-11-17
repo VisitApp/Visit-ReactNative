@@ -67,9 +67,7 @@ function App() {
 function Home() {
   const navigation = useNavigation();
 
-  const [text, setText] = useState(
-    'https://mchi.getvisitapp.net/sso?userParams=DovHeDheih2iR_Kh_kWA2xXs5DJ3I3fW2ezi-K71IR9qYQYYSHXfDsIwenvecBrYTIA0Wlp5luyiGdFBIUQ9AOJZB23D2cG5WE-qoqJRKG58bYjXaPctQ_Qq7b8uAzwaiJRyHLVPua7ByW7-Sz-hpYSGELV7R8G7IEPBo_bMj4c_kqicKb6agLM9lKUqRIOEIeW9IQNwi2kaSaByA1mb8RCyXlxzf5cEBI88xH6OMSU&clientId=mchi-ds-we-09',
-  );
+  const [text, setText] = useState('');
 
   const [healthTrackerConnectionStatus, setHealthTrackerConnectionStatus] =
     useState(null);
@@ -451,6 +449,19 @@ const styles = StyleSheet.create({
 
 function VisitPage({route, navigation}) {
   const {ssoUrl} = route.params;
+
+  useEffect(() => {
+    const listener = EventRegister.addEventListener('visit-event', event => {
+      if (
+        event?.message === 'CLOSE_VIEW' &&
+        navigation.isFocused() &&
+        navigation.canGoBack()
+      ) {
+        navigation.goBack();
+      }
+    });
+    return () => EventRegister.removeEventListener(listener);
+  }, [navigation]);
 
   return (
     // eslint-disable-next-line react-native/no-inline-styles

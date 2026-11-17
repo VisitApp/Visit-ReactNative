@@ -25,6 +25,22 @@
 
 @end
 
+@interface SleepGraphRecorder : VisitRnSdkViewManager
+@end
+
+@implementation SleepGraphRecorder
+
+- (void)fetchSleepFromDay:(NSDate *)firstDay
+              throughDay:(NSDate *)lastDay
+              completion:(void (^)(NSDictionary *, NSError *))completion
+{
+  NSDate *start = [firstDay dateByAddingTimeInterval:1];
+  NSDate *end = [firstDay dateByAddingTimeInterval:24 * 60 * 60];
+  completion(@{firstDay: @[[[NSDateInterval alloc] initWithStartDate:start endDate:end]]}, nil);
+}
+
+@end
+
 @interface exampleTests : XCTestCase
 
 @end
@@ -56,6 +72,32 @@
     [manager renderGraph:@{@"type": @"steps", @"frequency": @"day", @"timestamp": timestamp}
                callback:^(NSArray *arguments) {}];
     XCTAssertEqualWithAccuracy(manager.graphDate.timeIntervalSince1970, 1700000000.123, 0.001);
+  }
+}
+
+- (void)testLegacySleepGraphRanges
+{
+  SleepGraphRecorder *manager = [SleepGraphRecorder new];
+  NSNumber *timestamp = @1700000000000;
+  NSString *prefix = @"DetailedGraph.updateSleepData(JSON.stringify(";
+  for (NSString *frequency in @[@"month", @"custom"]) {
+    __block NSString *script;
+    [manager renderGraph:@{@"type": @"sleep", @"frequency": frequency, @"timestamp": timestamp}
+               callback:^(NSArray *arguments) {
+      script = [arguments[1] firstObject];
+    }];
+    XCTAssertTrue([script hasPrefix:prefix]);
+    if (![script hasPrefix:prefix] || ![script hasSuffix:@"))"]) continue;
+    NSString *json = [script substringWithRange:NSMakeRange(prefix.length, script.length - prefix.length - 2)];
+    NSArray *days = [NSJSONSerialization JSONObjectWithData:[json dataUsingEncoding:NSUTF8StringEncoding]
+                                                    options:0 error:NULL];
+    XCTAssertEqual(days.count, [frequency isEqualToString:@"month"] ? 30 : 1);
+    NSDictionary *firstDay = days.firstObject;
+    XCTAssertTrue([firstDay[@"day"] isKindOfClass:[NSString class]]);
+    XCTAssertGreaterThan([firstDay[@"sleepTime"] longLongValue], [firstDay[@"startTimestamp"] longLongValue]);
+    if ([frequency isEqualToString:@"custom"]) {
+      XCTAssertEqualObjects(firstDay[@"wakeupTime"], timestamp);
+    }
   }
 }
 

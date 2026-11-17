@@ -1,9 +1,9 @@
-## PMLI SDK `7.1.4`
+## PMLI SDK `7.1.5`
 
 Install the release and shared host app dependencies.
 
 ```sh
-npm install react-native-visit-rn-sdk@7.1.4 react-native-event-listeners react-native-webview
+npm install react-native-visit-rn-sdk@7.1.5 react-native-event-listeners react-native-webview
 ```
 
 For Android, add `@visit-health/react-native-location-enabler@1.0.2` to the same
@@ -268,6 +268,37 @@ Both platforms accept `GET_DATA_TO_GENERATE_GRAPH` for steps, calories, and
 distance by day, week, and month, and for sleep by day and week. The SDK
 delivers the existing `DetailedGraph` callbacks and supplies steps and sleep
 minutes to `updateFitnessPermissions` on connection.
+
+### WebView bridge for the Flutter migration
+
+The bridge described below is available in SDK `7.1.5`. Web pages use
+`window.ReactNativeWebView.postMessage(JSON.stringify({ method, ...payload }))`.
+The SDK also accepts the Flutter `name` field over that transport.
+
+| Request | Payload and result |
+| --- | --- |
+| `UPDATE_PLATFORM` | Calls `setSdkPlatform("ANDROID")` or `setSdkPlatform("IOS")`. |
+| `GET_HEALTH_CONNECT_STATUS` | Refreshes the dashboard on both platforms. Calls `updateFitnessPermissions(granted, steps, sleepMinutes)` and the platform availability callback when applicable. |
+| `CONNECT_TO_GOOGLE_FIT` | Opens the platform fitness permission flow and refreshes the dashboard after approval. |
+| `GET_CALORIE_BURNED` | Calls `updateCalorieBurned(kcal)` for readable data. Android uses Health Connect total calories and iOS uses HealthKit active energy. |
+| `GET_DATA_TO_GENERATE_GRAPH` | Takes `type`, `frequency`, and optional epoch milliseconds in `timestamp`. Calls `DetailedGraph.updateData`, `DetailedGraph.updateDailySleep`, or `DetailedGraph.updateSleepData`. iOS also accepts month sleep and the legacy single-day `custom` range. |
+| `UPDATE_API_BASE_URL` | Takes `apiBaseUrl`, `authtoken`, `googleFitLastSync`, and `gfHourlyLastSync` for native sync. |
+| `GET_LOCATION_PERMISSIONS` | Checks app permission and device Location Services. Calls `checkTheGpsPermission(boolean)`. On iOS the host must define `NSLocationWhenInUseUsageDescription` in its Info.plist. |
+| `DOWNLOAD_PDF` | Takes `link` and optional `authToken`, then opens the native share sheet for the downloaded file. |
+| `OPEN_DAILER` | Takes `number` and opens the system dialer. |
+| `CLOSE_VIEW` | Emits `{ message: 'CLOSE_VIEW' }` on `visit-event`. Subscribe from the host's Visit route and pop or dismiss that route. |
+
+On iOS the SDK also checks fitness status when the dashboard is ready and after
+returning from Settings. HealthKit permission stays tied to the host app identity.
+The WebView supplies a fresh sync configuration for each SSO session.
+
+### **7.1.5**
+
+* Refresh Apple Health steps and sleep when the Visit page opens or reopens.
+* Support Flutter migration callbacks for the calorie card, document sharing,
+  the dialer, and closing the SDK screen.
+* Check iOS location permission and device Location Services before confirming
+  access to the WebView.
 
 ### **7.1.4**
 

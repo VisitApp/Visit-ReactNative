@@ -1,10 +1,4 @@
-import React, {
-  useRef,
-  useEffect,
-  useState,
-  useMemo,
-  useCallback,
-} from 'react';
+import React, { useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   StyleSheet,
   SafeAreaView,
@@ -17,6 +11,14 @@ import {
 } from 'react-native';
 import { EventRegister } from 'react-native-event-listeners';
 import { WebView } from 'react-native-webview';
+import {
+  handleWebAction,
+  readMessage,
+  refreshCalorieCard,
+  syncConfiguration,
+  timestampOrNull,
+  useWebDocument,
+} from './webBridge';
 
 const LINKING_ERROR =
   `The package 'react-native-visit-rn-sdk' doesn't seem to be linked. Make sure: \n\n` +
@@ -69,179 +71,255 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
     []
   );
 
-  const webviewRef = useRef(null);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const bridge = useWebDocument(source);
+  const connecting = useRef(false);
+  const connectionRevision = useRef(0);
 
-  const refreshHealthKitPermissionState = useCallback(async () => {
-    try {
-      const status = await VisitRnSdkViewManager?.getHealthKitConnectStatus?.();
-
-      if (isLoggingEnabled) {
-        console.log('getHealthKitConnectStatus on foreground: ', status);
-      }
-
-      if (status === 'NOT_SUPPORTED') {
-        webviewRef.current?.injectJavaScript(
-          'window.unsupportedHealthKitDevice(true)'
-        );
-        return;
-      }
-
-      if (status === 'CONNECTED') {
-        const [steps, sleep] = await Promise.allSettled([
-          VisitRnSdkViewManager?.getTodayStepCount?.(),
-          VisitRnSdkViewManager?.getTodaySleepMinutes?.(),
-        ]);
-        const stepCount =
-          steps.status === 'fulfilled' ? Number(steps.value) || 0 : 0;
-        const sleepMinutes =
-          sleep.status === 'fulfilled' ? Number(sleep.value) || 0 : 0;
-        webviewRef.current?.injectJavaScript(
-          `window.updateFitnessPermissions(true,${stepCount},${sleepMinutes})`
-        );
-        return;
-      }
-
-      webviewRef.current?.injectJavaScript(
-        'window.updateFitnessPermissions(false,0,0)'
+  const sendUnsupported = useCallback(
+    (document) => {
+      bridge.inject(
+        document,
+        `if (typeof window.unsupportedHealthKitDevice === 'function') {
+          window.unsupportedHealthKitDevice(true);
+        } else {
+          if (typeof window.healthConnectNotSupported === 'function') window.healthConnectNotSupported();
+          if (typeof window.updateFitnessPermissions === 'function') window.updateFitnessPermissions(false,0,0);
+        } true;`
       );
-    } catch (err) {
-      if (isLoggingEnabled) {
-        console.warn('refreshHealthKitPermissionState failed: ', err?.message);
-      }
-    }
-  }, [VisitRnSdkViewManager, isLoggingEnabled]);
+    },
+    [bridge]
+  );
+
+  const refreshHealthKitPermissionState = useCallback(
+    (document) => {
+      if (!bridge.isCurrent(document) || connecting.current) return;
+      return bridge.run(document, 'status', async () => {
+        if (connecting.current) return;
+        if (Platform.isPad) {
+          sendUnsupported(document);
+          return;
+        }
+        const revision = connectionRevision.current;
+        try {
+          const status =
+            await VisitRnSdkViewManager.getHealthKitConnectStatus();
+          if (
+            revision !== connectionRevision.current ||
+            !bridge.isCurrent(document)
+          )
+            return;
+          if (status === 'NOT_SUPPORTED') {
+            sendUnsupported(document);
+            return;
+          }
+          if (status === 'CONNECTED') {
+            const [steps, sleep] = await Promise.allSettled([
+              VisitRnSdkViewManager.getTodayStepCount(),
+              VisitRnSdkViewManager.getTodaySleepMinutes(),
+            ]);
+            if (revision !== connectionRevision.current) return;
+            const stepCount =
+              steps.status === 'fulfilled' ? Number(steps.value) || 0 : 0;
+            const sleepMinutes =
+              sleep.status === 'fulfilled' ? Number(sleep.value) || 0 : 0;
+            bridge.inject(
+              document,
+              `window.updateFitnessPermissions(true,${stepCount},${sleepMinutes})`
+            );
+          } else if (status === 'INSTALLED') {
+            bridge.inject(
+              document,
+              "if (typeof window.healthConnectAvailable === 'function') window.healthConnectAvailable(); true;"
+            );
+            bridge.inject(
+              document,
+              'window.updateFitnessPermissions(false,0,0)'
+            );
+          }
+        } catch {
+          if (isLoggingEnabled) console.warn('HealthKit status refresh failed');
+        }
+      });
+    },
+    [bridge, isLoggingEnabled, sendUnsupported, VisitRnSdkViewManager]
+  );
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') {
-        refreshHealthKitPermissionState();
+      const document = bridge.current.current;
+      if (source && nextAppState === 'active' && document?.fitnessReady) {
+        refreshHealthKitPermissionState(document);
+      }
+    });
+    return () => subscription.remove();
+  }, [bridge, refreshHealthKitPermissionState, source]);
+
+  const watchForDashboard = () => {
+    const document = bridge.current.current;
+    if (!document || document.fitnessReady || document.watchingDashboard)
+      return;
+    document.watchingDashboard = true;
+    bridge.inject(
+      document,
+      `(function waitForDashboard(attempts) {
+        if (typeof window.updateFitnessPermissions === 'function') {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ method: 'VISIT_FITNESS_READY', documentId: ${document.id} }));
+        } else if (attempts > 0) {
+          setTimeout(function () { waitForDashboard(attempts - 1); }, 100);
+        }
+      })(50); true;`
+    );
+  };
+
+  const connect = async (document) => {
+    if (Platform.isPad) {
+      sendUnsupported(document);
+      return;
+    }
+    if (connecting.current) return;
+    connecting.current = true;
+    connectionRevision.current++;
+    document.fitnessReady = true;
+    try {
+      const result = await new Promise((resolve) => {
+        VisitRnSdkViewManager.connectToAppleHealth(resolve);
+      });
+      if (!bridge.isCurrent(document)) return;
+      if (result?.authStatus === 'GRANTED') {
+        const steps = Number(result.numberOfSteps) || 0;
+        const sleep = Number(result.sleepTime) || 0;
+        bridge.inject(
+          document,
+          `window.updateFitnessPermissions(true,${steps},${sleep})`
+        );
+        if (document.syncConfiguration) {
+          VisitRnSdkViewManager.updateApiUrl(document.syncConfiguration);
+        }
+        return;
+      }
+
+      bridge.inject(document, 'window.updateFitnessPermissions(false,0,0)');
+      if (result?.authStatus === 'DENIED') {
+        Alert.alert(
+          'Permission Denied',
+          'To allow permission, please follow these steps:\n\n' +
+            '1. Open Settings\n' +
+            '2. Tap on Apps → Health\n' +
+            '3. Tap Data Access & Devices\n' +
+            '4. Select this app and enable all categories',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => {
+                VisitRnSdkViewManager.openAppleHealthApp?.().catch(() => {
+                  if (isLoggingEnabled)
+                    console.warn('Could not open Apple Health settings');
+                });
+              },
+            },
+          ]
+        );
+      }
+    } finally {
+      connecting.current = false;
+      const current = bridge.current.current;
+      if (current !== document && current?.fitnessReady) {
+        refreshHealthKitPermissionState(current);
+      }
+    }
+  };
+
+  const requestLocation = (document) =>
+    bridge.run(document, 'location', async () => {
+      let status;
+      try {
+        status = await VisitRnSdkViewManager.requestWebLocationPermission();
+      } catch {
+        if (isLoggingEnabled) console.warn('Location authorization failed');
+      }
+      if (!bridge.isCurrent(document)) return;
+      bridge.inject(
+        document,
+        `window.checkTheGpsPermission(${status === 'GRANTED'})`
+      );
+      if (status === 'SERVICES_DISABLED') {
+        Alert.alert(
+          'Turn on Location Services',
+          'Open Settings → Privacy & Security → Location Services, then try again.'
+        );
+      } else if (status === 'DENIED') {
+        Alert.alert(
+          'Allow Location Access',
+          'Allow location access in Settings, then try again.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => {
+                Linking.openSettings().catch(() => {});
+              },
+            },
+          ]
+        );
       }
     });
 
-    return () => {
-      subscription.remove();
-    };
-  }, [refreshHealthKitPermissionState]);
-
   const handleMessage = async (event) => {
-    const data = JSON.parse(unescapeHTML(event.nativeEvent.data));
-    const {
-      method,
-      type,
-      frequency,
-      timestamp,
-      apiBaseUrl,
-      authtoken,
-      googleFitLastSync,
-      gfHourlyLastSync,
-      url,
-    } = data;
-    console.log('handleMessage data is', data);
-    console.log(unescapeHTML(event.nativeEvent.data));
-    switch (method) {
-      case 'UPDATE_PLATFORM':
-        webviewRef.current?.injectJavaScript('window.setSdkPlatform("IOS")');
-        break;
-      case 'CONNECT_TO_GOOGLE_FIT':
-        if (Platform.isPad) {
-          console.log('unsupportedHealthKitDevice triggered');
-          webviewRef.current?.injectJavaScript(
-            'window.unsupportedHealthKitDevice(true)'
+    const data = readMessage(event.nativeEvent.data, unescapeHTML);
+    const document = bridge.current.current;
+    if (!data || !bridge.isCurrent(document)) return;
+    try {
+      switch (data.method) {
+        case 'UPDATE_PLATFORM':
+          bridge.inject(document, 'window.setSdkPlatform("IOS")');
+          break;
+        case 'VISIT_FITNESS_READY':
+          if (data.documentId !== document.id || document.fitnessReady) break;
+          document.fitnessReady = true;
+          await refreshHealthKitPermissionState(document);
+          break;
+        case 'GET_HEALTH_CONNECT_STATUS':
+          document.fitnessReady = true;
+          await refreshHealthKitPermissionState(document);
+          break;
+        case 'CONNECT_TO_GOOGLE_FIT':
+          await connect(document);
+          break;
+        case 'GET_CALORIE_BURNED':
+          if (!Platform.isPad)
+            await refreshCalorieCard(bridge, document, VisitRnSdkViewManager);
+          break;
+        case 'GET_DATA_TO_GENERATE_GRAPH': {
+          const { type, frequency } = data;
+          if (typeof type !== 'string' || typeof frequency !== 'string') break;
+          const timestamp = timestampOrNull(data.timestamp) ?? Date.now();
+          VisitRnSdkViewManager.renderGraph(
+            { type, frequency, timestamp },
+            (err, results) => {
+              if (!err && results?.[0])
+                bridge.inject(document, `window.${results[0]}`);
+            }
           );
-        } else {
-          VisitRnSdkViewManager?.connectToAppleHealth((res) => {
-            const authStatus = res?.authStatus;
-            const steps = Number(res?.numberOfSteps) || 0;
-            const sleep = Number(res?.sleepTime) || 0;
-
-            if (authStatus === 'GRANTED') {
-              webviewRef.current?.injectJavaScript(
-                `window.updateFitnessPermissions(true,${steps},${sleep})`
-              );
-              return;
-            }
-
-            // Denied / unavailable: tell the WebView permission isn't granted
-            // and offer to open the Apple Health app so the user can toggle
-            // it manually (mirrors Android's Health Connect flow).
-            webviewRef.current?.injectJavaScript(
-              'window.updateFitnessPermissions(false,0,0)'
-            );
-
-            if (authStatus === 'DENIED') {
-              Alert.alert(
-                'Permission Denied',
-                'To allow permission, please follow these steps:\n\n' +
-                  '1. Open Settings\n' +
-                  '2. Tap on Apps → Health\n' +
-                  '3. Tap Data Access & Devices\n' +
-                  '4. Select this app and enable all categories',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Open Settings',
-                    onPress: () => {
-                      VisitRnSdkViewManager?.openAppleHealthApp?.().catch(
-                        (err) =>
-                          console.log(
-                            'openAppleHealthApp failed:',
-                            err?.message
-                          )
-                      );
-                    },
-                  },
-                ]
-              );
-            }
-          });
+          break;
         }
-        break;
-      case 'GET_DATA_TO_GENERATE_GRAPH':
-        VisitRnSdkViewManager?.renderGraph(
-          { type, frequency, timestamp },
-          (err, results) => {
-            if (err) {
-              console.log('error initializing Healthkit: ', err);
-              return;
-            }
-            if (results[0]) {
-              console.log('results initializing Healthkit: ', results[0]);
-              webviewRef.current?.injectJavaScript(`window.${results[0]}`);
-            }
+        case 'UPDATE_API_BASE_URL': {
+          const configuration = syncConfiguration(data);
+          if (configuration) {
+            document.syncConfiguration = configuration;
+            VisitRnSdkViewManager.updateApiUrl(configuration);
           }
-        );
-        break;
-      case 'UPDATE_API_BASE_URL':
-        if (!hasLoadedOnce) {
-          VisitRnSdkViewManager?.updateApiUrl({
-            apiBaseUrl,
-            authToken: authtoken,
-            googleFitLastSync,
-            gfHourlyLastSync,
-          });
-          setHasLoadedOnce(true);
+          break;
         }
-        break;
-
-      case 'OPEN_PDF':
-        Linking.openURL(url);
-        break;
-      case 'OPEN_FACE_SCAN_FLOW':
-        EventRegister.emitEvent('visit-event', {
-          message: 'OPEN_FACE_SCAN_FLOW',
-        });
-        break;
-      case 'CLOSE_VIEW':
-        break;
-      case 'GET_LOCATION_PERMISSIONS':
-        webviewRef.current?.injectJavaScript(
-          'window.checkTheGpsPermission(true)'
-        );
-        break;
-
-      default:
-        break;
+        case 'GET_LOCATION_PERMISSIONS':
+          await requestLocation(document);
+          break;
+        default:
+          await handleWebAction(data, VisitRnSdkViewManager, bridge, document);
+      }
+    } catch {
+      if (isLoggingEnabled)
+        console.warn('Could not handle Visit WebView request');
     }
   };
 
@@ -251,11 +329,14 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
     <SafeAreaView style={{ flex: 1, backgroundColor: 'white', height, width }}>
       {source ? (
         <WebView
-          ref={webviewRef}
+          key={source}
+          ref={bridge.webviewRef}
           source={{ uri: source }}
           style={styles.webView}
           javascriptEnabled
           onMessage={handleMessage}
+          onLoadStart={bridge.reset}
+          onLoad={watchForDashboard}
           onError={(errorMessage) => {
             EventRegister.emitEvent(visitEvent, {
               message: 'web-view-error',

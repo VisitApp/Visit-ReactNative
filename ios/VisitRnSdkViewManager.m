@@ -1,4 +1,6 @@
 #import "VisitRnSdkViewManager.h"
+#import "VisitDocumentShare.h"
+#import <CoreLocation/CoreLocation.h>
 #import <HealthKit/HealthKit.h>
 #import <UIKit/UIKit.h>
 #import <math.h>
@@ -11,12 +13,14 @@ static NSString *const kVisitDailyLastSyncKey = @"googleFitLastSync";
 static NSDateInterval *VisitFitnessDateInterval(NSCalendar *calendar, NSCalendarUnit unit, NSDate *date) {
     NSDate *start;
     NSTimeInterval duration;
-    [calendar rangeOfUnit:unit startDate:&start interval:&duration forDate:date];
+    if (![calendar rangeOfUnit:unit startDate:&start interval:&duration forDate:date]) return nil;
     return [[NSDateInterval alloc] initWithStartDate:start duration:duration];
 }
 
-@interface VisitRnSdkViewManager ()
+@interface VisitRnSdkViewManager () <CLLocationManagerDelegate>
 @property (atomic, assign) BOOL isSyncInProgress;
+@property (nonatomic, strong) CLLocationManager *webLocationManager;
+@property (nonatomic, copy) RCTPromiseResolveBlock webLocationResolver;
 @end
 
 @implementation VisitRnSdkViewManager
@@ -165,7 +169,8 @@ RCT_REMAP_METHOD(multiply,
         endDatePeriod = [startDate dateByAddingTimeInterval:interval-1];
     }else if([frequency isEqualToString:@"custom"]){
         endDatePeriod = endDate;
-        startDate = [self->calendar dateByAddingUnit:NSCalendarUnitDay
+        startDate = days == 0 ? [self->calendar startOfDayForDate:endDate] :
+            [self->calendar dateByAddingUnit:NSCalendarUnitDay
                                                  value:1-days
                                                 toDate:endDatePeriod
                                                options:0];
@@ -357,28 +362,6 @@ RCT_REMAP_METHOD(multiply,
     }];
 }
 
-- (void)requestAuthorization:(void(^)(NSDictionary*))callback {
-    
-    if ([HKHealthStore isHealthDataAvailable] == NO) {
-        // If our device doesn't support HealthKit -> return.
-        return;
-    }
-    [[VisitRnSdkViewManager sharedManager] requestAuthorizationToShareTypes:nil readTypes:[self fitnessReadTypes]
-                                                                completion:^(BOOL success, NSError *error) {
-        NSLog(@"requestAuthorizationToShareTypes executed");
-        [self canAccessHealthKit:^(BOOL value){
-            if(value){
-                NSLog(@"the health kit permission granted");
-              [self onHealthKitPermissionGranted:^(NSDictionary * data) {
-                callback(data);
-              }];
-            }else{
-                NSLog(@"the health kit permission not granted");
-            }
-        }];
-    }];
-}
-
 - (void)onHealthKitPermissionGranted:(void (^)(NSDictionary *))callback {
     NSDate *now = [NSDate date];
     NSDate *today = [self->calendar startOfDayForDate:now];
@@ -460,21 +443,23 @@ static NSNumber *VisitHealthTimestamp(NSDate *date) {
     BOOL isDay = [frequency isEqualToString:@"day"];
     BOOL isWeek = [frequency isEqualToString:@"week"];
     BOOL isMonth = [frequency isEqualToString:@"month"];
-    if (!isDay && !isWeek && !isMonth) {
+    BOOL isCustom = [frequency isEqualToString:@"custom"];
+    if (!isDay && !isWeek && !isMonth && !isCustom) {
         callback(@[]);
         return;
     }
 
     NSCalendar *graphCalendar = self->calendar;
-    NSCalendarUnit unit = isDay ? NSCalendarUnitDay : (isWeek ? NSCalendarUnitWeekOfYear : NSCalendarUnitMonth);
+    NSCalendarUnit unit = (isDay || isCustom) ? NSCalendarUnitDay :
+        (isWeek ? NSCalendarUnitWeekOfYear : NSCalendarUnitMonth);
     NSDateInterval *range = VisitFitnessDateInterval(graphCalendar, unit, date);
-    NSDate *end = [range.endDate dateByAddingTimeInterval:-1];
+    if (!range) {
+        callback(@[]);
+        return;
+    }
+    NSDate *end = isCustom ? date : [range.endDate dateByAddingTimeInterval:-1];
 
     if ([type isEqualToString:@"sleep"]) {
-        if (isMonth) {
-            callback(@[]);
-            return;
-        }
         NSDate *lastDay = [graphCalendar startOfDayForDate:end];
         [self fetchSleepFromDay:range.startDate throughDay:lastDay
                      completion:^(NSDictionary<NSDate *, NSArray<NSDateInterval *> *> *sleepByDay, NSError *error) {
@@ -488,10 +473,16 @@ static NSNumber *VisitHealthTimestamp(NSDate *date) {
             for (NSDate *day = range.startDate; [day compare:lastDay] != NSOrderedDescending;
                  day = [graphCalendar dateByAddingUnit:NSCalendarUnitDay value:1 toDate:day options:0]) {
                 NSArray<NSDateInterval *> *sleep = sleepByDay[day];
+                if (isCustom) {
+                    sleep = [sleep filteredArrayUsingPredicate:
+                        [NSPredicate predicateWithFormat:@"startDate < %@", end]];
+                }
+                NSDate *wake = sleep.lastObject.endDate;
+                if (isCustom && [wake compare:end] == NSOrderedDescending) wake = end;
                 NSInteger weekday = [graphCalendar component:NSCalendarUnitWeekday fromDate:day];
                 [days addObject:@{
                     @"sleepTime": VisitHealthTimestamp(sleep.firstObject.startDate),
-                    @"wakeupTime": VisitHealthTimestamp(sleep.lastObject.endDate),
+                    @"wakeupTime": VisitHealthTimestamp(wake),
                     @"day": graphCalendar.shortWeekdaySymbols[weekday - 1],
                     @"startTimestamp": VisitHealthTimestamp(day),
                 }];
@@ -524,7 +515,7 @@ static NSNumber *VisitHealthTimestamp(NSDate *date) {
         dispatch_group_leave(group);
     }];
     dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-        NSInteger count = isDay ? 24 : (isWeek ? 7 : 31);
+        NSInteger count = isDay ? 24 : (isWeek ? 7 : (isMonth ? 31 : 1));
         NSMutableArray *labels = [NSMutableArray new];
         NSMutableArray *buckets = [NSMutableArray new];
         for (NSInteger index = 0; index < count; index++) {
@@ -989,32 +980,36 @@ RCT_EXPORT_METHOD(renderGraph:(NSDictionary *)input callback:(RCTResponseSenderB
 
 RCT_EXPORT_METHOD(updateApiUrl:(NSDictionary *)input)
 {
-    NSString *apiBaseUrl = [input objectForKey:@"apiBaseUrl"];
-    NSString *authToken = [input objectForKey:@"authToken"];
-    NSTimeInterval gfHourlyLastSync = [[input objectForKey:@"gfHourlyLastSync"] doubleValue];
-    NSTimeInterval googleFitLastSync = [[input objectForKey:@"googleFitLastSync"] doubleValue];
-
+    id base = input[@"apiBaseUrl"];
+    id token = input[@"authToken"];
+    id hourly = input[@"gfHourlyLastSync"];
+    id daily = input[@"googleFitLastSync"];
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    if (apiBaseUrl.length > 0) {
-        [defaults setObject:apiBaseUrl forKey:kVisitApiBaseUrlKey];
-    }
-    if (authToken.length > 0) {
-        [defaults setObject:authToken forKey:kVisitAuthTokenKey];
-    }
-    if (gfHourlyLastSync > 0) {
-        [defaults setDouble:gfHourlyLastSync forKey:kVisitHourlyLastSyncKey];
-    }
-    if (googleFitLastSync > 0) {
-        [defaults setDouble:googleFitLastSync forKey:kVisitDailyLastSyncKey];
-    }
+    NSString *previousBase = [defaults stringForKey:kVisitApiBaseUrlKey];
+    NSString *previousToken = [defaults stringForKey:kVisitAuthTokenKey];
+    NSString *storedBaseUrl = [base isKindOfClass:[NSString class]] && [base length] ? base : previousBase;
+    NSString *storedAuthToken = [token isKindOfClass:[NSString class]] && [token length] ? token : previousToken;
+    if (!storedBaseUrl.length || !storedAuthToken.length) return;
 
-    NSString *storedBaseUrl = apiBaseUrl.length > 0 ? apiBaseUrl : [defaults stringForKey:kVisitApiBaseUrlKey];
-    NSString *storedAuthToken = authToken.length > 0 ? authToken : [defaults stringForKey:kVisitAuthTokenKey];
+    BOOL sessionChanged = ![storedBaseUrl isEqualToString:previousBase] ||
+        ![storedAuthToken isEqualToString:previousToken];
+    NSTimeInterval gfHourlyLastSync = [hourly respondsToSelector:@selector(doubleValue)] ? [hourly doubleValue] : -1;
+    NSTimeInterval googleFitLastSync = [daily respondsToSelector:@selector(doubleValue)] ? [daily doubleValue] : -1;
+    if (!isfinite(gfHourlyLastSync) || gfHourlyLastSync < 0) {
+        gfHourlyLastSync = sessionChanged ? 0 : [defaults doubleForKey:kVisitHourlyLastSyncKey];
+    }
+    if (!isfinite(googleFitLastSync) || googleFitLastSync < 0) {
+        googleFitLastSync = sessionChanged ? 0 : [defaults doubleForKey:kVisitDailyLastSyncKey];
+    }
+    [defaults setObject:storedBaseUrl forKey:kVisitApiBaseUrlKey];
+    [defaults setObject:storedAuthToken forKey:kVisitAuthTokenKey];
+    [defaults setDouble:gfHourlyLastSync forKey:kVisitHourlyLastSyncKey];
+    [defaults setDouble:googleFitLastSync forKey:kVisitDailyLastSyncKey];
 
-    if (![HKHealthStore isHealthDataAvailable]) {
+    if (gfHourlyLastSync == 0 && googleFitLastSync == 0) {
         return;
     }
-    if (storedBaseUrl.length == 0 || storedAuthToken.length == 0) {
+    if (![HKHealthStore isHealthDataAvailable]) {
         return;
     }
     if (self.isSyncInProgress) {
@@ -1028,7 +1023,6 @@ RCT_EXPORT_METHOD(updateApiUrl:(NSDictionary *)input)
         if (!strongSelf) { return; }
         if (!value) {
             strongSelf.isSyncInProgress = NO;
-            [strongSelf requestAuthorization:^(NSDictionary *data) { (void)data; }];
             return;
         }
         [strongSelf performVisitSyncWithBaseUrl:storedBaseUrl
@@ -1235,6 +1229,93 @@ RCT_REMAP_METHOD(getTodayCalorieCount,
             resolve(values.firstObject ?: @0);
         }
     }];
+}
+
+RCT_REMAP_METHOD(getTodayCaloriesForWeb,
+                 getTodayCaloriesForWebWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+    if (![HKHealthStore isHealthDataAvailable]) {
+        resolve(nil);
+        return;
+    }
+    NSDate *now = [NSDate date];
+    NSDate *today = [self->calendar startOfDayForDate:now];
+    HKQuantityType *type = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierActiveEnergyBurned];
+    NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:today endDate:now options:HKQueryOptionNone];
+    HKStatisticsQuery *query = [[HKStatisticsQuery alloc]
+        initWithQuantityType:type quantitySamplePredicate:predicate options:HKStatisticsOptionCumulativeSum
+        completionHandler:^(HKStatisticsQuery *query, HKStatistics *stats, NSError *error) {
+            HKQuantity *quantity = stats.sumQuantity;
+            resolve(error || !quantity ? nil : @((NSInteger)[quantity doubleValueForUnit:[HKUnit kilocalorieUnit]]));
+        }];
+    [[VisitRnSdkViewManager sharedManager] executeQuery:query];
+}
+
+RCT_EXPORT_METHOD(downloadAndShare:(NSString *)link
+                  authToken:(NSString *)authToken
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+    VisitDownloadAndShare(link, authToken, resolve, reject);
+}
+
+RCT_REMAP_METHOD(requestWebLocationPermission,
+                 requestWebLocationPermissionWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (self.webLocationResolver) {
+            reject(@"LOCATION_REQUEST_IN_PROGRESS", @"A location request is already in progress.", nil);
+            return;
+        }
+        self.webLocationResolver = resolve;
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+            BOOL enabled = [CLLocationManager locationServicesEnabled];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (!enabled) {
+                    [self finishWebLocation:@"SERVICES_DISABLED"];
+                    return;
+                }
+                self.webLocationManager = [CLLocationManager new];
+                self.webLocationManager.delegate = self;
+                CLAuthorizationStatus status;
+                if (@available(iOS 14.0, *)) {
+                    status = self.webLocationManager.authorizationStatus;
+                } else {
+                    status = CLLocationManager.authorizationStatus;
+                }
+                if (status == kCLAuthorizationStatusNotDetermined) {
+                    NSString *purpose = [NSBundle.mainBundle objectForInfoDictionaryKey:@"NSLocationWhenInUseUsageDescription"];
+                    if (!purpose.length) {
+                        [self finishWebLocation:@"MISSING_USAGE_DESCRIPTION"];
+                        return;
+                    }
+                    [self.webLocationManager requestWhenInUseAuthorization];
+                } else {
+                    [self locationManager:self.webLocationManager didChangeAuthorizationStatus:status];
+                }
+            });
+        });
+    });
+}
+
+- (void)locationManagerDidChangeAuthorization:(CLLocationManager *)manager API_AVAILABLE(ios(14.0)) {
+    [self locationManager:manager didChangeAuthorizationStatus:manager.authorizationStatus];
+}
+
+- (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status {
+    if (manager != self.webLocationManager || status == kCLAuthorizationStatusNotDetermined) return;
+    BOOL granted = status == kCLAuthorizationStatusAuthorizedWhenInUse || status == kCLAuthorizationStatusAuthorizedAlways;
+    [self finishWebLocation:granted ? @"GRANTED" : @"DENIED"];
+}
+
+- (void)finishWebLocation:(NSString *)status {
+    RCTPromiseResolveBlock resolve = self.webLocationResolver;
+    self.webLocationResolver = nil;
+    self.webLocationManager.delegate = nil;
+    self.webLocationManager = nil;
+    if (resolve) resolve(status);
 }
 
 RCT_REMAP_METHOD(triggerManualSync,

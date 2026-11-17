@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visit WebView bridge fixture</title>
+  <h1>Visit WebView bridge fixture</h1>
+  <label><input id="legacy" type="checkbox"> Use Flutter name field</label>
+  <label>Graph type <select id="metric">
+    <option>steps</option><option>calories</option><option>distance</option><option>sleep</option>
+  </select></label>
+  <label>Range <select id="range">
+    <option>day</option><option>week</option><option>month</option><option>custom</option>
+  </select></label>
+  <label>Document URL <input id="document" type="url" placeholder="Fixture PDF URL"></label>
+  <label>Document token <input id="token" type="password" autocomplete="off"></label>
+  <section id="actions" aria-label="Bridge requests"></section>
+  <pre id="log" aria-live="polite"></pre>
+  <script>
+    const byId = id => document.getElementById(id);
+    const record = (name, args = []) => {
+      byId('log').textContent += name + ' ' + JSON.stringify(args) + '\n';
+    };
+    const capture = (name) => (...args) => record(name, args);
+    for (const name of [
+      'setSdkPlatform', 'updateFitnessPermissions', 'healthConnectAvailable',
+      'healthConnectNotInstall', 'healthConnectNotSupported',
+      'unsupportedHealthKitDevice', 'updateCalorieBurned', 'checkTheGpsPermission',
+    ]) window[name] = capture(name);
+    window.DetailedGraph = Object.fromEntries([
+      'updateData', 'updateDailySleep', 'updateSleepData',
+    ].map(name => [name, capture('DetailedGraph.' + name)]));
+
+    const requests = {
+      UPDATE_PLATFORM: () => ({}),
+      GET_HEALTH_CONNECT_STATUS: () => ({}),
+      CONNECT_TO_GOOGLE_FIT: () => ({}),
+      GET_CALORIE_BURNED: () => ({}),
+      GET_DATA_TO_GENERATE_GRAPH: () => ({
+        type: byId('metric').value, frequency: byId('range').value, timestamp: null,
+      }),
+      UPDATE_API_BASE_URL: () => ({apiBaseUrl: 'https://example.invalid', authtoken: 'synthetic'}),
+      GET_LOCATION_PERMISSIONS: () => ({}),
+      DOWNLOAD_PDF: () => ({link: byId('document').value, authToken: byId('token').value}),
+      OPEN_DAILER: () => ({number: 5550100}),
+      CLOSE_VIEW: () => ({}),
+    };
+    for (const [method, payload] of Object.entries(requests)) {
+      const button = document.createElement('button');
+      button.textContent = method;
+      button.onclick = () => {
+        const key = byId('legacy').checked ? 'name' : 'method';
+        window.ReactNativeWebView.postMessage(JSON.stringify({[key]: method, ...payload()}));
+        record('Sent ' + method);
+      };
+      byId('actions').appendChild(button);
+    }
+  </script>
+</html>

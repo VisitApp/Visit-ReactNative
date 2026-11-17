@@ -1,7 +1,11 @@
 import React from 'react';
+import { readFileSync } from 'fs';
+import { resolve as resolvePath } from 'path';
+import { runInNewContext } from 'vm';
 import {
   Alert,
   AppState,
+  Linking,
   NativeModules,
   PermissionsAndroid,
   Platform,
@@ -11,6 +15,7 @@ import { WebView } from 'react-native-webview';
 
 const mockInject = jest.fn();
 const mockEnsureLocationSettings = jest.fn();
+const mockEmit = jest.fn();
 
 jest.mock('react-native-webview', () => {
   const react = require('react');
@@ -29,9 +34,11 @@ jest.mock(
   }),
   { virtual: true }
 );
-jest.mock('react-native-event-listeners', () => ({ EventRegister: {} }), {
-  virtual: true,
-});
+jest.mock(
+  'react-native-event-listeners',
+  () => ({ EventRegister: { emitEvent: mockEmit } }),
+  { virtual: true }
+);
 
 const sleepGraph = 'DetailedGraph.updateDailySleep(1000,2000)';
 const calorieGraph = "DetailedGraph.updateData([1],[123],'calories','day','0')";
@@ -63,6 +70,11 @@ beforeEach(() => {
     requestActivityDataFromHealthConnect: jest.fn((metric) =>
       Promise.resolve(metric === 'calories' ? calorieGraph : sleepGraph)
     ),
+    updateApiBaseUrl: jest
+      .fn()
+      .mockResolvedValue('Sync configuration accepted'),
+    getTodayCaloriesForWeb: jest.fn().mockResolvedValue(234),
+    downloadAndShare: jest.fn().mockResolvedValue(null),
   };
   NativeModules.VisitRnSdkViewManager = {
     connectToAppleHealth: jest.fn((callback) =>
@@ -72,6 +84,10 @@ beforeEach(() => {
     getTodayStepCount: jest.fn().mockResolvedValue(1000),
     getTodaySleepMinutes: jest.fn().mockResolvedValue(460),
     renderGraph: jest.fn((_, callback) => callback(null, [calorieGraph])),
+    updateApiUrl: jest.fn(),
+    getTodayCaloriesForWeb: jest.fn().mockResolvedValue(234),
+    requestWebLocationPermission: jest.fn().mockResolvedValue('GRANTED'),
+    downloadAndShare: jest.fn().mockResolvedValue(null),
   };
 });
 
@@ -320,7 +336,7 @@ it('reports iPad as unsupported when connecting to Apple Health', async () => {
     NativeModules.VisitRnSdkViewManager.connectToAppleHealth
   ).not.toHaveBeenCalled();
   expect(mockInject).toHaveBeenCalledWith(
-    'window.unsupportedHealthKitDevice(true)'
+    expect.stringContaining('window.unsupportedHealthKitDevice(true)')
   );
 });
 
@@ -348,4 +364,217 @@ it('delivers iOS sleep minutes on connection and foreground, and forwards non-st
     expect.any(Function)
   );
   expect(mockInject).toHaveBeenCalledWith('window.' + calorieGraph);
+});
+
+function openFixture() {
+  const nodes = {};
+  const node = (id) => (nodes[id] ??= { textContent: '' });
+  const buttons = [];
+  node('actions').appendChild = (button) => buttons.push(button);
+  node('legacy').checked = true;
+  node('metric').value = 'calories';
+  node('range').value = 'day';
+  node('document').value = 'https://example.test/report.pdf';
+  node('token').value = 'test-token';
+  const messages = [];
+  const window = {
+    ReactNativeWebView: {
+      postMessage: (data) => messages.push(JSON.parse(data)),
+    },
+  };
+  const html = readFileSync(
+    resolvePath(__dirname, '../../example/fixtures/webview/index.html'),
+    'utf8'
+  );
+  const fixtureScript = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  runInNewContext(fixtureScript, {
+    window,
+    document: { getElementById: node, createElement: () => ({}) },
+  });
+  return { nodes, buttons, window, messages };
+}
+
+it.each(['android', 'ios'])(
+  'routes the ten Flutter fixture actions and executes the %s callbacks',
+  async (platform) => {
+    const View =
+      platform === 'ios'
+        ? require('../index.ios').default
+        : require('../index.android').default;
+    const native =
+      platform === 'ios'
+        ? NativeModules.VisitRnSdkViewManager
+        : NativeModules.VisitFitnessModule;
+    const linking = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    jest.spyOn(PermissionsAndroid, 'check').mockResolvedValue(true);
+    mockEnsureLocationSettings.mockResolvedValue(true);
+    mount(View);
+    const fixture = openFixture();
+    expect(fixture.buttons).toHaveLength(10);
+    for (const button of fixture.buttons) {
+      button.onclick();
+      await act(async () => {
+        await send(fixture.messages.shift());
+      });
+    }
+    for (const [script] of mockInject.mock.calls) {
+      runInNewContext(script, { window: fixture.window });
+    }
+    const log = fixture.nodes.log.textContent;
+    expect(log).toContain(`setSdkPlatform ["${platform.toUpperCase()}"]`);
+    expect(log).toContain('updateCalorieBurned [234]');
+    expect(log).toContain('updateFitnessPermissions [true,900,450]');
+    expect(log).toContain(
+      'DetailedGraph.updateData [[1],[123],"calories","day","0"]'
+    );
+    expect(log).toContain('checkTheGpsPermission [true]');
+    expect(native.downloadAndShare).toHaveBeenCalledWith(
+      'https://example.test/report.pdf',
+      'test-token'
+    );
+    expect(linking).toHaveBeenCalledWith('tel:5550100');
+    expect(mockEmit).toHaveBeenCalledWith('visit-event', {
+      message: 'CLOSE_VIEW',
+    });
+    if (platform === 'ios') {
+      expect(native.updateApiUrl).toHaveBeenCalledWith({
+        apiBaseUrl: 'https://example.invalid',
+        authToken: 'synthetic',
+        googleFitLastSync: -1,
+        gfHourlyLastSync: -1,
+      });
+    } else {
+      expect(native.updateApiBaseUrl).toHaveBeenCalledWith(
+        'https://example.invalid',
+        'synthetic',
+        -1,
+        -1
+      );
+    }
+  }
+);
+
+it('refreshes an already-connected iOS dashboard on each ready document without asking for access', async () => {
+  const View = require('../index.ios').default;
+  const native = NativeModules.VisitRnSdkViewManager;
+  mount(View);
+  for (let page = 0; page < 2; page++) {
+    const props = app.root.findByType(WebView).props;
+    act(() => props.onLoadStart());
+    act(() => props.onLoad());
+    const fixture = openFixture();
+    const readyScript = mockInject.mock.calls.at(-1)[0];
+    runInNewContext(readyScript, { window: fixture.window });
+    await act(async () => {
+      const ready = fixture.messages.shift();
+      await send(ready);
+      await send(ready);
+    });
+    expect(mockInject).toHaveBeenLastCalledWith(
+      'window.updateFitnessPermissions(true,1000,460)'
+    );
+  }
+  expect(native.getHealthKitConnectStatus).toHaveBeenCalledTimes(2);
+  expect(native.connectToAppleHealth).not.toHaveBeenCalled();
+});
+
+it('coalesces iOS status queries and drops the result when a new SSO loads', async () => {
+  const View = require('../index.ios').default;
+  const native = NativeModules.VisitRnSdkViewManager;
+  let finish;
+  native.getHealthKitConnectStatus.mockReturnValueOnce(
+    new Promise((resolveStatus) => {
+      finish = resolveStatus;
+    })
+  );
+  mount(View);
+  let requests;
+  await act(async () => {
+    requests = [
+      send({ method: 'GET_HEALTH_CONNECT_STATUS' }),
+      send({ name: 'GET_HEALTH_CONNECT_STATUS' }),
+    ];
+  });
+  expect(native.getHealthKitConnectStatus).toHaveBeenCalledTimes(1);
+  act(() => app.update(<View ssoURL="https://example.test/next-sso" />));
+  await act(async () => {
+    finish('CONNECTED');
+    await Promise.all(requests);
+  });
+  expect(mockInject).not.toHaveBeenCalled();
+});
+
+it('reports iOS denied location and distinguishes valid zero calories from an empty read', async () => {
+  const native = NativeModules.VisitRnSdkViewManager;
+  native.requestWebLocationPermission.mockResolvedValue('DENIED');
+  native.getTodayCaloriesForWeb
+    .mockResolvedValueOnce(0)
+    .mockResolvedValueOnce(null);
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  mount(require('../index.ios').default);
+  await act(async () => {
+    await send({ name: 'GET_LOCATION_PERMISSIONS' });
+    await send({ name: 'GET_CALORIE_BURNED' });
+    await send({ name: 'GET_CALORIE_BURNED' });
+  });
+  expect(alert).toHaveBeenCalledTimes(1);
+  expect(mockInject).toHaveBeenCalledWith(
+    'window.checkTheGpsPermission(false)'
+  );
+  expect(
+    mockInject.mock.calls.filter(([script]) =>
+      script.includes('updateCalorieBurned')
+    )
+  ).toEqual([[expect.stringContaining('window.updateCalorieBurned(0)')]]);
+});
+
+it('discards stale Android status when Connect granted during a status read', async () => {
+  const native = NativeModules.VisitFitnessModule;
+  let finishOldStatus;
+  native.getHealthConnectStatus.mockReturnValueOnce(
+    new Promise((resolveStatus) => {
+      finishOldStatus = resolveStatus;
+    })
+  );
+  mount(require('../index.android').default);
+  let old;
+  await act(async () => {
+    old = send({ method: 'GET_HEALTH_CONNECT_STATUS' });
+  });
+  await act(async () => {
+    await send({ method: 'CONNECT_TO_GOOGLE_FIT' });
+    finishOldStatus('INSTALLED');
+    await old;
+  });
+  expect(mockInject).toHaveBeenCalledTimes(1);
+  expect(mockInject).toHaveBeenCalledWith(
+    'window.updateFitnessPermissions(true,900,450)'
+  );
+});
+
+it('accepts fresh iOS sync credentials after an SSO change and safely normalizes cursors', async () => {
+  const View = require('../index.ios').default;
+  const native = NativeModules.VisitRnSdkViewManager;
+  mount(View);
+  const credentials = {
+    name: 'UPDATE_API_BASE_URL',
+    apiBaseUrl: 'https://example.test',
+    authtoken: 'old-token',
+    googleFitLastSync: '1770000000000',
+    gfHourlyLastSync: null,
+  };
+  await act(async () => {
+    await send(credentials);
+  });
+  act(() => app.update(<View ssoURL="https://example.test/next" />));
+  await act(async () => {
+    await send({ ...credentials, authtoken: 'new-token' });
+  });
+  expect(native.updateApiUrl).toHaveBeenCalledTimes(2);
+  expect(native.updateApiUrl).toHaveBeenLastCalledWith({
+    apiBaseUrl: 'https://example.test',
+    authToken: 'new-token',
+    googleFitLastSync: day,
+    gfHourlyLastSync: -1,
+  });
 });
