@@ -97,13 +97,12 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
 
   const webView = useRef(null);
   const currentPage = useRef(null);
-  const pageId = useRef(0);
   const connecting = useRef(false);
   const connectionRevision = useRef(0);
   const locationRequestInFlight = useRef(false);
 
   const resetPage = useCallback(() => {
-    currentPage.current = { id: ++pageId.current };
+    currentPage.current = {};
   }, []);
 
   useLayoutEffect(() => {
@@ -186,28 +185,12 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       const page = currentPage.current;
-      if (source && nextAppState === 'active' && page?.fitnessReady) {
+      if (source && nextAppState === 'active' && page?.fitnessRequested) {
         refreshHealthKitPermissionState(page).catch(logMessageError);
       }
     });
     return () => subscription.remove();
   }, [logMessageError, refreshHealthKitPermissionState, source]);
-
-  const watchForDashboard = () => {
-    const page = currentPage.current;
-    if (!page || page.fitnessReady || page.watchingDashboard) return;
-    page.watchingDashboard = true;
-    inject(
-      page,
-      `(function waitForDashboard(attempts) {
-        if (typeof window.updateFitnessPermissions === 'function') {
-          window.ReactNativeWebView.postMessage(JSON.stringify({ method: 'VISIT_FITNESS_READY', documentId: ${page.id} }));
-        } else if (attempts > 0) {
-          setTimeout(function () { waitForDashboard(attempts - 1); }, 100);
-        }
-      })(50); true;`
-    );
-  };
 
   const connect = async (page) => {
     if (Platform.isPad) {
@@ -217,7 +200,7 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
     if (connecting.current) return;
     connecting.current = true;
     connectionRevision.current++;
-    page.fitnessReady = true;
+    page.fitnessRequested = true;
     try {
       const result = await new Promise((resolve) => {
         VisitRnSdkViewManager.connectToAppleHealth(resolve);
@@ -258,7 +241,7 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
     } finally {
       connecting.current = false;
       const current = currentPage.current;
-      if (current !== page && current?.fitnessReady) {
+      if (current !== page && current?.fitnessRequested) {
         refreshHealthKitPermissionState(current).catch(logMessageError);
       }
     }
@@ -312,13 +295,8 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
         case 'UPDATE_PLATFORM':
           inject(page, 'window.setSdkPlatform("IOS")');
           break;
-        case 'VISIT_FITNESS_READY':
-          if (data.documentId !== page.id || page.fitnessReady) break;
-          page.fitnessReady = true;
-          await refreshHealthKitPermissionState(page);
-          break;
         case 'GET_HEALTH_CONNECT_STATUS':
-          page.fitnessReady = true;
+          page.fitnessRequested = true;
           await refreshHealthKitPermissionState(page);
           break;
         case 'CONNECT_TO_GOOGLE_FIT':
@@ -428,7 +406,6 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
           javascriptEnabled
           onMessage={handleMessage}
           onLoadStart={resetPage}
-          onLoad={watchForDashboard}
           onError={(errorMessage) => {
             EventRegister.emitEvent(visitEvent, {
               message: 'web-view-error',

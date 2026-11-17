@@ -609,21 +609,16 @@ it.each(['android', 'ios'])(
   }
 );
 
-it('refreshes an already-connected iOS dashboard on each ready document without asking for access', async () => {
+it('refreshes an already-connected iOS dashboard on every reopen from the Flutter status message', async () => {
   const View = require('../index.ios').default;
   const native = NativeModules.VisitRnSdkViewManager;
-  mount(View);
-  for (let page = 0; page < 2; page++) {
-    const props = app.root.findByType(WebView).props;
-    act(() => props.onLoadStart());
-    act(() => props.onLoad());
-    const fixture = openFixture();
-    const readyScript = mockInject.mock.calls.at(-1)[0];
-    runInNewContext(readyScript, { window: fixture.window });
+  for (let opening = 0; opening < 2; opening++) {
+    if (opening > 0) act(() => app.unmount());
+    mount(View);
+    act(() => app.root.findByType(WebView).props.onLoadStart());
+    expect(native.getHealthKitConnectStatus).toHaveBeenCalledTimes(opening);
     await act(async () => {
-      const ready = fixture.messages.shift();
-      await send(ready);
-      await send(ready);
+      await send({ name: 'GET_HEALTH_CONNECT_STATUS' });
     });
     expect(mockInject).toHaveBeenLastCalledWith(
       'window.updateFitnessPermissions(true,1000,460)'
