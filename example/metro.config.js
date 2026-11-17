@@ -1,5 +1,4 @@
 const path = require('path');
-const exclusionList = require('metro-config/src/defaults/exclusionList');
 const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
 
 const projectRoot = __dirname;
@@ -56,7 +55,7 @@ const config = {
   watchFolders: isLinkedVisitRnSdk ? [visitRnSdkRoot] : [],
   resolver: {
     ...defaultConfig.resolver,
-    blockList: exclusionList(linkedPackageBlockList),
+    blockList: [].concat(defaultConfig.resolver.blockList ?? [], linkedPackageBlockList),
     extraNodeModules: {
       ...defaultConfig.resolver.extraNodeModules,
       react: path.join(appNodeModules, 'react'),
