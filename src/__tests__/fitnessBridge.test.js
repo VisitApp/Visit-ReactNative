@@ -46,6 +46,7 @@ let foregroundListener;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.spyOn(PermissionsAndroid, 'check').mockResolvedValue(false);
   jest.spyOn(AppState, 'addEventListener').mockImplementation((_, callback) => {
     foregroundListener = callback;
     return { remove: jest.fn() };
@@ -124,6 +125,9 @@ it.each([
     );
 
     mount(require('../index.android').default);
+    mockInject.mockImplementationOnce(() => {
+      expect(app.root.findByType(WebView).props.geolocationEnabled).toBe(true);
+    });
     let request;
     await act(async () => {
       request = send(locationRequest);
@@ -139,6 +143,7 @@ it.each([
       ]);
       expect(mockEnsureLocationSettings).not.toHaveBeenCalled();
       expect(mockInject).not.toHaveBeenCalled();
+      expect(app.root.findByType(WebView).props.geolocationEnabled).toBe(false);
       await act(async () => grantPermission());
     }
 
@@ -187,6 +192,7 @@ it.each([
     await request;
 
     expect(mockEnsureLocationSettings).not.toHaveBeenCalled();
+    expect(app.root.findByType(WebView).props.geolocationEnabled).toBe(false);
     expect(mockInject.mock.calls).toEqual([
       ['window.checkTheGpsPermission(false)'],
     ]);
@@ -195,16 +201,19 @@ it.each([
 );
 
 it('coalesces repeated taps through both prompts and allows a retry after GPS cancellation', async () => {
+  let permissionGranted = false;
   const check = jest
     .spyOn(PermissionsAndroid, 'check')
-    .mockResolvedValueOnce(false)
-    .mockResolvedValueOnce(true);
+    .mockImplementation(async () => permissionGranted);
   let grantPermission;
   const requestPermissions = jest
     .spyOn(PermissionsAndroid, 'requestMultiple')
     .mockReturnValueOnce(
       new Promise((resolve) => {
-        grantPermission = () => resolve({ [ACCESS_FINE_LOCATION]: GRANTED });
+        grantPermission = () => {
+          permissionGranted = true;
+          resolve({ [ACCESS_FINE_LOCATION]: GRANTED });
+        };
       })
     );
   let cancelGps;
@@ -230,15 +239,15 @@ it('coalesces repeated taps through both prompts and allows a retry after GPS ca
     grantPermission();
     await send(locationRequest);
   });
-  expect(check).toHaveBeenCalledTimes(1);
+  expect(check).toHaveBeenCalledTimes(2);
   expect(mockEnsureLocationSettings).toHaveBeenCalledTimes(1);
   expect(mockInject).not.toHaveBeenCalled();
 
   await act(async () => {
     cancelGps();
     await firstRequest;
-    await send(locationRequest);
   });
+  await act(async () => send(locationRequest));
   expect(requestPermissions).toHaveBeenCalledTimes(1);
   expect(mockInject.mock.calls).toEqual([
     ['window.checkTheGpsPermission(false)'],

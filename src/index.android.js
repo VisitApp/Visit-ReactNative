@@ -28,6 +28,8 @@ const locationSettings = {
 const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
   const source = ssoURL?.trim();
   const [appState, setAppState] = useState(AppState.currentState);
+  const [webGeolocationEnabled, setWebGeolocationEnabled] = useState(false);
+  const [locationResult, setLocationResult] = useState(null);
 
   const locationRequestInFlight = useRef(false);
 
@@ -85,6 +87,37 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
 
   const webviewRef = useRef(null);
 
+  useEffect(() => {
+    if (!source || appState === 'background' || appState === 'inactive') {
+      return;
+    }
+
+    let current = true;
+    // A WebView geolocation request can otherwise open its own permission dialog.
+    PermissionsAndroid.check(
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+    )
+      .then((granted) => {
+        if (current) setWebGeolocationEnabled(granted);
+      })
+      .catch(() => {
+        if (current) setWebGeolocationEnabled(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, [appState, source]);
+
+  useEffect(() => {
+    if (locationResult === null) return;
+    // The WebView must have the updated geolocation setting before it retries.
+    webviewRef.current?.injectJavaScript(
+      `window.checkTheGpsPermission(${locationResult})`
+    );
+    setLocationResult(null);
+    locationRequestInFlight.current = false;
+  }, [locationResult]);
+
   const showLocationPermissionAlert = () =>
     new Promise((resolve, reject) => {
       Alert.alert(
@@ -125,6 +158,7 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
         }
       }
 
+      setWebGeolocationEnabled(preciseLocationGranted);
       if (preciseLocationGranted) {
         locationEnabled = await LocationEnabler.ensureLocationSettings(
           locationSettings
@@ -133,10 +167,7 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
     } catch (error) {
       if (isLoggingEnabled) console.warn('Location request failed:', error);
     } finally {
-      locationRequestInFlight.current = false;
-      webviewRef.current?.injectJavaScript(
-        `window.checkTheGpsPermission(${locationEnabled === true})`
-      );
+      setLocationResult(locationEnabled === true);
     }
   };
 
@@ -435,6 +466,7 @@ const VisitRnSdkView = ({ ssoURL, isLoggingEnabled = false }) => {
           onMessage={handleMessage}
           injectedJavaScriptBeforeContentLoaded={runBeforeFirst}
           javaScriptEnabled={true}
+          geolocationEnabled={webGeolocationEnabled}
           onLoadProgress={(event) => setCanGoBack(event.nativeEvent.canGoBack)}
           onError={(errorMessage) => {
             EventRegister.emitEvent('visit-event', {
