@@ -388,7 +388,7 @@ The WebView supplies a fresh sync configuration for each SSO session.
 
 ### **Sample Project**
 
-The [example app](example) uses React Native `0.86.2` and installs SDK `7.1.3`
+The [example app](example) uses React Native `0.86.2` and installs SDK `7.1.6`
 from npm. In the `example` directory, run `npm ci`, then start Metro with
 `npm start`. For Android, run `npm run android` in another terminal. For iOS, run
 `npx pod-install` and then `npm run ios`. Enter an SSO URL in the running example.

@@ -1495,7 +1495,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-visit-rn-sdk (7.1.3):
+  - react-native-visit-rn-sdk (7.1.6):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2269,7 +2269,7 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: f413ee411341fb3c34d20e85e9f6f524921fab15
   React-mutationobservernativemodule: 58f6d2adf7d98e72b241608dfa2ddce414d2a4e7
   react-native-safe-area-context: fb5c8ee9f6dd62ef710611b3d370c501f42a4ac0
-  react-native-visit-rn-sdk: 3abd2113ae9fdfea0f0ba95ddb75060706b1f8cc
+  react-native-visit-rn-sdk: 5de01838cfc08f627adf4fc38e036328232fd612
   react-native-webview: 4b1217071d94a56a6f749e25c751e51a1cec25b6
   React-NativeModulesApple: 167e532fb9bae30f3c66636b8ee0092bab263667
   React-networking: 89f6b69755a3176f30e56ba1ba8e214b1518ecfb
