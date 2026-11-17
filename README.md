@@ -1,12 +1,13 @@
 ### **Instructions for configuring your Android Project**
 
 * Install Visit React Native Plugin   
-  `npm install react-native-visit-rn-sdk@3.0.15`
+  `npm install react-native-visit-rn-sdk@7.0.0`
 * Install these transitive plugins that Visit Plugin requires internally:   
   `npm install react-native-device-info`   
   `npm install https://github.com/sashko9807/react-native-location-enabler`  
   `npm install react-native-event-listeners`   
   `npm install react-native-webview`
+* Add `https://jitpack.io` to the host app’s Gradle repositories for `com.github.VisitApp:AndroidSDK`.
 * Enable code desugaring in your app, or there add the dependency. 
 
 ```
@@ -42,14 +43,14 @@ android {
 
 ### **Instructions for configuring Plugin in iOS project** 
 
-* Add the plugin `npm install react-native-visit-rn-sdk@3.0.15 && npx pod-install`
+* Add the plugin `npm install react-native-visit-rn-sdk@7.0.0 && npx pod-install`
 * Install pods(for M1 processors running build on `x86_64` hardware)
 
     `arch -x86_64 pod install`
 
 
 * In the Signing & Capabilities section in Xcode, add HealthKit as a capability
-* Add this read-only HealthKit key inside the `Info.plist` file. Version `3.0.15` does not request HealthKit write permission, so `NSHealthUpdateUsageDescription` is not required.
+* Add this read-only HealthKit key inside the `Info.plist` file. Use it to explain why the app reads steps, calories, distance, and sleep from HealthKit.
 
 ```
 <key>NSHealthShareUsageDescription</key>
@@ -232,118 +233,41 @@ The iOS executor posts hourly batches to `/users/embellish-sync` and daily
 data to `/users/data-sync`; the manual promise resolves only after both flows
 finish.
 
-## **Health Connect Connection Flow (Android)**
+## Fitness data and Health Connect connection
 
-Version `3.0.15` uses AndroidSDK `v3.13` and routes the PWA's Health Connect request according to the Health Connect installation status and the device's native step-tracking capability.
+The SDK reads steps, calories, distance, and sleep from Health Connect on Android
+and HealthKit on iOS. Android also reads exercise duration for activity totals.
+Health Connect history access is optional. The iOS host app needs the HealthKit
+capability and an `NSHealthShareUsageDescription` that explains the four metrics.
 
-The maintained RN 3.x release is also available through its npm dist-tag:
+For Android, declare steps, distance, total calories, sleep, exercise, and optional
+history access in the host app's Google Play Health Apps form. Use the merged
+manifest to verify the permission list. See [Google Play's Health Connect publishing guide](https://developer.android.com/health-and-fitness/health-connect/publish).
 
-```bash
-npm install react-native-visit-rn-sdk@rn3
-```
-
-Native step tracking is available only when both of these requirements are met:
-
-* Android 14/API 34 or later.
-* SDK Extension version 20 or later.
-
-When native step tracking is unavailable, the PWA should explain that the user needs a compatible third-party fitness tracker app to write step data to Health Connect. The educational modal is implemented by the PWA, not by the React Native SDK.
-
-The following chart summarizes the four supported user journeys. The scenario numbers can also be used to identify the corresponding demonstration videos.
-
-```mermaid
-flowchart TD
-    A["User taps Connect to Health Connect"] --> B{"Android version?"}
-
-    B -->|"Below Android 14"| C{"Is the Health Connect app installed?"}
-    C -->|"No"| S1["Scenario 1<br/>Open the Health Connect Play Store page"]
-    S1 --> R["User installs Health Connect and returns to the app"]
-    R --> A
-    C -->|"Yes"| S2["Scenario 2<br/>Show the third-party fitness tracker disclaimer"]
-
-    B -->|"Android 14 or later"| D{"Native step tracking available?<br/>API 34+ and SDK Extension 20+"}
-    D -->|"Yes"| S3["Scenario 3<br/>Start the Health Connect permission flow directly"]
-    D -->|"No"| S4["Scenario 4<br/>Show the third-party fitness tracker disclaimer"]
-
-    S2 --> T["User installs or connects a compatible tracker<br/>Google Fit, Fitbit, or Samsung Health"]
-    S4 --> T
-    T --> E["User selects Continue"]
-    E --> P["Start the Health Connect permission flow"]
-```
-
-### **Routing Behavior**
-
-| Condition | SDK behavior | Show the PWA disclaimer |
-| --- | --- | --- |
-| `disclaimerAccepted === true` | Start the existing Health Connect permission flow immediately. | No |
-| Health Connect status check fails | Report the error and start the existing permission flow. | No |
-| Health Connect status is `NOT_INSTALLED` | Start the existing native flow, which opens the Health Connect Play Store page. | No |
-| Health Connect is available and native step tracking is supported | Start the permission flow immediately. | No |
-| Health Connect is available and native step tracking is unsupported | Invoke `window.showHealthConnectDisclaimer()`. | Yes |
-| Native step capability check fails | Treat native step tracking as unavailable and invoke the disclaimer callback. | Yes |
-
-Every `CONNECT_TO_GOOGLE_FIT` message is processed. There is no in-flight request guard, so after returning from the Play Store the PWA can send the message again to restart the flow.
-
-### **PWA Contract**
-
-On the initial **Connect to Health Connect** action, send:
+To start the Android connection flow, send:
 
 ```javascript
 window.ReactNativeWebView.postMessage(
-  JSON.stringify({
-    method: 'CONNECT_TO_GOOGLE_FIT',
-  })
+  JSON.stringify({ method: 'CONNECT_TO_GOOGLE_FIT' })
 );
 ```
 
-When Health Connect is available but native step tracking is unavailable, the SDK invokes:
+The native SDK requests Health Connect permissions or opens its Play Store page
+if installation or an update is required. Send the same message again after
+returning from the store. The PWA can request the current state with
+`GET_HEALTH_CONNECT_STATUS`. The native bridge reports `NOT_SUPPORTED`,
+`NOT_INSTALLED`, `INSTALLED`, or `CONNECTED`.
 
-```javascript
-window.showHealthConnectDisclaimer();
-```
+Both platforms accept `GET_DATA_TO_GENERATE_GRAPH` for steps, calories, and
+distance by day, week, and month, and for sleep by day and week. The SDK
+delivers the existing `DetailedGraph` callbacks and supplies steps and sleep
+minutes to `updateFitnessPermissions` on connection.
 
-The PWA must define this function and use it to open the educational modal:
+### **7.0.0**
 
-```javascript
-window.showHealthConnectDisclaimer = function () {
-  // Open the PWA-managed Health Connect disclaimer modal.
-};
-```
-
-After the user selects **Continue** in the modal, send the same method with a strict boolean acceptance flag:
-
-```javascript
-window.ReactNativeWebView.postMessage(
-  JSON.stringify({
-    method: 'CONNECT_TO_GOOGLE_FIT',
-    disclaimerAccepted: true,
-  })
-);
-```
-
-Only the boolean value `true` bypasses the status and capability checks. A missing, `false`, string, or otherwise malformed value is handled as a new Connect request. Acceptance is not persisted by the SDK.
-
-### **Android Native Methods**
-
-The routing flow uses these methods from `NativeModules.VisitFitnessModule`:
-
-| Method | Result |
-| --- | --- |
-| `getHealthConnectStatus()` | Resolves with `NOT_SUPPORTED`, `NOT_INSTALLED`, `INSTALLED`, or `CONNECTED`. |
-| `isNativeStepTrackingAvailable()` | Resolves with a boolean. Unexpected failures reject with `CAPABILITY_CHECK_FAILED`. |
-| `askForFitnessPermission()` | Starts the install/permission flow and resolves with `GRANTED` or `CANCELLED` when the permission request completes. |
-
-The capability method does not require a separate Activity reference at call time. Health Connect aggregation remains unchanged and does not filter by `DataOrigin`, so native phone steps are included when the platform provides them.
-
-### **Health Connect Logs**
-
-Set `isLoggingEnabled={true}` on `VisitRnSdkView` to log the status, capability result, routing decision, and native check failures. Routing messages use this prefix:
-
-```text
-[VisitRnSdk][HealthConnect]
-```
-
-## **RN 3.x Release Notes**
+* Restore steps, calories, distance, and sleep on Android and iOS.
+* Use AndroidSDK `v7.0.0` and start the native Health Connect permission flow directly.
+* Remove the Android PWA disclaimer callback.
 
 ### **3.0.15**
 

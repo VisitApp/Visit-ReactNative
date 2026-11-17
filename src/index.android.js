@@ -21,7 +21,6 @@ import DeviceInfo from 'react-native-device-info';
 import axios from 'axios';
 
 import constants from './constants';
-import { routeHealthConnectConnectionRequest } from './healthConnectRouting';
 
 export const httpClient = axios.create({
   timeout: 60000,
@@ -410,35 +409,6 @@ const VisitRnSdkView = ({
     }
   };
 
-  const handleHealthConnectConnectionRequest = async (disclaimerAccepted) => {
-    await routeHealthConnectConnectionRequest({
-      disclaimerAccepted,
-      isLoggingEnabled,
-      getHealthConnectStatus: () =>
-        NativeModules.VisitFitnessModule.getHealthConnectStatus(),
-      isNativeStepTrackingAvailable: () =>
-        NativeModules.VisitFitnessModule.isNativeStepTrackingAvailable(),
-      startPermissionFlow: askForHealthConnectPermission,
-      showDisclaimer: () =>
-        webviewRef.current?.injectJavaScript(`
-          if (typeof window.showHealthConnectDisclaimer === 'function') {
-            window.showHealthConnectDisclaimer();
-          }
-          true;
-        `),
-      onHealthConnectStatusCheckError: (error) => {
-        if (isLoggingEnabled) {
-          console.error('Health Connect status check failed', error);
-        }
-      },
-      onCapabilityCheckError: (error) => {
-        if (isLoggingEnabled) {
-          console.error('Native step tracking capability check failed', error);
-        }
-      },
-    });
-  };
-
   const getHealthConnectStatus = async () => {
     try {
       const healthConnectStatus =
@@ -484,7 +454,9 @@ const VisitRnSdkView = ({
       const dailyFitnessData =
         await NativeModules.VisitFitnessModule.requestDailyFitnessData();
 
-      webviewRef.current?.injectJavaScript(dailyFitnessData);
+      if (dailyFitnessData) {
+        webviewRef.current?.injectJavaScript(dailyFitnessData);
+      }
     } catch (error) {
       if (isLoggingEnabled) {
         console.log(error);
@@ -509,7 +481,9 @@ const VisitRnSdkView = ({
         console.log(`requestActivityData() data: ` + graphData);
       }
 
-      webviewRef.current?.injectJavaScript('window.' + graphData);
+      if (graphData) {
+        webviewRef.current?.injectJavaScript('window.' + graphData);
+      }
     } catch (error) {
       if (isLoggingEnabled) {
         console.log(error);
@@ -565,9 +539,7 @@ const VisitRnSdkView = ({
               getHealthConnectStatus();
               break;
             case 'CONNECT_TO_GOOGLE_FIT':
-              handleHealthConnectConnectionRequest(
-                parsedObject.disclaimerAccepted
-              );
+              askForHealthConnectPermission();
               break;
             case 'UPDATE_PLATFORM':
               webviewRef.current?.injectJavaScript(

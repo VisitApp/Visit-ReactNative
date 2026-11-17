@@ -202,9 +202,16 @@ const VisitRnSdkView = ({
       }
 
       if (status === 'CONNECTED') {
-        const steps = await VisitRnSdkViewManager?.getTodayStepCount?.();
+        const [steps, sleep] = await Promise.allSettled([
+          VisitRnSdkViewManager?.getTodayStepCount?.(),
+          VisitRnSdkViewManager?.getTodaySleepMinutes?.(),
+        ]);
+        const stepCount =
+          steps.status === 'fulfilled' ? Number(steps.value) || 0 : 0;
+        const sleepMinutes =
+          sleep.status === 'fulfilled' ? Number(sleep.value) || 0 : 0;
         webviewRef.current?.injectJavaScript(
-          `window.updateFitnessPermissions(true,${Number(steps) || 0},0)`
+          `window.updateFitnessPermissions(true,${stepCount},${sleepMinutes})`
         );
         return;
       }
@@ -259,14 +266,12 @@ const VisitRnSdkView = ({
         } else {
           VisitRnSdkViewManager?.connectToAppleHealth((res) => {
             const authStatus = res?.authStatus;
-            const steps = res?.numberOfSteps || 0;
+            const steps = Number(res?.numberOfSteps) || 0;
+            const sleep = Number(res?.sleepTime) || 0;
 
             if (authStatus === 'GRANTED') {
-              // Third argument is sleep minutes, which this SDK no longer
-              // reads. It stays in the call to keep the WebView's
-              // updateFitnessPermissions(granted, steps, sleep) signature.
               webviewRef.current?.injectJavaScript(
-                `window.updateFitnessPermissions(true,${steps},0)`
+                `window.updateFitnessPermissions(true,${steps},${sleep})`
               );
               return;
             }
@@ -307,14 +312,6 @@ const VisitRnSdkView = ({
         }
         break;
       case 'GET_DATA_TO_GENERATE_GRAPH':
-        // Steps is the only metric this SDK reads, so other graph types are
-        // ignored rather than sent to the native layer.
-        if (type !== 'steps') {
-          if (isLoggingEnabled) {
-            console.log('ignoring unsupported graph type: ', type);
-          }
-          break;
-        }
         VisitRnSdkViewManager?.renderGraph(
           { type, frequency, timestamp },
           (err, results) => {

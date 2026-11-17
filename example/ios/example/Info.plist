@@ -34,7 +34,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Visit requires your permission to access the camera for face scan and related features.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Visit requires your permission to read health and fitness data.</string>
+	<string>Visit reads your steps, calories, walking and running distance, and sleep to show and sync your fitness activity.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Visit requires your permission to store health and fitness data in HealthKit.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

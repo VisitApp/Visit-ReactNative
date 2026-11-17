@@ -7,6 +7,13 @@ static NSString *const kVisitAuthTokenKey = @"visit_auth_token";
 static NSString *const kVisitHourlyLastSyncKey = @"gfHourlyLastSync";
 static NSString *const kVisitDailyLastSyncKey = @"googleFitLastSync";
 
+static NSDateInterval *VisitFitnessDateInterval(NSCalendar *calendar, NSCalendarUnit unit, NSDate *date) {
+    NSDate *start;
+    NSTimeInterval duration;
+    [calendar rangeOfUnit:unit startDate:&start interval:&duration forDate:date];
+    return [[NSDateInterval alloc] initWithStartDate:start duration:duration];
+}
+
 @interface VisitRnSdkViewManager ()
 @property (atomic, assign) BOOL isSyncInProgress;
 @end
@@ -173,138 +180,180 @@ RCT_REMAP_METHOD(multiply,
                 return;
             } else {
                 NSLog(@"error getting step count samples: %@", error);
-                return;
+                callback([NSMutableArray arrayWithArray:@[@"0", @[]]]);
             }
         }];
 }
 
-// Returns @[stepsData] — a one-element array whose only entry is the hourly
-// step buckets. The array wrapper is retained so existing callers that read
-// `[data objectAtIndex:0]` keep working.
-- (void)fetchHourlySteps:(NSDate*) endDate callback:(void(^)(NSArray*))callback{
-    HKQuantityType *stepCountType = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
-    NSCalendar *calendar = [NSCalendar currentCalendar];
-    HKUnit *stepsUnit = [HKUnit countUnit];
-    NSDateComponents *interval = [[NSDateComponents alloc] init];
-    interval.hour = 1;
-    NSDate *startDate = [[NSCalendar calendarWithIdentifier:NSCalendarIdentifierISO8601] startOfDayForDate:endDate];
-    NSDateComponents *dayInteval = [[NSDateComponents alloc] init];
-    dayInteval.day = 1;
-    dayInteval.second = -1;
-    NSDate* endOfDay =  [calendar dateByAddingComponents:dayInteval toDate:startDate options:0];
-    NSLog(@"endOfDay is, %@",endOfDay);
-    NSDate *anchorDate = [calendar startOfDayForDate:startDate];
-    NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:startDate endDate:endOfDay options:HKQueryOptionStrictStartDate];
-    NSPredicate *userEnteredValuePredicate = [HKQuery predicateForObjectsWithMetadataKey:HKMetadataKeyWasUserEntered operatorType: NSNotEqualToPredicateOperatorType value: @YES];
+- (NSSet<HKObjectType *> *)fitnessReadTypes {
+    return [NSSet setWithArray:@[
+        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount],
+        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierDistanceWalkingRunning],
+        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierActiveEnergyBurned],
+        [HKCategoryType categoryTypeForIdentifier:HKCategoryTypeIdentifierSleepAnalysis],
+    ]];
+}
 
-    NSCompoundPredicate *compoundPredicate = [NSCompoundPredicate andPredicateWithSubpredicates:@[predicate, userEnteredValuePredicate]];
+- (void)fetchFitnessBuckets:(NSString *)metric
+                      start:(NSDate *)start
+                        end:(NSDate *)end
+                     hourly:(BOOL)hourly
+                 completion:(void (^)(NSArray<NSNumber *> *, NSError *))completion {
+    if ([start compare:end] == NSOrderedDescending) {
+        completion(@[], nil);
+        return;
+    }
 
-    dispatch_group_t group = dispatch_group_create();
-    NSMutableArray *stepsData = [NSMutableArray arrayWithCapacity:24];
+    HKQuantityTypeIdentifier identifier = HKQuantityTypeIdentifierStepCount;
+    HKUnit *unit = [HKUnit countUnit];
+    if ([metric isEqualToString:@"calories"]) {
+        identifier = HKQuantityTypeIdentifierActiveEnergyBurned;
+        unit = [HKUnit kilocalorieUnit];
+    } else if ([metric isEqualToString:@"distance"]) {
+        identifier = HKQuantityTypeIdentifierDistanceWalkingRunning;
+        unit = [HKUnit meterUnit];
+    }
 
-    dispatch_group_enter(group);
-    HKStatisticsCollectionQuery *stepsQuery = [[HKStatisticsCollectionQuery alloc]
-        initWithQuantityType:stepCountType
-     quantitySamplePredicate:compoundPredicate
+    NSCalendar *bucketCalendar = self->calendar;
+    NSDate *anchor = [bucketCalendar startOfDayForDate:start];
+    NSDateComponents *interval = [NSDateComponents new];
+    if (hourly) {
+        interval.hour = 1;
+    } else {
+        interval.day = 1;
+    }
+    NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:start
+                                                              endDate:end
+                                                              options:HKQueryOptionNone];
+    if (hourly && [metric isEqualToString:@"steps"]) {
+        NSPredicate *automatic = [HKQuery predicateForObjectsWithMetadataKey:HKMetadataKeyWasUserEntered
+                                                                operatorType:NSNotEqualToPredicateOperatorType
+                                                                       value:@YES];
+        predicate = [NSCompoundPredicate andPredicateWithSubpredicates:@[predicate, automatic]];
+    }
+
+    HKQuantityType *type = [HKQuantityType quantityTypeForIdentifier:identifier];
+    HKStatisticsCollectionQuery *query = [[HKStatisticsCollectionQuery alloc]
+        initWithQuantityType:type
+     quantitySamplePredicate:predicate
                      options:HKStatisticsOptionCumulativeSum
-                  anchorDate:anchorDate
+                  anchorDate:anchor
           intervalComponents:interval];
-    stepsQuery.initialResultsHandler = ^(HKStatisticsCollectionQuery *q,
-                                         HKStatisticsCollection *result,
-                                         NSError *error) {
+    query.initialResultsHandler = ^(HKStatisticsCollectionQuery *query,
+                                    HKStatisticsCollection *results,
+                                    NSError *error) {
         if (error) {
-            NSLog(@"fetchHourlySteps steps query error: %@", error.localizedDescription);
-        } else {
-            [result enumerateStatisticsFromDate:startDate toDate:endOfDay
-                                      withBlock:^(HKStatistics *stat, BOOL *stop) {
-                HKQuantity *quantity = stat.sumQuantity;
-                int value = quantity ? (int)[quantity doubleValueForUnit:stepsUnit] : 0;
-                [stepsData addObject:@(value)];
-            }];
+            completion(@[], error);
+            return;
         }
-        dispatch_group_leave(group);
+        NSMutableArray<NSNumber *> *values = [NSMutableArray new];
+        if (hourly) {
+            for (NSInteger hour = 0; hour < 24; hour++) {
+                [values addObject:@0];
+            }
+            [results enumerateStatisticsFromDate:start toDate:end withBlock:^(HKStatistics *stat, BOOL *stop) {
+                NSInteger hour = [bucketCalendar component:NSCalendarUnitHour fromDate:stat.startDate];
+                double value = [stat.sumQuantity doubleValueForUnit:unit];
+                values[hour] = @(values[hour].doubleValue + value);
+            }];
+        } else {
+            NSDate *lastDay = [bucketCalendar startOfDayForDate:end];
+            for (NSDate *day = anchor; [day compare:lastDay] != NSOrderedDescending;
+                 day = [bucketCalendar dateByAddingUnit:NSCalendarUnitDay value:1 toDate:day options:0]) {
+                HKStatistics *stat = [results statisticsForDate:day];
+                [values addObject:@((NSInteger)[stat.sumQuantity doubleValueForUnit:unit])];
+            }
+        }
+        completion([values copy], error);
     };
-    [[VisitRnSdkViewManager sharedManager] executeQuery:stepsQuery];
+    [[VisitRnSdkViewManager sharedManager] executeQuery:query];
+}
 
+- (void)fetchHourlyFitnessForDate:(NSDate *)date
+                      completion:(void (^)(NSArray<NSNumber *> *, NSArray<NSNumber *> *, NSArray<NSNumber *> *))completion {
+    NSDateInterval *day = VisitFitnessDateInterval(self->calendar, NSCalendarUnitDay, date);
+    NSDate *end = [day.endDate dateByAddingTimeInterval:-1];
+    NSArray<NSString *> *metrics = @[@"steps", @"calories", @"distance"];
+    NSMutableDictionary<NSString *, NSArray<NSNumber *> *> *series = [NSMutableDictionary new];
+    dispatch_group_t group = dispatch_group_create();
+    for (NSString *metric in metrics) {
+        dispatch_group_enter(group);
+        [self fetchFitnessBuckets:metric start:day.startDate end:end hourly:YES
+                       completion:^(NSArray<NSNumber *> *values, NSError *error) {
+            if (error) NSLog(@"HealthKit %@ query failed: %@", metric, error.localizedDescription);
+            @synchronized (series) { if (!error) series[metric] = values; }
+            dispatch_group_leave(group);
+        }];
+    }
     dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-        callback(@[stepsData]);
+        completion(series[@"steps"], series[@"calories"], series[@"distance"]);
     });
 }
 
-// Returns @[stepsData] — see fetchHourlySteps for why the array wrapper stays.
--(void) fetchSteps:(NSString*) frequency endDate:(NSDate*) endDate days:(NSInteger) days callback:(void(^)(NSArray*))callback{
-    NSDateComponents *interval = [[NSDateComponents alloc] init];
-    NSDate *startDate;
-    interval.day = 1;
-    NSDate *endDatePeriod;
-    if([frequency isEqualToString:@"day"]){
-        endDatePeriod = endDate;
-        startDate = [self->calendar dateByAddingUnit:NSCalendarUnitDay
-                                                 value:0
-                                                toDate:endDatePeriod
-                                               options:0];
-    }else if ([frequency isEqualToString:@"week"]){
-        NSTimeInterval interval;
-        [self->calendar rangeOfUnit:NSCalendarUnitWeekOfYear
-                           startDate:&startDate
-                            interval:&interval
-                             forDate:endDate];
-        endDatePeriod = [startDate dateByAddingTimeInterval:interval-1];
-    }else if ([frequency isEqualToString:@"month"]){
-        NSTimeInterval interval;
-        [self->calendar rangeOfUnit:NSCalendarUnitMonth
-                           startDate:&startDate
-                            interval:&interval
-                             forDate:endDate];
-        endDatePeriod = [startDate dateByAddingTimeInterval:interval-1];
-    }else if([frequency isEqualToString:@"custom"]){
-        endDatePeriod = endDate;
-        startDate = [self->calendar dateByAddingUnit:NSCalendarUnitDay
-                                                 value:1-days
-                                                toDate:endDatePeriod
-                                               options:0];
-        NSLog(@"startDate and endDate in custom fetchSteps is, %@, %@",startDate,endDatePeriod);
-    }
-    NSLog(@"startDate and endDate in fetchSteps is, %@, %@",startDate,endDatePeriod);
-    NSDateComponents *anchorComponents = [self->calendar components:NSCalendarUnitDay | NSCalendarUnitMonth | NSCalendarUnitYear
-                                                     fromDate:[NSDate date]];
-    anchorComponents.hour = 0;
-    NSLog(@"anchorComponents in fetchSteps are, %@",anchorComponents);
-    NSDate *anchorDate = [self->calendar dateFromComponents:anchorComponents];
-    NSLog(@"anchorDate in fetchSteps are, %@",anchorDate);
-    HKQuantityType *stepType = [HKObjectType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
-
-    dispatch_group_t group = dispatch_group_create();
-    NSMutableArray *stepsData = [NSMutableArray new];
-
-    dispatch_group_enter(group);
-    HKStatisticsCollectionQuery *stepsQuery = [[HKStatisticsCollectionQuery alloc]
-        initWithQuantityType:stepType
-     quantitySamplePredicate:nil
-                     options:HKStatisticsOptionCumulativeSum
-                  anchorDate:anchorDate
-          intervalComponents:interval];
-    stepsQuery.initialResultsHandler = ^(HKStatisticsCollectionQuery *q,
-                                         HKStatisticsCollection *results,
-                                         NSError *error) {
-        if (error) {
-            NSLog(@"fetchSteps steps query error: %@", error.localizedDescription);
-        } else {
-            [results enumerateStatisticsFromDate:startDate
-                                          toDate:endDatePeriod
-                                       withBlock:^(HKStatistics *stat, BOOL *stop) {
-                HKQuantity *quantity = stat.sumQuantity;
-                int value = quantity ? (int)[quantity doubleValueForUnit:[HKUnit countUnit]] : 0;
-                [stepsData addObject:@(value)];
-            }];
+- (void)fetchSleepFromDay:(NSDate *)firstDay
+               throughDay:(NSDate *)lastDay
+               completion:(void (^)(NSDictionary<NSDate *, NSArray<NSDateInterval *> *> *, NSError *))completion {
+    NSCalendar *sleepCalendar = self->calendar;
+    NSDate *end = [sleepCalendar dateByAddingUnit:NSCalendarUnitDay value:1 toDate:lastDay options:0];
+    NSDate *lookback = [firstDay dateByAddingTimeInterval:-36 * 60 * 60];
+    NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:lookback endDate:end options:HKQueryOptionNone];
+    HKCategoryType *type = [HKCategoryType categoryTypeForIdentifier:HKCategoryTypeIdentifierSleepAnalysis];
+    NSSortDescriptor *byStart = [NSSortDescriptor sortDescriptorWithKey:HKSampleSortIdentifierStartDate ascending:YES];
+    HKSampleQuery *query = [[HKSampleQuery alloc] initWithSampleType:type
+                                                          predicate:predicate
+                                                              limit:HKObjectQueryNoLimit
+                                                    sortDescriptors:@[byStart]
+                                                     resultsHandler:^(HKSampleQuery *query,
+                                                                      NSArray<__kindof HKSample *> *samples,
+                                                                      NSError *error) {
+        NSMutableDictionary<NSDate *, NSMutableArray<NSDateInterval *> *> *asleep = [NSMutableDictionary new];
+        NSMutableDictionary<NSDate *, NSMutableArray<NSDateInterval *> *> *inBed = [NSMutableDictionary new];
+        for (HKCategorySample *sample in samples) {
+            NSDate *day = [sleepCalendar startOfDayForDate:sample.endDate];
+            if ([day compare:firstDay] == NSOrderedAscending || [day compare:lastDay] == NSOrderedDescending ||
+                [sample.startDate compare:sample.endDate] != NSOrderedAscending) {
+                continue;
+            }
+            NSMutableDictionary<NSDate *, NSMutableArray<NSDateInterval *> *> *target;
+            if (sample.value == HKCategoryValueSleepAnalysisInBed) {
+                target = inBed;
+            } else if (sample.value == HKCategoryValueSleepAnalysisAwake) {
+                continue;
+            } else {
+                target = asleep;
+            }
+            NSMutableArray<NSDateInterval *> *intervals = target[day];
+            if (!intervals) {
+                intervals = [NSMutableArray new];
+                target[day] = intervals;
+            }
+            NSDateInterval *previous = intervals.lastObject;
+            if (previous && [sample.startDate compare:previous.endDate] != NSOrderedDescending) {
+                NSDate *latestEnd = [previous.endDate laterDate:sample.endDate];
+                intervals[intervals.count - 1] = [[NSDateInterval alloc] initWithStartDate:previous.startDate endDate:latestEnd];
+            } else {
+                [intervals addObject:[[NSDateInterval alloc] initWithStartDate:sample.startDate endDate:sample.endDate]];
+            }
         }
-        dispatch_group_leave(group);
-    };
-    [[VisitRnSdkViewManager sharedManager] executeQuery:stepsQuery];
+        // In-bed-only sources still provide a sleep window. Prefer actual
+        // asleep samples when both exist on the same wake day.
+        NSMutableDictionary *sleepByDay = [inBed mutableCopy];
+        [sleepByDay addEntriesFromDictionary:asleep];
+        completion(sleepByDay, error);
+    }];
+    [[VisitRnSdkViewManager sharedManager] executeQuery:query];
+}
 
-    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-        callback(@[stepsData]);
-    });
+- (void)fetchTodaySleepMinutes:(void (^)(NSNumber *, NSError *))completion {
+    NSDate *today = [self->calendar startOfDayForDate:[NSDate date]];
+    [self fetchSleepFromDay:today throughDay:today
+                 completion:^(NSDictionary<NSDate *, NSArray<NSDateInterval *> *> *sleepByDay, NSError *error) {
+        NSTimeInterval seconds = 0;
+        for (NSDateInterval *interval in sleepByDay[today]) {
+            seconds += interval.duration;
+        }
+        completion(@((NSInteger)(seconds / 60)), error);
+    }];
 }
 
 - (void)requestAuthorization:(void(^)(NSDictionary*))callback {
@@ -313,9 +362,7 @@ RCT_REMAP_METHOD(multiply,
         // If our device doesn't support HealthKit -> return.
         return;
     }
-    NSArray *readTypes = @[[HKSampleType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount]];
-
-    [[VisitRnSdkViewManager sharedManager] requestAuthorizationToShareTypes:nil readTypes:[NSSet setWithArray:readTypes]
+    [[VisitRnSdkViewManager sharedManager] requestAuthorizationToShareTypes:nil readTypes:[self fitnessReadTypes]
                                                                 completion:^(BOOL success, NSError *error) {
         NSLog(@"requestAuthorizationToShareTypes executed");
         [self canAccessHealthKit:^(BOOL value){
@@ -331,22 +378,18 @@ RCT_REMAP_METHOD(multiply,
     }];
 }
 
--(void) onHealthKitPermissionGranted:(void(^)(NSDictionary*))callback{
-    //  getting steps for current day
-    [self fetchSteps:@"day" endDate:[NSDate date] days:0 callback:^(NSArray * result) {
-        // Must not stay nil: an NSDictionary literal throws on a nil value.
-        id numberOfSteps = @0;
-        if([result count]>0 && [[result objectAtIndex:0] count]>0){
-            numberOfSteps = [[result objectAtIndex:0] objectAtIndex:0];
-        }
-        NSLog(@"the steps result is, %@",numberOfSteps);
-        NSDictionary *element = @{
-                @"numberOfSteps" : numberOfSteps,
-        };
-        dispatch_async(dispatch_get_main_queue(), ^{
-            self->hasLoadedOnce = true;
-            callback(element);
-        });
+- (void)onHealthKitPermissionGranted:(void (^)(NSDictionary *))callback {
+    NSDate *now = [NSDate date];
+    NSDate *today = [self->calendar startOfDayForDate:now];
+    [self fetchFitnessBuckets:@"steps" start:today end:now hourly:NO
+                   completion:^(NSArray<NSNumber *> *steps, NSError *stepsError) {
+        [self fetchTodaySleepMinutes:^(NSNumber *minutes, NSError *sleepError) {
+            NSDictionary *result = @{@"numberOfSteps": steps.firstObject ?: @0, @"sleepTime": minutes};
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self->hasLoadedOnce = true;
+                callback(result);
+            });
+        }];
     }];
 }
 
@@ -356,8 +399,7 @@ RCT_REMAP_METHOD(multiply,
         return;
     }
 
-    NSSet *readTypes = [NSSet setWithObject:
-        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount]];
+    NSSet *readTypes = [self fitnessReadTypes];
 
     [[VisitRnSdkViewManager sharedManager]
         getRequestStatusForAuthorizationToShareTypes:[NSSet set]
@@ -371,34 +413,30 @@ RCT_REMAP_METHOD(multiply,
     }];
 }
 
--(void) hasStepReadAccess:(void(^)(BOOL))callback {
+- (void)hasReadableFitnessSamples:(void (^)(BOOL))callback {
     if (![HKHealthStore isHealthDataAvailable]) {
         callback(NO);
         return;
     }
 
-    HKQuantityType *stepType =
-        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
-    NSSortDescriptor *newestFirst =
-        [[NSSortDescriptor alloc] initWithKey:HKSampleSortIdentifierEndDate ascending:NO];
-
-    HKSampleQuery *probe = [[HKSampleQuery alloc]
-        initWithSampleType:stepType
-                 predicate:nil
-                     limit:1
-           sortDescriptors:@[newestFirst]
-            resultsHandler:^(HKSampleQuery *query,
-                             NSArray<__kindof HKSample *> *results,
-                             NSError *error) {
-        if (error) {
-            NSLog(@"hasStepReadAccess probe error: %@", error.localizedDescription);
-            callback(NO);
-            return;
-        }
-        callback(results.count > 0);
-    }];
-
-    [[VisitRnSdkViewManager sharedManager] executeQuery:probe];
+    dispatch_group_t group = dispatch_group_create();
+    NSObject *lock = [NSObject new];
+    __block BOOL found = NO;
+    for (HKSampleType *type in [self fitnessReadTypes]) {
+        dispatch_group_enter(group);
+        HKSampleQuery *query = [[HKSampleQuery alloc] initWithSampleType:type
+                                                              predicate:nil
+                                                                  limit:1
+                                                        sortDescriptors:nil
+                                                         resultsHandler:^(HKSampleQuery *query, NSArray *results, NSError *error) {
+            if (results.count > 0) {
+                @synchronized (lock) { found = YES; }
+            }
+            dispatch_group_leave(group);
+        }];
+        [[VisitRnSdkViewManager sharedManager] executeQuery:query];
+    }
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{ callback(found); });
 }
 
 -(void) canAccessHealthKit: (void(^)(BOOL))callback {
@@ -409,64 +447,91 @@ RCT_REMAP_METHOD(multiply,
             callback(NO);
             return;
         }
-        [strongSelf hasStepReadAccess:callback];
+        [strongSelf hasReadableFitnessSamples:callback];
     }];
 }
 
--(void) evaluateJavascript:(NSArray *) data type:(NSString *) type frequency:(NSString *) frequency activityTime:(NSString *) activityTime callback:(void(^)(NSArray*))callback{
-    NSString* hoursInDay = @"[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24]";
-    NSString* daysInWeek = @"[1,2,3,4,5,6,7]";
-    NSString* daysInMonth = @"[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]";
-    NSString* samples;
-    NSString *jsonArrayData;
-    if([frequency isEqualToString:@"day"]){
-        samples=hoursInDay;
-    }else if ([frequency isEqualToString:@"week"]){
-        samples=daysInWeek;
-    }else if ([frequency isEqualToString:@"month"]){
-        samples=daysInMonth;
-    }
-    jsonArrayData = [[data objectAtIndex:0] componentsJoinedByString:@","];
-    NSString *javascript = [NSString stringWithFormat:@"DetailedGraph.updateData(%@,[%@],'%@','%@','%@')", samples, jsonArrayData, type,frequency, activityTime];
-    dispatch_async(dispatch_get_main_queue(), ^{
-      callback(@[javascript]);
-    });
+static NSNumber *VisitHealthTimestamp(NSDate *date) {
+    return @((long long)([date timeIntervalSince1970] * 1000));
 }
 
--(void) renderGraphData:(NSString *) type frequency:(NSString *) frequency date:(NSDate *) date callback:(void(^)(NSArray*))callback{
-    if(![type isEqualToString:@"steps"]){
-        NSLog(@"renderGraphData ignoring unsupported type: %@",type);
+- (void)renderGraphData:(NSString *)type frequency:(NSString *)frequency date:(NSDate *)date callback:(void (^)(NSArray *))callback {
+    BOOL isDay = [frequency isEqualToString:@"day"];
+    BOOL isWeek = [frequency isEqualToString:@"week"];
+    BOOL isMonth = [frequency isEqualToString:@"month"];
+    if (!isDay && !isWeek && !isMonth) {
         callback(@[]);
         return;
     }
-    dispatch_group_t loadDetailsGroup=dispatch_group_create();
-    __block NSArray* stepsData = 0;
-    __block NSString* totalActivityDuration = 0;
-    for (int i = 0; i<2; i++) {
-        dispatch_group_enter(loadDetailsGroup);
-        if(i==0){
-            [self getActivityTime:date frequency:frequency days:0 callback:^(NSMutableArray * result){
-                totalActivityDuration = [result objectAtIndex:0];
-                dispatch_group_leave(loadDetailsGroup);
-            }];
-        }else if(i==1){
-            if([frequency isEqualToString:@"day"]){
-                [self fetchHourlySteps:date callback:^(NSArray * result) {
-                    stepsData = result;
-                    dispatch_group_leave(loadDetailsGroup);
-                }];
-            }else{
-                [self fetchSteps:frequency endDate: date days:0 callback:^(NSArray * result) {
-                    stepsData = result;
-                    dispatch_group_leave(loadDetailsGroup);
+
+    NSCalendar *graphCalendar = self->calendar;
+    NSCalendarUnit unit = isDay ? NSCalendarUnitDay : (isWeek ? NSCalendarUnitWeekOfYear : NSCalendarUnitMonth);
+    NSDateInterval *range = VisitFitnessDateInterval(graphCalendar, unit, date);
+    NSDate *end = [range.endDate dateByAddingTimeInterval:-1];
+
+    if ([type isEqualToString:@"sleep"]) {
+        if (isMonth) {
+            callback(@[]);
+            return;
+        }
+        NSDate *lastDay = [graphCalendar startOfDayForDate:end];
+        [self fetchSleepFromDay:range.startDate throughDay:lastDay
+                     completion:^(NSDictionary<NSDate *, NSArray<NSDateInterval *> *> *sleepByDay, NSError *error) {
+            if (isDay) {
+                NSArray<NSDateInterval *> *sleep = sleepByDay[range.startDate];
+                callback(@[[NSString stringWithFormat:@"DetailedGraph.updateDailySleep(%@,%@)",
+                    VisitHealthTimestamp(sleep.firstObject.startDate), VisitHealthTimestamp(sleep.lastObject.endDate)]]);
+                return;
+            }
+            NSMutableArray *days = [NSMutableArray new];
+            for (NSDate *day = range.startDate; [day compare:lastDay] != NSOrderedDescending;
+                 day = [graphCalendar dateByAddingUnit:NSCalendarUnitDay value:1 toDate:day options:0]) {
+                NSArray<NSDateInterval *> *sleep = sleepByDay[day];
+                NSInteger weekday = [graphCalendar component:NSCalendarUnitWeekday fromDate:day];
+                [days addObject:@{
+                    @"sleepTime": VisitHealthTimestamp(sleep.firstObject.startDate),
+                    @"wakeupTime": VisitHealthTimestamp(sleep.lastObject.endDate),
+                    @"day": graphCalendar.shortWeekdaySymbols[weekday - 1],
+                    @"startTimestamp": VisitHealthTimestamp(day),
                 }];
             }
-        }
+            NSData *data = [NSJSONSerialization dataWithJSONObject:days options:0 error:nil];
+            NSString *json = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+            callback(@[[NSString stringWithFormat:@"DetailedGraph.updateSleepData(JSON.stringify(%@))", json]]);
+        }];
+        return;
     }
-    dispatch_group_notify(loadDetailsGroup,dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),^{
-      [self evaluateJavascript:stepsData type:type frequency:frequency activityTime:totalActivityDuration callback:^(NSArray * data) {
-        callback(data);
-      }];
+
+    if (![@[@"steps", @"calories", @"distance"] containsObject:type ?: @""]) {
+        callback(@[]);
+        return;
+    }
+
+    dispatch_group_t group = dispatch_group_create();
+    __block NSArray<NSNumber *> *values = @[];
+    __block NSString *activity = @"0";
+    dispatch_group_enter(group);
+    [self fetchFitnessBuckets:type start:range.startDate end:end hourly:isDay
+                   completion:^(NSArray<NSNumber *> *result, NSError *error) {
+        if (error) NSLog(@"HealthKit %@ graph query failed: %@", type, error.localizedDescription);
+        values = result;
+        dispatch_group_leave(group);
+    }];
+    dispatch_group_enter(group);
+    [self getActivityTime:date frequency:frequency days:0 callback:^(NSMutableArray *result) {
+        activity = result.firstObject ?: @"0";
+        dispatch_group_leave(group);
+    }];
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        NSInteger count = isDay ? 24 : (isWeek ? 7 : 31);
+        NSMutableArray *labels = [NSMutableArray new];
+        NSMutableArray *buckets = [NSMutableArray new];
+        for (NSInteger index = 0; index < count; index++) {
+            [labels addObject:@(index + 1)];
+            [buckets addObject:index < values.count ? @(values[index].integerValue) : @0];
+        }
+        callback(@[[NSString stringWithFormat:@"DetailedGraph.updateData([%@],[%@],'%@','%@','%@')",
+            [labels componentsJoinedByString:@","], [buckets componentsJoinedByString:@","], type, frequency, activity]]);
     });
 }
 
@@ -518,103 +583,90 @@ RCT_REMAP_METHOD(multiply,
     });
 }
 
--(void) preprocessEmbellishRequest:(NSArray*) steps date:(NSDate*) date callback:(void(^)(NSArray*))callback{
-    NSLog(@"steps=%@, date=%@",steps, date);
-                NSMutableArray* embellishData = [NSMutableArray new];
-                int count=0;
-                for (NSNumber* step in steps) {
-                    NSDictionary *dict = @{
-                            @"st" : step,
-                            @"h" : [NSNumber numberWithInt:count],
-                            @"s" : @"",
-                    };
-                    count++;
-                    [embellishData addObject:dict];
-                }
-                NSLog(@"the httpBody is, %lu",(unsigned long)[embellishData count]);
-                NSTimeInterval unixDate = [date timeIntervalSince1970]*1000;
-                NSInteger finalDate = unixDate;
-                NSDictionary *httpBody = @{
-                        @"data" : embellishData,
-                        @"dt" : [NSNumber numberWithLong:finalDate],
-                };
-    callback(@[httpBody]);
-}
-
-// Daily sync payload. Steps-only: `steps` comes from HKQuantityTypeIdentifierStepCount
-// and `activity` is the active-minutes total derived from the same step samples.
--(void)callSyncData:(NSInteger) days dates:(NSMutableArray*)dates callback:(void(^)(NSArray*))callback{
-    dispatch_group_t syncDataGroup=dispatch_group_create();
-    __block NSArray* steps;
-    __block NSArray* activityData;
-    for (int i = 0; i<2; i++) {
-        dispatch_group_enter(syncDataGroup);
-        if(i==0){
-            [self fetchSteps:@"custom" endDate:[NSDate date] days:days callback:^(NSArray * data) {
-                NSLog(@"steps data for custom range is, %@ length %lu",[data objectAtIndex:0],[[data objectAtIndex:0] count]);
-                steps = [data objectAtIndex:0];
-                dispatch_group_leave(syncDataGroup);
-            }];
-        }else if(i==1){
-            [self getActivityTime:[NSDate date] frequency:@"custom" days:days callback:^(NSMutableArray * activity) {
-                NSMutableArray* arr = [activity objectAtIndex:1];
-                NSLog(@"activity data for custom range is, %@ length %lu",activity, [arr count]);
-                activityData = arr;
-                dispatch_group_leave(syncDataGroup);
-            }];
-        }
-    }
-
-    dispatch_group_notify(syncDataGroup,dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),^{
-        if([steps count]>0 && [activityData count]>0)
-        {
-            NSMutableArray* dailySyncData =[NSMutableArray new];
-            int count = 0;
-            for (NSDate* date in dates) {
-                NSDictionary* dict = @{
-                    @"steps":[steps objectAtIndex:count],
-                    @"date":date
-                };
-                [dailySyncData addObject:[NSMutableDictionary dictionaryWithDictionary:dict]];
-                count++;
-            }
-            for (NSMutableDictionary* dict in dailySyncData) {
-                for(NSMutableDictionary* activity in activityData){
-                    if([[NSCalendar currentCalendar] isDate:[activity objectForKey:@"date"] inSameDayAsDate:[dict objectForKey:@"date"]]){
-                        NSString* activityValue = [activity objectForKey:@"value"];
-                        [dict setObject:activityValue forKey:@"activity"];
-                    }
-                }
-
-                [dict setObject: [NSNumber numberWithDouble: [@(floor([[dict objectForKey:@"date"] timeIntervalSince1970] * 1000)) longLongValue]]
-                  forKey:@"date"];
-            }
-            NSDictionary *httpBody = @{
-                    @"fitnessData" : dailySyncData,
-            };
-            callback(@[httpBody]);
-        } else {
-            // Callback must always fire so callers can proceed even when a
-            // sub-fetch (steps/activity) returned no data.
-            callback(@[]);
-        }
-    });
-}
-
--(void)callEmbellishApi:(NSMutableArray*) dates callback:(void(^)(NSArray*))callback{
-    for (NSDate* date in dates) {
-        [self fetchHourlySteps:date callback:^(NSArray * data) {
-            NSArray* steps = [data count] > 0 ? [data objectAtIndex:0] : @[];
-            if([steps count]>0){
-              [self preprocessEmbellishRequest:steps date:date callback:^(NSArray * result) {
-                NSLog(@"preprocessEmbellishRequest data, %@",result);
-                callback(result);
-              }];
-            }
+- (NSDictionary *)hourlySyncPayloadForDate:(NSDate *)date
+                                       steps:(NSArray<NSNumber *> *)steps
+                                    calories:(NSArray<NSNumber *> *)calories
+                                    distance:(NSArray<NSNumber *> *)distance {
+    NSMutableArray *records = [NSMutableArray new];
+    for (NSInteger hour = 0; hour < steps.count; hour++) {
+        [records addObject:@{
+            @"st": @(steps[hour].integerValue),
+            @"c": @(calories[hour].integerValue),
+            @"d": @(distance[hour].integerValue),
+            @"h": @(hour),
+            @"s": @"",
         }];
     }
+    return @{@"data": records, @"dt": VisitHealthTimestamp(date)};
 }
 
+- (void)callSyncData:(NSInteger)days dates:(NSArray<NSDate *> *)dates callback:(void (^)(NSArray *))callback {
+    if (dates.count == 0) {
+        callback(@[]);
+        return;
+    }
+
+    NSCalendar *syncCalendar = self->calendar;
+    NSDate *firstDay = [syncCalendar startOfDayForDate:dates.firstObject];
+    NSDate *lastDay = [syncCalendar startOfDayForDate:dates.lastObject];
+    NSDate *nextDay = [syncCalendar dateByAddingUnit:NSCalendarUnitDay value:1 toDate:lastDay options:0];
+    NSDate *end = [nextDay dateByAddingTimeInterval:-1];
+    NSMutableDictionary<NSString *, NSArray<NSNumber *> *> *series = [NSMutableDictionary new];
+    __block NSDictionary<NSDate *, NSArray<NSDateInterval *> *> *sleepByDay;
+    __block NSArray<NSDictionary *> *activity;
+    dispatch_group_t group = dispatch_group_create();
+
+    for (NSString *metric in @[@"steps", @"calories", @"distance"]) {
+        dispatch_group_enter(group);
+        [self fetchFitnessBuckets:metric start:firstDay end:end hourly:NO
+                       completion:^(NSArray<NSNumber *> *values, NSError *error) {
+            if (error) NSLog(@"HealthKit %@ sync query failed: %@", metric, error.localizedDescription);
+            @synchronized (series) { if (!error) series[metric] = values; }
+            dispatch_group_leave(group);
+        }];
+    }
+    dispatch_group_enter(group);
+    [self fetchSleepFromDay:firstDay throughDay:lastDay
+                 completion:^(NSDictionary<NSDate *, NSArray<NSDateInterval *> *> *sleep, NSError *error) {
+        if (error) NSLog(@"HealthKit sleep sync query failed: %@", error.localizedDescription);
+        if (!error) sleepByDay = sleep;
+        dispatch_group_leave(group);
+    }];
+    dispatch_group_enter(group);
+    [self getActivityTime:end frequency:@"custom" days:days callback:^(NSArray *result) {
+        activity = result.count > 1 ? result[1] : @[];
+        dispatch_group_leave(group);
+    }];
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        if (series.count != 3 || !sleepByDay) {
+            callback(@[]);
+            return;
+        }
+        NSMutableDictionary<NSDate *, NSNumber *> *activityByDay = [NSMutableDictionary new];
+        for (NSDictionary *value in activity) {
+            activityByDay[[syncCalendar startOfDayForDate:value[@"date"]]] = value[@"value"];
+        }
+        NSMutableArray *fitnessData = [NSMutableArray new];
+        for (NSDate *date in dates) {
+            NSDate *day = [syncCalendar startOfDayForDate:date];
+            NSInteger index = [syncCalendar components:NSCalendarUnitDay fromDate:firstDay toDate:day options:0].day;
+            NSMutableDictionary *record = [@{@"date": VisitHealthTimestamp(date)} mutableCopy];
+            for (NSString *metric in @[@"steps", @"calories", @"distance"]) {
+                NSArray<NSNumber *> *values = series[metric];
+                record[metric] = index >= 0 && index < values.count ? values[index] : @0;
+            }
+            NSNumber *duration = activityByDay[day];
+            if (duration) record[@"activity"] = duration;
+            NSArray<NSDateInterval *> *sleep = sleepByDay[day];
+            if (sleep.count > 0) {
+                record[@"sleep"] = [NSString stringWithFormat:@"%@-%@",
+                    VisitHealthTimestamp(sleep.firstObject.startDate), VisitHealthTimestamp(sleep.lastObject.endDate)];
+            }
+            [fitnessData addObject:record];
+        }
+        callback(@[@{@"fitnessData": fitnessData}]);
+    });
+}
 
 RCT_EXPORT_METHOD(connectToAppleHealth:(RCTResponseSenderBlock)callback)
 {
@@ -623,9 +675,7 @@ RCT_EXPORT_METHOD(connectToAppleHealth:(RCTResponseSenderBlock)callback)
         return;
     }
 
-    NSSet *readTypes = [NSSet setWithArray:@[
-        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount],
-    ]];
+    NSSet *readTypes = [self fitnessReadTypes];
 
     __weak typeof(self) weakSelf = self;
 
@@ -633,7 +683,7 @@ RCT_EXPORT_METHOD(connectToAppleHealth:(RCTResponseSenderBlock)callback)
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) { return; }
 
-        [strongSelf hasStepReadAccess:^(BOOL readable) {
+        [strongSelf hasReadableFitnessSamples:^(BOOL readable) {
             if (!readable) {
                 dispatch_async(dispatch_get_main_queue(), ^{
                     callback(@[@{@"authStatus": @"DENIED"}]);
@@ -770,56 +820,28 @@ RCT_EXPORT_METHOD(renderGraph:(NSDictionary *)input callback:(RCTResponseSenderB
     [task resume];
 }
 
-// Fans out to fetchHourlySteps per date, then preprocessEmbellishRequest,
-// collecting all httpBody dicts. Always fires completion exactly once, even
-// when no batches are produced.
 - (void)collectEmbellishBatchesForDates:(NSArray<NSDate *> *)dates
-                             completion:(void (^)(NSArray<NSDictionary *> *batches))completion
-{
-    if (dates.count == 0) {
-        completion(@[]);
-        return;
-    }
-
-    dispatch_group_t outer = dispatch_group_create();
-    NSMutableArray<NSDictionary *> *batches = [NSMutableArray new];
-    __weak typeof(self) weakSelf = self;
-
+                             completion:(void (^)(NSArray<NSDictionary *> *))completion {
+    dispatch_group_t group = dispatch_group_create();
+    NSMutableDictionary<NSDate *, NSDictionary *> *batches = [NSMutableDictionary new];
     for (NSDate *date in dates) {
-        dispatch_group_enter(outer);
-        __block NSArray *steps = @[];
-        dispatch_group_t inner = dispatch_group_create();
-
-        dispatch_group_enter(inner);
-        [weakSelf fetchHourlySteps:date callback:^(NSArray *data) {
-            if (data.count >= 1) {
-                steps = data[0] ?: @[];
+        dispatch_group_enter(group);
+        [self fetchHourlyFitnessForDate:date completion:^(NSArray<NSNumber *> *steps,
+                                                         NSArray<NSNumber *> *calories,
+                                                         NSArray<NSNumber *> *distance) {
+            if (steps && calories && distance) {
+                batches[date] = [self hourlySyncPayloadForDate:date steps:steps calories:calories distance:distance];
             }
-            dispatch_group_leave(inner);
+            dispatch_group_leave(group);
         }];
-
-        dispatch_group_notify(inner,
-                              dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (steps.count > 0 && strongSelf) {
-                [strongSelf preprocessEmbellishRequest:steps
-                                                  date:date
-                                              callback:^(NSArray *data) {
-                    if (data.count > 0 && [data[0] isKindOfClass:[NSDictionary class]]) {
-                        @synchronized (batches) {
-                            [batches addObject:data[0]];
-                        }
-                    }
-                    dispatch_group_leave(outer);
-                }];
-            } else {
-                dispatch_group_leave(outer);
-            }
-        });
     }
-
-    dispatch_group_notify(outer, dispatch_get_main_queue(), ^{
-        completion([batches copy]);
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        NSMutableArray *ordered = [NSMutableArray new];
+        for (NSDate *date in dates) {
+            NSDictionary *batch = batches[date];
+            if (batch) [ordered addObject:batch];
+        }
+        completion(ordered);
     });
 }
 
@@ -1002,24 +1024,16 @@ RCT_EXPORT_METHOD(updateApiUrl:(NSDictionary *)input)
 }
 
 
-RCT_EXPORT_METHOD(fetchHourlyData:(NSInteger)gfHourlyLastSync resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject){
-    NSLog(@"gfHourlyLastSync in fetchHourlyData is %ld",(long)gfHourlyLastSync);
-    NSDate* hourlyDataSyncTime = [NSDate dateWithTimeIntervalSince1970:gfHourlyLastSync/1000];
-    [self canAccessHealthKit:^(BOOL value){
-        if(value){
-            [self fetchHourlySteps:hourlyDataSyncTime callback:^(NSArray * data) {
-                NSArray* steps = [data count] > 0 ? [data objectAtIndex:0] : @[];
-                if([steps count]>0){
-                  [self preprocessEmbellishRequest:steps date:hourlyDataSyncTime callback:^(NSArray * result) {
-                    NSLog(@"fetchHourlyData data, %@",result);
-                      resolve(result);
-                  }];
-                }
-            }];
-        }else{
-            NSError* error;
-            reject(@"error", @"Error fetching hourly data", error);
+RCT_EXPORT_METHOD(fetchHourlyData:(NSInteger)gfHourlyLastSync resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    NSDate *date = [NSDate dateWithTimeIntervalSince1970:gfHourlyLastSync / 1000.0];
+    [self canAccessHealthKit:^(BOOL readable) {
+        if (!readable) {
+            reject(@"error", @"Error fetching hourly data", nil);
+            return;
         }
+        [self collectEmbellishBatchesForDates:@[date] completion:^(NSArray *batches) {
+            resolve(batches);
+        }];
     }];
 }
 
@@ -1080,21 +1094,15 @@ RCT_REMAP_METHOD(getHealthKitStatus,
             return;
         }
 
-        NSInteger days = 1;
-        [self fetchSteps:@"custom"
-                  endDate:[NSDate date]
-                     days:days
-                 callback:^(NSArray *data) {
-            NSLog(@"Fetched steps data: %@", data);
-            NSArray *stepsData = [data count] > 0 ? [data objectAtIndex:0] : nil;
+        NSDate *now = [NSDate date];
+        NSDate *today = [self->calendar startOfDayForDate:now];
+        [self fetchFitnessBuckets:@"steps" start:today end:now hourly:NO
+                       completion:^(NSArray<NSNumber *> *stepsData, NSError *queryError) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (stepsData) {
+                if (!queryError) {
                     resolve(@{@"steps": stepsData});
                 } else {
-                    NSError *error = [NSError errorWithDomain:@"HealthKit"
-                                                         code:500
-                                                     userInfo:@{NSLocalizedDescriptionKey: @"Failed to fetch step data"}];
-                    reject(@"fetch_error", @"Error fetching step data", error);
+                    reject(@"fetch_error", @"Error fetching step data", queryError);
                 }
             });
         }];
@@ -1110,9 +1118,7 @@ RCT_REMAP_METHOD(requestHealthKitAuthorization,
         return;
     }
 
-    NSMutableSet *readTypes = [NSMutableSet setWithArray:@[
-        [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount],
-    ]];
+    NSSet *readTypes = [self fitnessReadTypes];
 
     __weak typeof(self) weakSelf = self;
     [[VisitRnSdkViewManager sharedManager]
@@ -1129,9 +1135,7 @@ RCT_REMAP_METHOD(requestHealthKitAuthorization,
             return;
         }
 
-        // Resolves GRANTED once the sheet has been answered. DENIED is not
-        // reachable for a read-only app: HealthKit reports read authorization
-        // to no one, so a denial is indistinguishable from having no step data.
+        // HealthKit exposes readable samples rather than per-type read authorization.
         [strongSelf canAccessHealthKit:^(BOOL resolved) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 resolve(resolved ? @"GRANTED" : @"NOT_DETERMINED");
@@ -1181,20 +1185,39 @@ RCT_REMAP_METHOD(getTodayStepCount,
     [[VisitRnSdkViewManager sharedManager] executeQuery:query];
 }
 
-// Compatibility stub: always resolves 0.
 RCT_REMAP_METHOD(getTodaySleepMinutes,
                  getTodaySleepMinutesWithResolver:(RCTPromiseResolveBlock)resolve
-                 rejecter:(RCTPromiseRejectBlock)reject)
-{
-    resolve(@0);
+                 rejecter:(RCTPromiseRejectBlock)reject) {
+    if (![HKHealthStore isHealthDataAvailable]) {
+        reject(@"HEALTH_DATA_UNAVAILABLE", @"HealthKit is not available on this device", nil);
+        return;
+    }
+    [self fetchTodaySleepMinutes:^(NSNumber *minutes, NSError *error) {
+        if (error) {
+            reject(@"SLEEP_QUERY_FAILED", error.localizedDescription, error);
+        } else {
+            resolve(minutes);
+        }
+    }];
 }
 
-// Compatibility stub: always resolves 0.
 RCT_REMAP_METHOD(getTodayCalorieCount,
                  getTodayCalorieCountWithResolver:(RCTPromiseResolveBlock)resolve
-                 rejecter:(RCTPromiseRejectBlock)reject)
-{
-    resolve(@0);
+                 rejecter:(RCTPromiseRejectBlock)reject) {
+    if (![HKHealthStore isHealthDataAvailable]) {
+        reject(@"HEALTH_DATA_UNAVAILABLE", @"HealthKit is not available on this device", nil);
+        return;
+    }
+    NSDate *now = [NSDate date];
+    NSDate *today = [self->calendar startOfDayForDate:now];
+    [self fetchFitnessBuckets:@"calories" start:today end:now hourly:NO
+                   completion:^(NSArray<NSNumber *> *values, NSError *error) {
+        if (error) {
+            reject(@"CALORIE_QUERY_FAILED", error.localizedDescription, error);
+        } else {
+            resolve(values.firstObject ?: @0);
+        }
+    }];
 }
 
 RCT_REMAP_METHOD(triggerManualSync,

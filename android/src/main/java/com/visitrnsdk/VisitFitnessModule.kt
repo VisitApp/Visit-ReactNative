@@ -18,7 +18,6 @@ import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.getvisitapp.visit.HealthConnectListener
 import com.getvisitapp.visit.data.VisitStepSyncHelper
-import com.getvisitapp.visit.healthConnect.HealthConnectCapabilities
 import com.getvisitapp.visit.healthConnect.activity.HealthConnectUtil
 import com.getvisitapp.visit.healthConnect.contants.Contants.previouslyRevoked
 import com.getvisitapp.visit.healthConnect.enums.HealthConnectConnectionState
@@ -27,6 +26,7 @@ import com.getvisitapp.visit.healthConnect.enums.HealthConnectConnectionState.IN
 import com.getvisitapp.visit.healthConnect.enums.HealthConnectConnectionState.NONE
 import com.getvisitapp.visit.healthConnect.enums.HealthConnectConnectionState.NOT_INSTALLED
 import com.getvisitapp.visit.healthConnect.enums.HealthConnectConnectionState.NOT_SUPPORTED
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,7 +47,7 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
   private var promise: Promise? = null
 
   private var healthConnectStatusPromise: Promise? = null
-  private var dataRetrivalPromise: Promise? = null
+  private var permissionPromise: Promise? = null
   private var isLoggingEnabled = false
 
   private var visitStepSyncHelper: VisitStepSyncHelper? = null
@@ -124,69 +124,97 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
-  fun isNativeStepTrackingAvailable(promise: Promise) {
-    try {
-      promise.resolve(HealthConnectCapabilities.isNativeStepTrackingAvailable())
-    } catch (exception: Exception) {
-      Timber.e(exception, "Native step tracking capability check failed")
-      promise.reject(
-        "CAPABILITY_CHECK_FAILED",
-        "Unable to determine native step tracking capability",
-        exception
-      )
-    }
-  }
-
-  @ReactMethod
   fun askForFitnessPermission(promise: Promise) {
-    this.promise = promise
-    healthConnectUtil?.let {
-      if (healthConnectUtil!!.healthConnectConnectionState == CONNECTED) {
-        Timber.d("askForFitnessPermission: already granted")
-        promise.resolve("GRANTED")
-      } else {
-        Timber.d("askForFitnessPermission: request permission")
-        healthConnectUtil!!.requestPermission()
+    val util = healthConnectUtil
+    if (util == null) {
+      promise.reject("SDK_NOT_INITIALIZED", "Initialize the SDK before connecting Health Connect")
+      return
+    }
+
+    util.scope.launch {
+      try {
+        val status = util.checkAvailability()
+        withContext(Dispatchers.Main) {
+          when (status) {
+            CONNECTED -> promise.resolve("GRANTED")
+            INSTALLED -> {
+              if (permissionPromise == null) {
+                permissionPromise = promise
+                util.requestPermission()
+              } else {
+                promise.reject("PERMISSION_IN_PROGRESS", "Health Connect permissions are already open")
+              }
+            }
+            NOT_INSTALLED -> {
+              util.requestPermission()
+              promise.resolve(status.name)
+            }
+            NOT_SUPPORTED, NONE -> promise.resolve(status.name)
+          }
+        }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Exception) {
+        promise.reject("HEALTH_CONNECT_PERMISSION_ERROR", error)
       }
     }
-
   }
 
-  override fun userAcceptedHealthConnectPermission() {
-    Timber.d("userAcceptedHealthConnectPermission")
-    promise?.resolve("GRANTED")
-  }
+  override fun userAcceptedHealthConnectPermission() = finishPermissionRequest("GRANTED")
 
-  override fun userDeniedHealthConnectPermission() {
-    Timber.d("userDeniedHealthConnectPermission")
-    promise?.resolve("CANCELLED")
+  override fun userDeniedHealthConnectPermission() = finishPermissionRequest("CANCELLED")
+
+  private fun finishPermissionRequest(result: String) {
+    Handler(Looper.getMainLooper()).post {
+      val pending = permissionPromise
+      permissionPromise = null
+      pending?.resolve(result)
+    }
   }
 
   @ReactMethod
-  fun requestDailyFitnessData(promise: Promise?) {
-    this.dataRetrivalPromise = promise
-
-    if (healthConnectUtil!!.healthConnectConnectionState == CONNECTED) {
-      healthConnectUtil!!.getVisitDashboardGraph()
-    }
+  fun requestDailyFitnessData(promise: Promise) {
+    loadHealthConnectGraph(promise) { it.loadDashboardGraph() }
   }
 
   @ReactMethod
   fun requestActivityDataFromHealthConnect(
-    type: String?, frequency: String?, timestamp: Double, promise: Promise?
+    type: String?, frequency: String?, timestamp: Double, promise: Promise
   ) {
-    this.dataRetrivalPromise = promise
-    Timber.d("mytag: requestActivityData() called.")
-    healthConnectUtil?.let {
-      if (healthConnectUtil!!.healthConnectConnectionState == HealthConnectConnectionState.CONNECTED) {
-        //Health Connect Implementation
-        healthConnectUtil!!.getActivityData(type, frequency, Math.round(timestamp))
-      } else {
-        Timber.d("mytag: permission not available healthConnectConnectionState: ${healthConnectUtil!!.healthConnectConnectionState}")
-        healthConnectUtil!!.requestPermission()
-      }
+    loadHealthConnectGraph(promise, requestPermissionIfDisconnected = true) {
+      it.loadActivityGraph(type, frequency, Math.round(timestamp))
+    }
+  }
+
+  private fun loadHealthConnectGraph(
+    promise: Promise,
+    requestPermissionIfDisconnected: Boolean = false,
+    loadGraph: suspend (HealthConnectUtil) -> String?
+  ) {
+    val util = healthConnectUtil
+    if (util == null) {
+      promise.reject("SDK_NOT_INITIALIZED", "Initialize the SDK before loading Health Connect data")
+      return
     }
 
+    util.scope.launch {
+      try {
+        if (util.healthConnectConnectionState == CONNECTED) {
+          promise.resolve(loadGraph(util))
+        } else {
+          if (requestPermissionIfDisconnected) {
+            withContext(Dispatchers.Main) {
+              if (permissionPromise == null) util.requestPermission()
+            }
+          }
+          promise.resolve(null)
+        }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Exception) {
+        promise.reject("HEALTH_CONNECT_GRAPH_ERROR", error)
+      }
+    }
   }
 
   @ReactMethod
@@ -291,14 +319,8 @@ class VisitFitnessModule(reactContext: ReactApplicationContext) :
   }
 
   override fun loadVisitWebViewGraphData(webUrl: String) {
-    Handler(Looper.getMainLooper()).post {
-      if (isLoggingEnabled) {
-        Log.d("mytag", "loadVisitWebViewGraphData: $webUrl")
-      }
-      dataRetrivalPromise!!.resolve(webUrl)
-    }
+    if (isLoggingEnabled) Timber.d("Health Connect graph data delivered to legacy listener")
   }
-
 
   override fun requestPermission() {
     Timber.d("requestPermission called 218")
