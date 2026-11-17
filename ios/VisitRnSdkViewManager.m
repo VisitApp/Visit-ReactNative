@@ -1,6 +1,7 @@
 #import "VisitRnSdkViewManager.h"
 #import <HealthKit/HealthKit.h>
 #import <UIKit/UIKit.h>
+#import <math.h>
 
 static NSString *const kVisitApiBaseUrlKey = @"visit_api_base_url";
 static NSString *const kVisitAuthTokenKey = @"visit_auth_token";
@@ -767,14 +768,30 @@ RCT_EXPORT_METHOD(openAppleHealthApp:(RCTPromiseResolveBlock)resolve
 
 RCT_EXPORT_METHOD(renderGraph:(NSDictionary *)input callback:(RCTResponseSenderBlock)callback)
 {
-  NSString *type = [input objectForKey:@"type"];
- NSString *frequency = [input objectForKey:@"frequency"];
- NSString *timestamp = [input objectForKey:@"timestamp"];
-  NSDate *date = [NSDate dateWithTimeIntervalSince1970:[timestamp doubleValue]/1000];
-  [self renderGraphData:type frequency:frequency date:date callback:^(NSArray * data) {
-    NSLog(@"renderGraphData data is, %@",data);
-    callback(@[[NSNull null], data]);
-  }];
+    id type = input[@"type"];
+    id frequency = input[@"frequency"];
+    if (![type isKindOfClass:[NSString class]] || ![frequency isKindOfClass:[NSString class]]) {
+        callback(@[[NSNull null], @[]]);
+        return;
+    }
+
+    id timestamp = input[@"timestamp"];
+    double milliseconds = NAN;
+    if ([timestamp isKindOfClass:[NSNumber class]]) {
+        milliseconds = [timestamp doubleValue];
+    } else if ([timestamp isKindOfClass:[NSString class]]) {
+        NSScanner *scanner = [NSScanner scannerWithString:timestamp];
+        double parsed;
+        if ([scanner scanDouble:&parsed] && scanner.isAtEnd) {
+            milliseconds = parsed;
+        }
+    }
+    NSDate *date = isfinite(milliseconds)
+        ? [NSDate dateWithTimeIntervalSince1970:milliseconds / 1000.0]
+        : [NSDate date];
+    [self renderGraphData:type frequency:frequency date:date callback:^(NSArray *data) {
+        callback(@[[NSNull null], data]);
+    }];
 }
 
 - (void)postJSONBody:(NSDictionary *)body

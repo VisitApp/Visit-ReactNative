@@ -3,15 +3,61 @@
 
 #import <React/RCTLog.h>
 #import <React/RCTRootView.h>
+#import <react-native-visit-rn-sdk/VisitRnSdkViewManager.h>
 
 #define TIMEOUT_SECONDS 600
 #define TEXT_TO_LOOK_FOR @"Welcome to React"
+
+@interface GraphRequestRecorder : VisitRnSdkViewManager
+@property (nonatomic, strong) NSDate *graphDate;
+@end
+
+@implementation GraphRequestRecorder
+
+- (void)renderGraphData:(NSString *)type
+              frequency:(NSString *)frequency
+                   date:(NSDate *)date
+               callback:(void (^)(NSArray *))callback
+{
+  self.graphDate = date;
+  callback(@[@"DetailedGraph.updateData()"]);
+}
+
+@end
 
 @interface exampleTests : XCTestCase
 
 @end
 
 @implementation exampleTests
+
+- (void)testGraphRequestWithoutTimestampUsesCurrentDate
+{
+  GraphRequestRecorder *manager = [GraphRequestRecorder new];
+  for (NSDictionary *timestampInput in @[@{}, @{@"timestamp": [NSNull null]}, @{@"timestamp": @"invalid"}]) {
+    NSMutableDictionary *input = [@{@"type": @"steps", @"frequency": @"day"} mutableCopy];
+    [input addEntriesFromDictionary:timestampInput];
+    NSDate *before = [NSDate date];
+    __block NSArray *response = nil;
+    [manager renderGraph:input callback:^(NSArray *arguments) {
+      response = arguments;
+    }];
+    XCTAssertNotNil(manager.graphDate);
+    XCTAssertGreaterThanOrEqual([manager.graphDate timeIntervalSinceDate:before], 0);
+    XCTAssertLessThanOrEqual([manager.graphDate timeIntervalSinceNow], 0);
+    XCTAssertEqualObjects(response, (@[[NSNull null], @[@"DetailedGraph.updateData()"]]));
+  }
+}
+
+- (void)testGraphRequestPreservesNumericAndStringTimestamps
+{
+  GraphRequestRecorder *manager = [GraphRequestRecorder new];
+  for (id timestamp in @[@1700000000123, @"1700000000123"]) {
+    [manager renderGraph:@{@"type": @"steps", @"frequency": @"day", @"timestamp": timestamp}
+               callback:^(NSArray *arguments) {}];
+    XCTAssertEqualWithAccuracy(manager.graphDate.timeIntervalSince1970, 1700000000.123, 0.001);
+  }
+}
 
 - (BOOL)findSubviewInView:(UIView *)view matching:(BOOL (^)(UIView *view))test
 {
