@@ -1,9 +1,9 @@
-## PMLI SDK `7.1.3`
+## PMLI SDK `7.1.4`
 
 Install the release and shared host app dependencies.
 
 ```sh
-npm install react-native-visit-rn-sdk@7.1.3 react-native-event-listeners react-native-webview
+npm install react-native-visit-rn-sdk@7.1.4 react-native-event-listeners react-native-webview
 ```
 
 For Android, add `@visit-health/react-native-location-enabler@1.0.2` to the same
@@ -268,6 +268,10 @@ Both platforms accept `GET_DATA_TO_GENERATE_GRAPH` for steps, calories, and
 distance by day, week, and month, and for sleep by day and week. The SDK
 delivers the existing `DetailedGraph` callbacks and supplies steps and sleep
 minutes to `updateFitnessPermissions` on connection.
+
+### **7.1.4**
+
+* Fixed an iOS crash on Connect when a fitness graph request omitted its timestamp. Undated requests now load the current period.
 
 ### **7.1.3**
 
