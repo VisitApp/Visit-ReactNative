@@ -67,7 +67,9 @@ function App() {
 function Home() {
   const navigation = useNavigation();
 
-  const [text, setText] = useState('');
+  const [text, setText] = useState(
+    'https://pnb-metlife.getvisitapp.net/sso?userParams=WahGNbeP04HPcnbAVg7uKoy8xNvmd7vWUjL7TQONQYUrGZV7oVjUDuRJybkyvEU4Wn5kAl69V3_FgmSC8Y98I0cJSk4bJUGqOnW6qzdaYyxmEvnrFxj7O8xtL5GjajbB_wgHZK3kgsX0E4N2RnimKX7d1azmxtPC__Lz1wQTeKwpQ2St8V413AiuVXC1TA8lCy65HwHBiE2pDP17HT5aMLoLLtfz0Ag2f5yHg6wYwzYufN4bqRky2XgsIvghLouIwaKvDAuUTC6GC0Tyv_B0yleT9HYEeolwA1gd_0Kzu6njKbfFzyqgbuFdvr8L_2klM21sMWKbD86w-AYNI57Zj3D8CAUKWIgsaKx3Xd0tOJ8fBQ-RpVrz3E5CdhNVetzkPJvhHvcQRUIb5q1zAgixtg0LFVGLn5kJ8I64yJLJs_ANtsjCJpZMH8RYAL1JdL585H3FLzv5jlff_vWIMYmVdhblT_oHXDElRaDSqSilcH5aSPz1uvfXHyh5GCYCzUb8tQOEg6mWqL1Awz_9qqOJT7Jqmc3ywstBrVL0Z0-lTFUp8AXrTjsdKvxCSneZ2tUQqeIXhUerxSS4mC0rBF8bEQ&clientId=pnb-ml-9xb',
+  );
 
   const [healthTrackerConnectionStatus, setHealthTrackerConnectionStatus] =
     useState(null);
